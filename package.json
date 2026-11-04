@@ -1,0 +1,9 @@
+{
+  "name": "team-portal",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix collab ci && npm --prefix frontend ci",
+    "dev": "node scripts/dev.mjs",
+    "verify": "node scripts/verify.mjs"
+  }
+}

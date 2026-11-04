@@ -1,0 +1,11 @@
+.superpowers/
+node_modules/
+build/
+dist/
+.gradle/
+out/
+.idea/
+*.iml
+storage/
+.env
+*.zip

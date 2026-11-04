@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portal
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME을 .env에 설정하세요}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 .env에 설정하세요}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d portal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/portal
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      STORAGE_PATH: /app/storage
+      MAX_UPLOAD_SIZE: 50MB
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN을 .env에 설정하세요}
+    volumes:
+      - storage:/app/storage
+
+  collab:
+    build: ./collab
+    restart: unless-stopped
+    # 종료 시 저장 재시도(최대 30초)를 기다림
+    stop_grace_period: 40s
+    depends_on:
+      - backend
+    environment:
+      COLLAB_PORT: 1234
+      BACKEND_URL: http://backend:8080
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - collab
+    ports:
+      - "${PORTAL_PORT:-80}:80"
+
+volumes:
+  pgdata:
+  storage:

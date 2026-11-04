@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: portal
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/portal}
+    username: ${DB_USERNAME:portal}
+    password: ${DB_PASSWORD:portal}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:50MB}
+      max-request-size: ${MAX_UPLOAD_SIZE:50MB}
+
+app:
+  storage:
+    path: ${STORAGE_PATH:./storage}
+  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}

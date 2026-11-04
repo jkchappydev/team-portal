@@ -1,0 +1,79 @@
+package dev.jkchappy.portal.workstatus;
+
+import dev.jkchappy.portal.common.BusinessException;
+import dev.jkchappy.portal.common.ErrorCode;
+import dev.jkchappy.portal.member.MemberRepository;
+import dev.jkchappy.portal.member.MemberService;
+import dev.jkchappy.portal.member.Member;
+import dev.jkchappy.portal.workstatus.dto.WorkStatusRequest;
+import dev.jkchappy.portal.workstatus.dto.WorkStatusResponse;
+import java.time.YearMonth;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class WorkStatusService {
+
+  private final WorkStatusRepository workStatusRepository;
+  private final MemberRepository memberRepository;
+  private final MemberService memberService;
+  private final WorkStatusValidator validator;
+
+  // 월과 겹치는 항목을 종류 순서, 이름 순으로 조회
+  @Transactional(readOnly = true)
+  public List<WorkStatusResponse> findByMonth(YearMonth month) {
+    List<WorkStatus> items = workStatusRepository.findOverlapping(month.atDay(1), month.atEndOfMonth());
+    // 비활성 팀원 이름도 표시
+    Map<Long, String> names = memberService.findNamesByIds(
+      items.stream().map(WorkStatus::getMemberId).distinct().toList());
+    return items.stream()
+      .map(ws -> WorkStatusResponse.from(ws, names.getOrDefault(ws.getMemberId(), "")))
+      .sorted(Comparator.comparing(WorkStatusResponse::type)
+        .thenComparing(WorkStatusResponse::memberName)
+        .thenComparing(WorkStatusResponse::startDate))
+      .toList();
+  }
+
+  @Transactional
+  public WorkStatusResponse create(WorkStatusRequest request, Long currentUserId) {
+    validator.validate(request);
+    Member target = getActiveTarget(request.memberId());
+    WorkStatus saved = workStatusRepository.save(WorkStatus.create(request.memberId(), request.type(),
+      request.startDate(), request.endDate(), request.halfDayPeriod(), request.startTime(),
+      request.endTime(), request.place(), request.content(), currentUserId));
+    return WorkStatusResponse.from(saved, target.getName());
+  }
+
+  @Transactional
+  public WorkStatusResponse update(Long id, WorkStatusRequest request) {
+    WorkStatus ws = workStatusRepository.findById(id)
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    validator.validate(request);
+    Member target = getActiveTarget(request.memberId());
+    ws.change(request.memberId(), request.type(), request.startDate(), request.endDate(),
+      request.halfDayPeriod(), request.startTime(), request.endTime(), request.place(),
+      request.content());
+    return WorkStatusResponse.from(ws, target.getName());
+  }
+
+  @Transactional
+  public void delete(Long id) {
+    if (!workStatusRepository.existsById(id)) {
+      throw new BusinessException(ErrorCode.NOT_FOUND);
+    }
+    workStatusRepository.deleteById(id);
+  }
+
+  // 등록 대상 팀원이 없거나 비활성이면 입력 오류
+  private Member getActiveTarget(Long memberId) {
+    return memberRepository.findById(memberId)
+      .filter(Member::isActive)
+      .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT,
+        "비활성 팀원에게는 등록할 수 없습니다"));
+  }
+}
