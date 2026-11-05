@@ -67,6 +67,9 @@ vi.mock("yjs", () => {
     getXmlFragment() {
       return {};
     }
+    // 문서 변경 구독 (커서 이름표 표시용)
+    on() {}
+    off() {}
     destroy() {
       this.destroyed = true;
     }

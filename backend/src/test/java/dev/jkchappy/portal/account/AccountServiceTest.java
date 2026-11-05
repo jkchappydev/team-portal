@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
@@ -115,5 +116,76 @@ class AccountServiceTest {
     when(members.findForUpdateById(1L)).thenReturn(Optional.of(member));
     assertThatThrownBy(() -> service.setAdmin(1L, false))
       .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.LAST_ADMIN));
+  }
+
+  private Account approvedAccount(String sub, String email, long memberId, String name) {
+    Member member = Member.create(name);
+    ReflectionTestUtils.setField(member, "id", memberId);
+    Account account = Account.createPending(sub, email, name, Instant.parse("2026-01-01T00:00:00Z"));
+    ReflectionTestUtils.setField(account, "id", 10L);
+    account.approve(member, 1L, Instant.parse("2026-01-02T00:00:00Z"));
+    return account;
+  }
+
+  @Test
+  void deletedMemberLoginBecomesRejoinRequest() {
+    Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
+    account.getMember().markDeleted(java.time.LocalDate.of(2026, 10, 1));
+    when(accounts.findByGoogleSubject("sub")).thenReturn(Optional.of(account));
+
+    service.registerLogin(new GoogleProfile("sub", "a@example.com", "이재구"));
+
+    assertThat(account.getStatus()).isEqualTo(AccountStatus.PENDING);
+    assertThat(account.getRequestedAt()).isEqualTo(Instant.parse("2026-11-05T00:00:00Z"));
+    assertThat(account.previousMember().getId()).isEqualTo(2L);
+  }
+
+  @Test
+  void activeMemberLoginStaysApproved() {
+    Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
+    when(accounts.findByGoogleSubject("sub")).thenReturn(Optional.of(account));
+
+    service.registerLogin(new GoogleProfile("sub", "a@example.com", "이재구"));
+
+    assertThat(account.getStatus()).isEqualTo(AccountStatus.APPROVED);
+  }
+
+  @Test
+  void meAfterDeletionShowsPending() {
+    Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
+    account.getMember().markDeleted(java.time.LocalDate.of(2026, 10, 1));
+    when(accounts.findByGoogleSubject("sub")).thenReturn(Optional.of(account));
+
+    assertThat(service.me("sub").status()).isEqualTo(AccountStatus.PENDING);
+  }
+
+  @Test
+  void sameEmailWithNewGoogleSubjectReusesAccount() {
+    Account account = approvedAccount("old-sub", "a@example.com", 2L, "이재구");
+    account.getMember().markDeleted(java.time.LocalDate.of(2026, 10, 1));
+    when(accounts.findByGoogleSubject("new-sub")).thenReturn(Optional.empty());
+    when(accounts.findByEmail("a@example.com")).thenReturn(Optional.of(account));
+
+    Account result = service.registerLogin(new GoogleProfile("new-sub", "a@example.com", "이재구"));
+
+    assertThat(result).isSameAs(account);
+    assertThat(account.getGoogleSubject()).isEqualTo("new-sub");
+    assertThat(account.getStatus()).isEqualTo(AccountStatus.PENDING);
+  }
+
+  @Test
+  void rejoinApprovalRestoresPreviousMember() {
+    Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
+    Member previous = account.getMember();
+    previous.markDeleted(java.time.LocalDate.of(2026, 10, 1));
+    account.requestRejoin(Instant.parse("2026-11-01T00:00:00Z"));
+    when(accounts.findForUpdateById(10L)).thenReturn(Optional.of(account));
+    when(members.findForUpdateById(2L)).thenReturn(Optional.of(previous));
+
+    service.approveWithMember(10L, 2L, 1L, "개발팀", JobRank.SENIOR);
+
+    assertThat(account.getStatus()).isEqualTo(AccountStatus.APPROVED);
+    assertThat(previous.isDeleted()).isFalse();
+    assertThat(previous.isActive()).isTrue();
   }
 }

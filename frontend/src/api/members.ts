@@ -20,12 +20,13 @@ export function listMembers(includeInactive: boolean): Promise<MemberDto[]> {
   return apiFetch<MemberDto[]>(`/api/members?includeInactive=${includeInactive}`);
 }
 
-export function createMember(name: string): Promise<MemberDto> {
-  return apiFetch<MemberDto>("/api/members", { method: "POST", body: JSON.stringify({ name }) });
-}
-
 export function updateMember(id: number, patch: { name?: string; active?: boolean; department?: string; jobRank?: JobRank }): Promise<MemberDto> {
   return apiFetch<MemberDto>(`/api/members/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+// 퇴사자 등을 팀원 목록에서 삭제 (작성 기록·근무 상황·연차 기록은 그대로 남음)
+export function deleteMember(id: number): Promise<void> {
+  return apiFetch<void>(`/api/members/${id}`, { method: "DELETE" });
 }
 
 export function moveMember(id: number, beforeId: number | null): Promise<void> {

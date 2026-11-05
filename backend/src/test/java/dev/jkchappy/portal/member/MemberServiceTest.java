@@ -11,6 +11,10 @@ import dev.jkchappy.portal.account.AccountRepository;
 import dev.jkchappy.portal.member.dto.MemberCreateRequest;
 import dev.jkchappy.portal.member.dto.MemberResponse;
 import dev.jkchappy.portal.member.dto.MemberUpdateRequest;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -136,5 +140,91 @@ class MemberServiceTest {
     Map<Long, String> names = memberService.findNamesByIds(List.of(1L));
 
     assertThat(names).containsValue("가");
+  }
+
+  // 한국 시간 2027-01-01 00:30 (UTC로는 2026-12-31)
+  private MemberService serviceAt(String instant) {
+    return new MemberService(memberRepository, accountRepository,
+      Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+  }
+
+  private Member saved(long id, String name) {
+    Member member = Member.create(name);
+    ReflectionTestUtils.setField(member, "id", id);
+    return member;
+  }
+
+  @Test
+  void delete_marksDeletedWithKoreanDate_andBlocksLogin() {
+    Member admin = saved(1L, "관리자");
+    admin.grantAdmin();
+    Member target = saved(2L, "퇴사자");
+    target.grantAdmin();
+    when(memberRepository.lockActiveAdmins()).thenReturn(List.of(admin, target));
+    when(memberRepository.findForUpdateById(2L)).thenReturn(Optional.of(target));
+
+    serviceAt("2026-12-31T15:30:00Z").delete(2L, 1L);
+
+    assertThat(target.getDeletedOn()).isEqualTo(LocalDate.of(2027, 1, 1));
+    assertThat(target.isActive()).isFalse();
+    assertThat(target.isAdmin()).isFalse();
+  }
+
+  @Test
+  void delete_self_throwsInvalidInput() {
+    assertThatThrownBy(() -> serviceAt("2026-11-05T00:00:00Z").delete(1L, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
+  void delete_lastActiveAdmin_throwsLastAdmin() {
+    Member lastAdmin = saved(2L, "관리자");
+    lastAdmin.grantAdmin();
+    when(memberRepository.lockActiveAdmins()).thenReturn(List.of(lastAdmin));
+    when(memberRepository.findForUpdateById(2L)).thenReturn(Optional.of(lastAdmin));
+
+    assertThatThrownBy(() -> serviceAt("2026-11-05T00:00:00Z").delete(2L, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.LAST_ADMIN));
+    assertThat(lastAdmin.isDeleted()).isFalse();
+  }
+
+  @Test
+  void delete_alreadyDeleted_throwsNotFound() {
+    Member deleted = saved(2L, "퇴사자");
+    deleted.markDeleted(LocalDate.of(2026, 1, 1));
+    when(memberRepository.findForUpdateById(2L)).thenReturn(Optional.of(deleted));
+
+    assertThatThrownBy(() -> serviceAt("2026-11-05T00:00:00Z").delete(2L, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+  }
+
+  @Test
+  void update_deletedMember_throwsNotFound() {
+    Member deleted = saved(2L, "퇴사자");
+    deleted.markDeleted(LocalDate.of(2026, 1, 1));
+    when(memberRepository.findById(2L)).thenReturn(Optional.of(deleted));
+
+    assertThatThrownBy(() -> memberService.update(2L, new MemberUpdateRequest(null, true, null, null)))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+  }
+
+  @Test
+  void findAll_includeInactive_excludesDeleted() {
+    when(memberRepository.findByDeletedOnIsNullOrderByNameAsc()).thenReturn(List.of(saved(1L, "남은 팀원")));
+
+    assertThat(memberService.findAll(true)).extracting(MemberResponse::name).containsExactly("남은 팀원");
+  }
+
+  @Test
+  void findNamesByIds_keepsDeletedMemberName() {
+    Member deleted = saved(2L, "퇴사자");
+    deleted.markDeleted(LocalDate.of(2026, 1, 1));
+    when(memberRepository.findAllById(List.of(2L))).thenReturn(List.of(deleted));
+
+    assertThat(memberService.findNamesByIds(List.of(2L))).containsEntry(2L, "퇴사자");
   }
 }

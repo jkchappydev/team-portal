@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
+  Optional<Account> findByEmail(String email);
+
   Optional<Account> findByGoogleSubject(String googleSubject);
   boolean existsByMemberId(Long memberId);
   Optional<Account> findByMemberId(Long memberId);

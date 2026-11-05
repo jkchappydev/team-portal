@@ -1,6 +1,6 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme } from "@mantine/core";
 import { ko } from "@blocknote/core/locales";
@@ -13,6 +13,8 @@ import { uploadAttachment } from "../api/attachments";
 import { fetchCollabTicket } from "../api/collab";
 import type { MemberDto } from "../api/members";
 import { collabUrl, FRAGMENT_NAME } from "./collab";
+import { createCursorActivity, editingClientIds, renderCursor } from "./cursorActivity";
+import type { CursorUser } from "./cursorActivity";
 import { NotionDragHandleMenu } from "./editor/NotionDragHandleMenu";
 import { dropTargetAt, insertDroppedFiles } from "./fileDrop";
 import type { DropEditor } from "./fileDrop";
@@ -153,7 +155,11 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
       collaboration: {
         provider: { awareness: session.provider.awareness ?? undefined },
         fragment: session.doc.getXmlFragment(FRAGMENT_NAME),
-        user: { name: user.name, color: userColor(user.id) },
+        // memberId로 커서와 실제 편집자를 맞춤
+        user: { name: user.name, color: userColor(user.id), memberId: user.id },
+        // 이름표 표시는 아래 문서 변경 감시로 직접 처리 (기본 방식은 커서 위치만 바뀌어도 이름을 띄워 엉뚱한 사람이 표시됨)
+        showCursorLabels: "always",
+        renderCursor: (cursorUser) => renderCursor(cursorUser as CursorUser),
       },
       // 본문에 넣는 파일은 inline 첨부로 업로드 후 다운로드 URL 사용
       uploadFile: (file: File) => uploadAttachment(documentId, file, true).then((a) => a.url),
@@ -169,6 +175,27 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
   useEffect(() => {
     setEditorEditable(editor, editable);
   }, [editor, editable]);
+
+  // 다른 사람이 실제로 글을 고친 경우에만 그 사람 커서에 이름표 표시
+  const editorBoxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = editorBoxRef.current;
+    const awareness = session.provider.awareness;
+    if (!container || !awareness) return;
+    const activity = createCursorActivity(container);
+    const onUpdate = (update: Uint8Array) => {
+      for (const clientId of editingClientIds(update)) {
+        if (clientId === session.doc.clientID) continue;
+        const memberId = (awareness.getStates().get(clientId)?.user as CursorUser | undefined)?.memberId;
+        if (memberId != null) activity.activate(memberId);
+      }
+    };
+    session.doc.on("update", onUpdate);
+    return () => {
+      session.doc.off("update", onUpdate);
+      activity.dispose();
+    };
+  }, [session]);
 
   const [dropError, setDropError] = useState<string | null>(null);
   const hasFiles = (e: DragEvent) => editable && Array.from(e.dataTransfer.types).includes("Files");
@@ -196,7 +223,7 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
   };
 
   return (
-    <Box className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}>
+    <Box ref={editorBoxRef} className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}>
       {dropError && <Alert color="red" mb="xs" withCloseButton onClose={() => setDropError(null)}>{dropError}</Alert>}
       {/* 블록 손잡이(⠿) 메뉴는 노션식 메뉴로 교체, 표는 행·열 손잡이만 두고 칸 모서리 메뉴 버튼은 숨김 */}
       <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false}>

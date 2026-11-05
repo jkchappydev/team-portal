@@ -15,6 +15,8 @@ export interface AnnualLeaveSummaryDto {
   usedDays: number;
   remainingDays: number;
   weeklyUsages: WeeklyLeaveUsageDto[];
+  // 비활성·삭제(퇴사) 팀원은 이월·확정 연차를 고칠 수 없음
+  editable: boolean;
 }
 
 export interface AnnualLeaveBalanceRequest {

@@ -1,6 +1,7 @@
 package dev.jkchappy.portal.member;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -95,5 +96,20 @@ class MemberControllerTest {
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data.department").value("개발팀"))
       .andExpect(jsonPath("$.data.jobRank").value("SENIOR"));
+  }
+
+  @Test
+  void adminCanDeleteMember() throws Exception {
+    mockMvc.perform(delete("/api/members/2").with(loginAs(1L)))
+      .andExpect(status().isNoContent());
+    verify(memberService).delete(2L, 1L);
+  }
+
+  @Test
+  void deleteRequiresAdmin() throws Exception {
+    doThrow(new BusinessException(ErrorCode.ADMIN_REQUIRED)).when(accountService).requireAdmin(1L);
+    mockMvc.perform(delete("/api/members/2").with(loginAs(1L)))
+      .andExpect(status().isForbidden())
+      .andExpect(jsonPath("$.error.code").value("ADMIN_REQUIRED"));
   }
 }

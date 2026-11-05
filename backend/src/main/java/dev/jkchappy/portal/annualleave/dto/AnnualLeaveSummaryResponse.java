@@ -11,6 +11,8 @@ public record AnnualLeaveSummaryResponse(
   BigDecimal totalDays,
   BigDecimal usedDays,
   BigDecimal remainingDays,
-  List<WeeklyLeaveUsage> weeklyUsages
+  List<WeeklyLeaveUsage> weeklyUsages,
+  // 비활성·삭제 팀원은 이월·확정 연차를 고칠 수 없음
+  boolean editable
 ) {
 }

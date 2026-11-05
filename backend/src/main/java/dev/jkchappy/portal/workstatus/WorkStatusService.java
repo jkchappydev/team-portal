@@ -2,6 +2,7 @@ package dev.jkchappy.portal.workstatus;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
+import dev.jkchappy.portal.live.LiveUpdateEvent;
 import dev.jkchappy.portal.member.MemberRepository;
 import dev.jkchappy.portal.member.MemberService;
 import dev.jkchappy.portal.member.Member;
@@ -12,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class WorkStatusService {
   private final MemberRepository memberRepository;
   private final MemberService memberService;
   private final WorkStatusValidator validator;
+  private final ApplicationEventPublisher events;
 
   // 월과 겹치는 항목을 종류 순서, 이름 순으로 조회
   @Transactional(readOnly = true)
@@ -46,6 +49,7 @@ public class WorkStatusService {
     WorkStatus saved = workStatusRepository.save(WorkStatus.create(request.memberId(), request.type(),
       request.startDate(), request.endDate(), request.halfDayPeriod(), request.startTime(),
       request.endTime(), request.place(), request.content(), currentUserId));
+    publishChanged();
     return WorkStatusResponse.from(saved, target.getName());
   }
 
@@ -58,6 +62,7 @@ public class WorkStatusService {
     ws.change(request.memberId(), request.type(), request.startDate(), request.endDate(),
       request.halfDayPeriod(), request.startTime(), request.endTime(), request.place(),
       request.content());
+    publishChanged();
     return WorkStatusResponse.from(ws, target.getName());
   }
 
@@ -67,6 +72,12 @@ public class WorkStatusService {
       throw new BusinessException(ErrorCode.NOT_FOUND);
     }
     workStatusRepository.deleteById(id);
+    publishChanged();
+  }
+
+  // 근무 상황표를 열어 둔 다른 화면에 변경 알림 (저장 확정 후 전송)
+  private void publishChanged() {
+    events.publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
   }
 
   // 등록 대상 팀원이 없거나 비활성이면 입력 오류

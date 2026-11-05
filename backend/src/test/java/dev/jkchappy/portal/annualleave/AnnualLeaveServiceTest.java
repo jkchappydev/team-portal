@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,9 +40,12 @@ class AnnualLeaveServiceTest {
   @Mock
   private MemberService memberService;
 
+  @Mock
+  private ApplicationEventPublisher events;
+
   private AnnualLeaveService service() {
     return new AnnualLeaveService(balanceRepository, workStatusRepository, memberRepository,
-      memberService);
+      memberService, events);
   }
 
   private Member member(long id, String name) {
@@ -61,7 +65,7 @@ class AnnualLeaveServiceTest {
     Member member = member(1L, "홍길동");
     AnnualLeaveBalance balance = AnnualLeaveBalance.create(1L, 2026,
       new BigDecimal("15"), new BigDecimal("1"));
-    when(memberRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(member));
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
     when(balanceRepository.findByYear(2026)).thenReturn(List.of(balance));
     when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
       LocalDate.of(2026, 12, 31))).thenReturn(List.of(
@@ -80,7 +84,7 @@ class AnnualLeaveServiceTest {
   @Test
   void findByYear_splitsUsageByCalendarWeek() {
     Member member = member(1L, "홍길동");
-    when(memberRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(member));
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
     when(balanceRepository.findByYear(2026)).thenReturn(List.of());
     when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
       LocalDate.of(2026, 12, 31))).thenReturn(List.of(
@@ -105,7 +109,7 @@ class AnnualLeaveServiceTest {
   @Test
   void findByYear_leaveAcrossYearBoundary_countsOnlyThisYear() {
     Member member = member(1L, "홍길동");
-    when(memberRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(member));
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
     when(balanceRepository.findByYear(2026)).thenReturn(List.of());
     when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
       LocalDate.of(2026, 12, 31))).thenReturn(List.of(
@@ -137,5 +141,19 @@ class AnnualLeaveServiceTest {
     assertThat(result.carriedDays()).isEqualByComparingTo("2");
     assertThat(result.usedDays()).isEqualByComparingTo("0.5");
     assertThat(result.remainingDays()).isEqualByComparingTo("16.5");
+  }
+
+  @Test
+  void findByYear_inactiveOrDeletedMember_isReadOnly() {
+    Member active = member(1L, "재직자");
+    Member left = member(2L, "퇴사자");
+    left.markDeleted(LocalDate.of(2026, 6, 30));
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(active, left));
+    when(balanceRepository.findByYear(2026)).thenReturn(List.of());
+
+    List<AnnualLeaveSummaryResponse> result = service().findByYear(2026);
+
+    assertThat(result).extracting(AnnualLeaveSummaryResponse::memberName).containsExactly("재직자", "퇴사자");
+    assertThat(result).extracting(AnnualLeaveSummaryResponse::editable).containsExactly(true, false);
   }
 }

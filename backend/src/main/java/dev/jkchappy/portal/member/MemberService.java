@@ -1,5 +1,8 @@
 package dev.jkchappy.portal.member;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.account.Account;
@@ -22,12 +25,16 @@ public class MemberService {
 
   private final MemberRepository memberRepository;
   private final AccountRepository accountRepository;
+  private final Clock clock;
 
-  // 이름순 조회 (기본은 활성 팀원만)
+  // 삭제일은 회사 기준 날짜로 기록
+  static final ZoneId PORTAL_ZONE = ZoneId.of("Asia/Seoul");
+
+  // 이름순 조회 (기본은 활성 팀원만, 삭제한 팀원은 항상 제외)
   @Transactional(readOnly = true)
   public List<MemberResponse> findAll(boolean includeInactive) {
     List<Member> members = MemberOrder.sorted(includeInactive
-      ? memberRepository.findAllByOrderByNameAsc()
+      ? memberRepository.findByDeletedOnIsNullOrderByNameAsc()
       : memberRepository.findByActiveTrueOrderByNameAsc());
     Map<Long, String> emails = new HashMap<>();
     if (!members.isEmpty()) {
@@ -48,6 +55,7 @@ public class MemberService {
   @Transactional
   public MemberResponse update(Long id, MemberUpdateRequest request) {
     Member member = memberRepository.findById(id)
+      .filter(m -> !m.isDeleted())
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     if (request.name() != null) {
       member.rename(normalizeName(request.name()));
@@ -68,6 +76,22 @@ public class MemberService {
       }
     }
     return MemberResponse.from(member, accountRepository.findByMemberId(id).map(Account::getEmail).orElse(null));
+  }
+
+  // 퇴사 등으로 팀원 목록에서 삭제 (행은 남겨 작성 문서·근무 상황·연차 기록과 이름 표시 유지, 로그인은 막힘)
+  @Transactional
+  public void delete(Long id, Long currentUserId) {
+    if (id.equals(currentUserId)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "자기 자신은 삭제할 수 없습니다.");
+    }
+    List<Member> activeAdmins = memberRepository.lockActiveAdmins();
+    Member member = memberRepository.findForUpdateById(id)
+      .filter(m -> !m.isDeleted())
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    if (member.isAdmin() && member.isActive() && activeAdmins.size() <= 1) {
+      throw new BusinessException(ErrorCode.LAST_ADMIN);
+    }
+    member.markDeleted(LocalDate.now(clock.withZone(PORTAL_ZONE)));
   }
 
   // 공동 편집 접속 팀원의 활성 상태 확인

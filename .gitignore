@@ -10,3 +10,4 @@ storage/
 .env
 .env-develop
 *.zip
+CLAUDE.local.md

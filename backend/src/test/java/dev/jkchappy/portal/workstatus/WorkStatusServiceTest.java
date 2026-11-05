@@ -3,6 +3,8 @@ package dev.jkchappy.portal.workstatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.jkchappy.portal.common.BusinessException;
@@ -22,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import dev.jkchappy.portal.live.LiveUpdateEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,9 +40,12 @@ class WorkStatusServiceTest {
   @Mock
   private MemberService memberService;
 
+  @Mock
+  private ApplicationEventPublisher events;
+
   private WorkStatusService service() {
     return new WorkStatusService(workStatusRepository, memberRepository, memberService,
-      new WorkStatusValidator());
+      new WorkStatusValidator(), events);
   }
 
   private static WorkStatus entry(long id, long memberId, WorkStatusType type) {
@@ -132,11 +139,32 @@ class WorkStatusServiceTest {
   }
 
   @Test
+  void create_publishesLiveUpdate() {
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(Member.create("홍길동")));
+    when(workStatusRepository.save(any(WorkStatus.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service().create(new WorkStatusRequest(1L, WorkStatusType.LEAVE,
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null), 1L);
+
+    verify(events).publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
+  }
+
+  @Test
+  void delete_publishesLiveUpdate() {
+    when(workStatusRepository.existsById(5L)).thenReturn(true);
+
+    service().delete(5L);
+
+    verify(events).publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
+  }
+
+  @Test
   void delete_unknownId_throwsNotFound() {
     when(workStatusRepository.existsById(99L)).thenReturn(false);
 
     assertThatThrownBy(() -> service().delete(99L))
       .isInstanceOfSatisfying(BusinessException.class,
         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+    verify(events, never()).publishEvent(any(Object.class));
   }
 }

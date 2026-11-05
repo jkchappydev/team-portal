@@ -56,7 +56,7 @@ class AnnualLeaveControllerTest {
     when(annualLeaveService.findByYear(2026)).thenReturn(List.of(new AnnualLeaveSummaryResponse(
       1L, "홍길동", new BigDecimal("15"), BigDecimal.ZERO, new BigDecimal("15"),
       new BigDecimal("1.75"), new BigDecimal("13.25"),
-      List.of(new dev.jkchappy.portal.annualleave.dto.WeeklyLeaveUsage(11, 2, new BigDecimal("1.75"))))));
+      List.of(new dev.jkchappy.portal.annualleave.dto.WeeklyLeaveUsage(11, 2, new BigDecimal("1.75"))), true)));
 
     mockMvc.perform(get("/api/annual-leaves").param("year", "2026"))
       .andExpect(status().isOk())

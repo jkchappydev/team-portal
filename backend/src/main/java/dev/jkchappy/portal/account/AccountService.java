@@ -28,12 +28,24 @@ public class AccountService {
 
   @Transactional
   public Account registerLogin(GoogleProfile profile) {
-    Account account = accounts.findByGoogleSubject(profile.subject()).orElse(null);
+    Account account = accounts.findByGoogleSubject(profile.subject())
+      // 같은 회사 메일로 구글 계정만 새로 만든 경우 기존 계정(과 기록)을 이어 씀
+      .or(() -> accounts.findByEmail(profile.email()).map(existing -> {
+        existing.changeSubject(profile.subject());
+        return existing;
+      }))
+      .orElse(null);
     if (account == null) {
       return accounts.save(Account.createPending(profile.subject(), profile.email(), profile.name(), Instant.now(clock)));
     }
     account.updateProfile(profile.email(), profile.name());
+    requestRejoinIfDeleted(account);
     return account;
+  }
+
+  // 삭제된 팀원이 다시 들어오면 처음부터 가입 승인을 받게 함
+  private void requestRejoinIfDeleted(Account account) {
+    if (account.isRejoinCandidate()) account.requestRejoin(Instant.now(clock));
   }
 
   @Transactional(readOnly = true)
@@ -52,18 +64,21 @@ public class AccountService {
     if (!member.isActive() || !member.isAdmin()) throw new BusinessException(ErrorCode.ADMIN_REQUIRED);
   }
 
-  @Transactional(readOnly = true)
+  // 로그인한 채로 삭제된 경우에도 새로고침하면 재가입 요청으로 바뀜
+  @Transactional
   public AuthMeResponse me(String subject) {
     Account account = findBySubject(subject);
+    requestRejoinIfDeleted(account);
     Member member = account.getMember();
     return new AuthMeResponse(account.getEmail(), account.getStatus(), member == null ? null : member.getId(),
-      member == null ? null : member.getName(), member != null && member.isActive() && member.isAdmin());
+      member == null ? null : member.getName(), member != null && member.isActive() && member.isAdmin(),
+      member != null && member.isActive());
   }
 
   @Transactional(readOnly = true)
   public List<SignupRequestResponse> listRequests() {
     return accounts.findByStatusInOrderByRequestedAtAsc(List.of(AccountStatus.PENDING, AccountStatus.REJECTED))
-      .stream().map(a -> new SignupRequestResponse(a.getId(), a.getEmail(), a.getGoogleName(), a.getStatus(), a.getRequestedAt())).toList();
+      .stream().map(SignupRequestResponse::from).toList();
   }
 
   @Transactional(readOnly = true)
@@ -78,8 +93,16 @@ public class AccountService {
   public void approveWithMember(Long accountId, Long memberId, Long adminId, String department, JobRank jobRank) {
     Account account = pending(accountId);
     Member member = members.findForUpdateById(memberId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-    if (!member.isActive()) throw new BusinessException(ErrorCode.INVALID_INPUT);
-    if (accounts.existsByMemberId(memberId)) throw new BusinessException(ErrorCode.MEMBER_ALREADY_LINKED);
+    // 재가입: 이 계정의 이전 팀원이면 삭제했던 팀원을 살려 기존 기록에 다시 연결
+    Member previous = account.previousMember();
+    if (member.isDeleted() && previous != null && previous.getId().equals(member.getId())) {
+      member.restore();
+    } else {
+      if (!member.isActive()) throw new BusinessException(ErrorCode.INVALID_INPUT);
+      if (accounts.findByMemberId(memberId).filter(linked -> !linked.getId().equals(accountId)).isPresent()) {
+        throw new BusinessException(ErrorCode.MEMBER_ALREADY_LINKED);
+      }
+    }
     if (department != null && jobRank != null) member.setOrganization(MemberService.normalizeDepartment(department), jobRank);
     account.approve(member, adminId, Instant.now(clock));
     try {
@@ -118,7 +141,8 @@ public class AccountService {
   @Transactional
   public MemberResponse setAdmin(Long id, boolean admin) {
     List<Member> activeAdmins = members.lockActiveAdmins();
-    Member member = members.findForUpdateById(id).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    Member member = members.findForUpdateById(id).filter(m -> !m.isDeleted())
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     if (!admin && member.isAdmin() && member.isActive() && activeAdmins.size() <= 1) throw new BusinessException(ErrorCode.LAST_ADMIN);
     if (admin) member.grantAdmin(); else member.revokeAdmin();
     return MemberResponse.from(member, accounts.findByMemberId(id).map(Account::getEmail).orElse(null));

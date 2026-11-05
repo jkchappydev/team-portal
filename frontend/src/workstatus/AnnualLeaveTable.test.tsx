@@ -17,6 +17,7 @@ vi.mock("../api/annualLeaves", () => ({
     usedDays: 2.75,
     remainingDays: 13.25,
     weeklyUsages: [{ month: 11, week: 2, days: 1.75 }, { month: 3, week: 1, days: 1 }, { month: 5, week: 3, days: 0.25 }],
+    editable: true,
   }])),
   updateAnnualLeave: vi.fn(() => Promise.resolve({})),
 }));
@@ -101,8 +102,8 @@ describe("AnnualLeaveTable", () => {
   it("관리자는 손잡이로 순서를 바꾸고 서버에 저장한다", async () => {
     vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "관리자", active: true, admin: true }, me: null });
     vi.mocked(listAnnualLeaves).mockResolvedValueOnce([
-      { memberId: 1, memberName: "첫째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [] },
-      { memberId: 2, memberName: "둘째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [] },
+      { memberId: 1, memberName: "첫째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [], editable: true },
+      { memberId: 2, memberName: "둘째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [], editable: true },
     ]);
     renderTable();
     const handle = await screen.findByLabelText("둘째 순서 변경");
@@ -113,5 +114,16 @@ describe("AnnualLeaveTable", () => {
     expect(target.getAttribute("data-member-drop")).toBe("before");
     fireEvent.drop(target, { clientY: -1, dataTransfer: transfer });
     await waitFor(() => expect(moveMember).toHaveBeenCalledWith(2, 1));
+  });
+
+  it("퇴사(삭제)한 팀원 줄은 연차 값만 보여주고 고칠 수 없다", async () => {
+    vi.mocked(listAnnualLeaves).mockResolvedValueOnce([
+      { memberId: 3, memberName: "퇴사자", confirmedDays: 15, carriedDays: 0, totalDays: 15, usedDays: 1, remainingDays: 14,
+        weeklyUsages: [{ month: 3, week: 1, days: 1 }], editable: false },
+    ]);
+    renderTable();
+    expect(await screen.findByText("퇴사자")).toBeTruthy();
+    expect(screen.getByLabelText("퇴사자 확정 연차").tagName).not.toBe("INPUT");
+    expect(screen.getByLabelText("퇴사자 확정 연차").textContent).toBe("15");
   });
 });

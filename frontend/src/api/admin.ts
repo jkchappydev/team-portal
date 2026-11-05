@@ -8,6 +8,11 @@ export interface SignupRequestDto {
   googleName: string;
   status: "PENDING" | "REJECTED";
   requestedAt: string;
+  // 삭제했던 팀원의 재가입이면 이전 팀원 정보 (승인 시 기본으로 다시 연결)
+  previousMemberId?: number | null;
+  previousMemberName?: string | null;
+  previousDepartment?: string | null;
+  previousJobRank?: JobRank | null;
 }
 export const listSignupRequests = () => apiFetch<SignupRequestDto[]>("/api/admin/signup-requests");
 export const countPendingSignups = async () => (await apiFetch<{ pending: number }>("/api/admin/signup-requests/count")).pending;

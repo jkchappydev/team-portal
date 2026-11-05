@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import java.time.Instant;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -46,6 +47,10 @@ public class Member {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  // 퇴사 등으로 목록에서 지운 날짜 (행은 남겨 과거 기록의 이름 표시 유지)
+  @Column(name = "deleted_on")
+  private LocalDate deletedOn;
+
   public static Member create(String name) {
     Member member = new Member();
     member.name = name;
@@ -81,5 +86,22 @@ public class Member {
 
   public void changeSortOrder(Long sortOrder) {
     this.sortOrder = sortOrder;
+  }
+
+  // 삭제하면 로그인과 관리자 권한도 함께 막음
+  public void markDeleted(LocalDate today) {
+    this.deletedOn = today;
+    this.active = false;
+    this.admin = false;
+  }
+
+  // 재가입 승인으로 삭제했던 팀원을 다시 살림 (기존 기록이 그대로 이어짐)
+  public void restore() {
+    this.deletedOn = null;
+    this.active = true;
+  }
+
+  public boolean isDeleted() {
+    return deletedOn != null;
   }
 }

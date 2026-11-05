@@ -3,6 +3,7 @@ package dev.jkchappy.portal.auth;
 import dev.jkchappy.portal.account.AccountService;
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +35,9 @@ public class SecurityConfig {
     HandlerExceptionResolver handlerExceptionResolver) throws Exception {
     var resolver = new DefaultOAuth2AuthorizationRequestResolver(registrations, "/oauth2/authorization");
     resolver.setAuthorizationRequestCustomizer(builder -> builder.additionalParameters(parameters -> parameters.put("hd", "example.org")));
-    http.authorizeHttpRequests(auth -> auth.requestMatchers("/internal/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+    // 실시간 알림(SSE) 응답을 이어 쓰는 비동기 디스패치는 처음 요청에서 이미 인증을 거침
+    http.authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+        .requestMatchers("/internal/**", "/oauth2/**", "/login/oauth2/**").permitAll()
         .requestMatchers("/api/**").authenticated().anyRequest().permitAll())
       .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/internal/**"))
       .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) ->

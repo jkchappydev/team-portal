@@ -72,7 +72,10 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
     }
   };
 
-  const balanceInput = (label: string, value: number | string, onChange: (v: number | string) => void) => (
+  // 퇴사·비활성 팀원 줄은 값만 보여줌
+  const balanceInput = (label: string, value: number | string, onChange: (v: number | string) => void) => !item.editable ? (
+    <span aria-label={`${item.memberName} ${label}`}>{formatDays(Number(value))}</span>
+  ) : (
     <NumberInput
       aria-label={`${item.memberName} ${label}`}
       value={value}
@@ -98,7 +101,8 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
   return (
     <tr data-member-drop={reorder.target?.id === item.memberId ? (reorder.target.after ? "after" : "before") : undefined}
       onDragOver={(event) => reorder.over(event, item.memberId)} onDrop={(event) => reorder.drop(event, item.memberId)}>
-      <td style={{ ...cell, position: "relative", overflow: "visible", textAlign: "left", paddingLeft: 6, fontWeight: 600 }} title={item.memberName}>
+      <td style={{ ...cell, position: "relative", overflow: "visible", textAlign: "left", paddingLeft: 6, fontWeight: 600,
+        color: item.editable ? undefined : "var(--mantine-color-dimmed)" }} title={item.memberName}>
         {admin && <button type="button" className="member-drag-handle" draggable
           aria-label={`${item.memberName} 순서 변경`} onDragStart={(event) => reorder.start(event, item.memberId)} onDragEnd={reorder.end}>⠿</button>}
         {item.memberName}

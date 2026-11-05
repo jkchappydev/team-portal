@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ActionIcon, Alert, Anchor, Badge, Box, Group, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { listHolidays } from "../api/holidays";
+import { LIVE_TOPICS, useLiveRefresh } from "../api/live";
 import { listWorkStatuses } from "../api/workStatuses";
 import type { WorkStatusDto } from "../api/workStatuses";
 import { useCurrentUser } from "../user/currentUser";
@@ -55,6 +56,9 @@ export function WorkStatusPage() {
   const [editing, setEditing] = useState<WorkStatusDto | null>(null);
   const [defaultDate, setDefaultDate] = useState(todayString);
   const today = todayString();
+
+  // 다른 팀원이 등록·수정·삭제한 근무 상황과 연차를 새로고침 없이 바로 반영
+  useLiveRefresh(LIVE_TOPICS.workStatus, [["workStatuses"], ["annualLeaves"]]);
 
   const { data: items = [], error } = useQuery({
     queryKey: ["workStatuses", year, month],

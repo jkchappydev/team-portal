@@ -20,7 +20,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import dev.jkchappy.portal.live.LiveUpdateEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class AnnualLeaveService {
   private final WorkStatusRepository workStatusRepository;
   private final MemberRepository memberRepository;
   private final MemberService memberService;
+  private final ApplicationEventPublisher events;
 
   @Transactional(readOnly = true)
   public List<AnnualLeaveSummaryResponse> findByYear(int year) {
@@ -43,7 +46,8 @@ public class AnnualLeaveService {
       .collect(Collectors.toMap(AnnualLeaveBalance::getMemberId, Function.identity()));
     Map<Long, TreeMap<Integer, BigDecimal>> usage = calculateUsage(year);
 
-    return MemberOrder.sorted(memberRepository.findByActiveTrueOrderByNameAsc()).stream()
+    // 가입된 팀원은 모두, 삭제한 팀원은 삭제한 해까지만 표시
+    return MemberOrder.sorted(memberRepository.findVisibleInYear(LocalDate.of(year, 1, 1))).stream()
       .map(member -> toResponse(member, balances.get(member.getId()),
         usage.getOrDefault(member.getId(), new TreeMap<>())))
       .toList();
@@ -63,6 +67,8 @@ public class AnnualLeaveService {
         request.carriedDays()));
     balance.change(request.confirmedDays(), request.carriedDays());
     AnnualLeaveBalance saved = balanceRepository.save(balance);
+    // 연차 표는 근무 상황표 화면에 함께 있어 같은 알림 사용
+    events.publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
     return toResponse(member, saved, calculateUsage(year).getOrDefault(memberId, new TreeMap<>()));
   }
 
@@ -102,7 +108,7 @@ public class AnnualLeaveService {
     BigDecimal carriedDays = balance == null ? BigDecimal.ZERO : balance.getCarriedDays();
     BigDecimal totalDays = confirmedDays.add(carriedDays);
     return new AnnualLeaveSummaryResponse(member.getId(), member.getName(), confirmedDays,
-      carriedDays, totalDays, usedDays, totalDays.subtract(usedDays), weeklyUsages);
+      carriedDays, totalDays, usedDays, totalDays.subtract(usedDays), weeklyUsages, member.isActive());
   }
 
   private void validateYear(int year) {

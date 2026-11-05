@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMe } from "../api/auth";
 import { ApiError } from "../api/client";
-import { AuthGate, LoginPage } from "./AuthGate";
+import { AuthGate, LoginPage, PENDING_RECHECK_MS, pendingRecheckInterval } from "./AuthGate";
 
 vi.mock("../api/auth", () => ({ getMe: vi.fn(), logout: vi.fn() }));
 
@@ -43,12 +43,55 @@ describe("AuthGate", () => {
     },
   );
 
+  it("승인 대기 중에만 주기적으로 다시 확인한다", () => {
+    const me = (status: "PENDING" | "APPROVED" | "REJECTED") => ({ email: "a@example.com", status, memberId: null, memberName: null, admin: false });
+    expect(pendingRecheckInterval(me("PENDING"))).toBe(PENDING_RECHECK_MS);
+    expect(pendingRecheckInterval(me("APPROVED"))).toBe(false);
+    expect(pendingRecheckInterval(me("REJECTED"))).toBe(false);
+    expect(pendingRecheckInterval(undefined)).toBe(false);
+  });
+
+  it("승인 대기 화면은 관리자가 승인하면 새로고침 없이 본문으로 바뀐다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(getMe)
+        .mockResolvedValueOnce({ email: "a@example.com", status: "PENDING", memberId: null, memberName: null, admin: false })
+        .mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false });
+      renderGate();
+      expect(await screen.findByText("승인 진행 중입니다")).toBeTruthy();
+      await vi.advanceTimersByTimeAsync(PENDING_RECHECK_MS);
+      expect(await screen.findByText("포털 본문")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("승인된 사용자는 본문을 보고 비활성화되면 접근 차단 화면을 본다", async () => {
-    vi.mocked(getMe).mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false });
+    vi.mocked(getMe)
+      .mockResolvedValueOnce({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: true })
+      .mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: false });
     renderGate();
     expect(await screen.findByText("포털 본문")).toBeTruthy();
     window.dispatchEvent(new CustomEvent("portal:auth-changed", { detail: "MEMBER_INACTIVE" }));
     expect(await screen.findByText("접근 권한이 없습니다")).toBeTruthy();
     await waitFor(() => expect(getMe).toHaveBeenCalledTimes(2));
+  });
+
+  it("쓰는 중에 삭제되면 승인 대기로 바뀌고, 다시 승인되면 새로고침 없이 본문으로 돌아온다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(getMe)
+        .mockResolvedValueOnce({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: true })
+        .mockResolvedValueOnce({ email: "a@example.com", status: "PENDING", memberId: 1, memberName: "팀원", admin: false, active: false })
+        .mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: true });
+      renderGate();
+      expect(await screen.findByText("포털 본문")).toBeTruthy();
+      window.dispatchEvent(new CustomEvent("portal:auth-changed", { detail: "MEMBER_INACTIVE" }));
+      expect(await screen.findByText("승인 진행 중입니다")).toBeTruthy();
+      await vi.advanceTimersByTimeAsync(PENDING_RECHECK_MS);
+      expect(await screen.findByText("포털 본문")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -81,6 +81,29 @@ public class Account {
     this.decidedAt = null;
   }
 
+  // 삭제된 팀원이 다시 로그인하면 새 가입 요청으로 되돌림 (이전 팀원 연결은 남겨 승인 시 기록을 다시 이음)
+  public void requestRejoin(Instant now) {
+    this.status = AccountStatus.PENDING;
+    this.requestedAt = now;
+    this.decidedBy = null;
+    this.decidedAt = null;
+  }
+
+  // 삭제된 팀원 계정이 다시 들어오려는 상태인지
+  public boolean isRejoinCandidate() {
+    return status == AccountStatus.APPROVED && member != null && member.isDeleted();
+  }
+
+  // 승인 전 요청에 남아 있는 이전 팀원 (삭제된 팀원 재가입)
+  public Member previousMember() {
+    return status != AccountStatus.APPROVED && member != null && member.isDeleted() ? member : null;
+  }
+
+  // 구글 계정을 새로 만들어 고유 ID가 바뀐 같은 회사 메일
+  public void changeSubject(String googleSubject) {
+    this.googleSubject = googleSubject;
+  }
+
   public void updateProfile(String email, String googleName) {
     this.email = email;
     this.googleName = googleName;

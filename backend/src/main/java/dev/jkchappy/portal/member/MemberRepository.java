@@ -1,5 +1,6 @@
 package dev.jkchappy.portal.member;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -13,6 +14,13 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   List<Member> findByActiveTrueOrderByNameAsc();
 
   List<Member> findAllByOrderByNameAsc();
+
+  // 삭제하지 않은 팀원 (활성·비활성 모두)
+  List<Member> findByDeletedOnIsNullOrderByNameAsc();
+
+  // 해당 연도 연차 표에 나올 팀원: 삭제하지 않았거나 그 해 이후에 삭제한 팀원
+  @Query("select m from Member m where m.deletedOn is null or m.deletedOn >= :yearStart order by m.name")
+  List<Member> findVisibleInYear(@Param("yearStart") LocalDate yearStart);
 
   long countByAdminTrueAndActiveTrue();
 
