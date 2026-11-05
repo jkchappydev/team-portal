@@ -11,3 +11,5 @@ storage/
 .env-develop
 *.zip
 CLAUDE.local.md
+.gradle-cache/
+.npm-cache/
