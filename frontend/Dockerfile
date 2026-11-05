@@ -2,7 +2,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm 캐시는 BuildKit 캐시 마운트로 빌드 간 재사용
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 RUN npm run build
 
