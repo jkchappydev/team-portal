@@ -44,7 +44,9 @@ public class MemberController {
   @PatchMapping("/{id}")
   public ApiResponse<MemberResponse> update(
     @PathVariable Long id, @Valid @RequestBody MemberUpdateRequest request, @CurrentUser Long userId) {
-    accountService.requireAdmin(userId);
+    // 관리자는 모든 팀원, 본인은 자기 이름·부서·직급만 수정 (활성 상태 변경은 관리자만)
+    boolean selfInfoOnly = id.equals(userId) && request.active() == null;
+    if (!selfInfoOnly) accountService.requireAdmin(userId);
     return ApiResponse.ok(memberService.update(id, request));
   }
 

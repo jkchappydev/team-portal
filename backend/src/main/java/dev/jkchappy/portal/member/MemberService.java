@@ -64,6 +64,9 @@ public class MemberService {
       member.setOrganization(request.department() == null ? member.getDepartment() : normalizeDepartment(request.department()),
         request.jobRank() == null ? member.getJobRank() : request.jobRank());
     }
+    if (request.phone() != null) {
+      member.changePhone(normalizePhone(request.phone()));
+    }
     // 삭제 대신 비활성화로 과거 작성 이력 보존
     if (request.active() != null) {
       if (request.active()) {
@@ -135,6 +138,16 @@ public class MemberService {
   public static String normalizeDepartment(String department) {
     String value = department == null ? "" : department.trim();
     if (value.isEmpty() || value.length() > 100) throw new BusinessException(ErrorCode.INVALID_INPUT, "부서는 1~100자여야 합니다.");
+    return value;
+  }
+
+  // 빈 값은 지움, 숫자·하이픈·괄호·+·공백만 허용
+  static String normalizePhone(String phone) {
+    String value = phone.trim();
+    if (value.isEmpty()) return null;
+    if (!value.matches("[0-9+() -]{7,20}")) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "전화번호는 숫자와 하이픈(-)으로 7~20자 입력해 주세요.");
+    }
     return value;
   }
 

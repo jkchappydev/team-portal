@@ -14,13 +14,15 @@ export interface MemberDto {
   email?: string | null;
   department?: string | null;
   jobRank?: JobRank | null;
+  phone?: string | null;
 }
 
 export function listMembers(includeInactive: boolean): Promise<MemberDto[]> {
   return apiFetch<MemberDto[]>(`/api/members?includeInactive=${includeInactive}`);
 }
 
-export function updateMember(id: number, patch: { name?: string; active?: boolean; department?: string; jobRank?: JobRank }): Promise<MemberDto> {
+// phone: 빈 문자열이면 지움
+export function updateMember(id: number, patch: { name?: string; active?: boolean; department?: string; jobRank?: JobRank; phone?: string }): Promise<MemberDto> {
   return apiFetch<MemberDto>(`/api/members/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 

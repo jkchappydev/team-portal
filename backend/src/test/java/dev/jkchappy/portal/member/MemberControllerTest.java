@@ -112,4 +112,33 @@ class MemberControllerTest {
       .andExpect(status().isForbidden())
       .andExpect(jsonPath("$.error.code").value("ADMIN_REQUIRED"));
   }
+
+  @Test
+  void memberCanUpdateOwnInfo() throws Exception {
+    doThrow(new BusinessException(ErrorCode.ADMIN_REQUIRED)).when(accountService).requireAdmin(1L);
+    when(memberService.update(1L, new MemberUpdateRequest("한도윤", null, "개발팀", JobRank.SENIOR)))
+      .thenReturn(new MemberResponse(1L, "한도윤", true, false, null, "개발팀", JobRank.SENIOR));
+    mockMvc.perform(patch("/api/members/1").with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"한도윤\",\"department\":\"개발팀\",\"jobRank\":\"SENIOR\"}"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.department").value("개발팀"));
+  }
+
+  @Test
+  void memberCannotChangeOwnActiveState() throws Exception {
+    doThrow(new BusinessException(ErrorCode.ADMIN_REQUIRED)).when(accountService).requireAdmin(1L);
+    mockMvc.perform(patch("/api/members/1").with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+      .andExpect(status().isForbidden())
+      .andExpect(jsonPath("$.error.code").value("ADMIN_REQUIRED"));
+  }
+
+  @Test
+  void memberCannotUpdateOthers() throws Exception {
+    doThrow(new BusinessException(ErrorCode.ADMIN_REQUIRED)).when(accountService).requireAdmin(1L);
+    mockMvc.perform(patch("/api/members/2").with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"department\":\"개발팀\"}"))
+      .andExpect(status().isForbidden())
+      .andExpect(jsonPath("$.error.code").value("ADMIN_REQUIRED"));
+  }
 }

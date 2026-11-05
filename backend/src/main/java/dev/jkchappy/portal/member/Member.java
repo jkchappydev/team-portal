@@ -41,6 +41,9 @@ public class Member {
   @Column(name = "job_rank", length = 20)
   private JobRank jobRank;
 
+  @Column(length = 20)
+  private String phone;
+
   @Column(name = "sort_order")
   private Long sortOrder;
 
@@ -82,6 +85,10 @@ public class Member {
   public void setOrganization(String department, JobRank jobRank) {
     this.department = department;
     this.jobRank = jobRank;
+  }
+
+  public void changePhone(String phone) {
+    this.phone = phone;
   }
 
   public void changeSortOrder(Long sortOrder) {

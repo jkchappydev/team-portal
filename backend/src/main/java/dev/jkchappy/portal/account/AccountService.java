@@ -60,8 +60,12 @@ public class AccountService {
 
   @Transactional(readOnly = true)
   public void requireAdmin(Long memberId) {
-    Member member = members.findById(memberId).orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_REQUIRED));
-    if (!member.isActive() || !member.isAdmin()) throw new BusinessException(ErrorCode.ADMIN_REQUIRED);
+    if (!isAdmin(memberId)) throw new BusinessException(ErrorCode.ADMIN_REQUIRED);
+  }
+
+  @Transactional(readOnly = true)
+  public boolean isAdmin(Long memberId) {
+    return members.findById(memberId).map(m -> m.isActive() && m.isAdmin()).orElse(false);
   }
 
   // 로그인한 채로 삭제된 경우에도 새로고침하면 재가입 요청으로 바뀜

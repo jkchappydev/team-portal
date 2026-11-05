@@ -82,8 +82,8 @@ export function Sidebar({ user }: Props) {
           onClick={() => setSearching(true)}
         />
         <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
-        {/* 가입 승인과 팀원 정보 변경은 관리자만 */}
-        {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리" icon={<span aria-hidden>👥</span>} />}
+        {/* 목록은 누구나 보고, 변경은 관리자(본인 정보는 본인)만 */}
+        <SidebarMenuLink to="/members" label="팀원 관리" icon={<span aria-hidden>👥</span>} />
       </Stack>
       <Group justify="space-between" mt="sm">
         <Text size="xs" c="dimmed">페이지</Text>

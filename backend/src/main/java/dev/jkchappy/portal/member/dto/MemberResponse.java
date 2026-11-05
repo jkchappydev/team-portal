@@ -4,10 +4,14 @@ import dev.jkchappy.portal.member.Member;
 import dev.jkchappy.portal.member.JobRank;
 
 public record MemberResponse(Long id, String name, boolean active, boolean admin, String email,
-  String department, JobRank jobRank) {
+  String department, JobRank jobRank, String phone) {
+
+  public MemberResponse(Long id, String name, boolean active, boolean admin, String email, String department, JobRank jobRank) {
+    this(id, name, active, admin, email, department, jobRank, null);
+  }
 
   public MemberResponse(Long id, String name, boolean active, boolean admin, String email) {
-    this(id, name, active, admin, email, null, null);
+    this(id, name, active, admin, email, null, null, null);
   }
 
   public static MemberResponse from(Member member) {
@@ -16,6 +20,6 @@ public record MemberResponse(Long id, String name, boolean active, boolean admin
 
   public static MemberResponse from(Member member, String email) {
     return new MemberResponse(member.getId(), member.getName(), member.isActive(), member.isAdmin(), email,
-      member.getDepartment(), member.getJobRank());
+      member.getDepartment(), member.getJobRank(), member.getPhone());
   }
 }

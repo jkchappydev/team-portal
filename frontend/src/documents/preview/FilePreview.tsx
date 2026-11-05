@@ -15,8 +15,10 @@ interface Run {
 }
 
 // 파일 본체를 한 번 받아 형식별 미리보기에 넘김 (미리보기를 못 하는 형식은 받지 않음)
+// 받은 내용에 주소를 함께 기억해, 다른 파일로 옮겨 가면 새 파일을 받기 전까지 이전 파일 내용을 넘기지 않음
+// (엑셀 → 워드로 이동하면 워드 미리보기가 엑셀 내용을 열다 실패하던 문제 방지)
 function useFileBuffer(url: string, enabled: boolean) {
-  const [state, setState] = useState<{ buffer: ArrayBuffer | null; error: boolean }>({ buffer: null, error: false });
+  const [state, setState] = useState<{ url: string; buffer: ArrayBuffer | null; error: boolean } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     const run: Run = { cancelled: false };
@@ -25,13 +27,13 @@ function useFileBuffer(url: string, enabled: boolean) {
         if (!res.ok) throw new Error(String(res.status));
         return res.arrayBuffer();
       })
-      .then((buffer) => !run.cancelled && setState({ buffer, error: false }))
-      .catch(() => !run.cancelled && setState({ buffer: null, error: true }));
+      .then((buffer) => !run.cancelled && setState({ url, buffer, error: false }))
+      .catch(() => !run.cancelled && setState({ url, buffer: null, error: true }));
     return () => {
       run.cancelled = true;
     };
   }, [url, enabled]);
-  return state;
+  return state?.url === url ? state : { buffer: null, error: false };
 }
 
 // 워드 문서를 문서 모양 그대로 그림 (라이브러리는 이때만 불러옴)
@@ -154,8 +156,9 @@ export function FilePreview({ url, fileName }: Props) {
   }
   if (error) return <Alert color="red">파일을 불러오지 못했습니다.</Alert>;
   if (!buffer) return <Loader size="sm" />;
-  if (kind === "docx") return <DocxPreview buffer={buffer} />;
-  if (kind === "xlsx") return <XlsxPreview buffer={buffer} />;
+  // 파일마다 새로 그려 이전 파일의 오류·표시 상태가 남지 않게 함
+  if (kind === "docx") return <DocxPreview key={url} buffer={buffer} />;
+  if (kind === "xlsx") return <XlsxPreview key={url} buffer={buffer} />;
   if (kind === "pdf") return <PdfPreview buffer={buffer} fileName={fileName} />;
   if (kind === "image") return <ImagePreview buffer={buffer} fileName={fileName} />;
   return (

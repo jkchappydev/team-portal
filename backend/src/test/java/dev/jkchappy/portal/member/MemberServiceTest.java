@@ -227,4 +227,35 @@ class MemberServiceTest {
 
     assertThat(memberService.findNamesByIds(List.of(2L))).containsEntry(2L, "퇴사자");
   }
+
+  @Test
+  void update_phone_savesTrimmedAndClearsWhenEmpty() {
+    Member member = saved(3L, "팀원");
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
+
+    MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, " 010-1234-5678 "));
+    assertThat(saved.phone()).isEqualTo("010-1234-5678");
+
+    memberService.update(3L, new MemberUpdateRequest(null, null, null, null, ""));
+    assertThat(member.getPhone()).isNull();
+  }
+
+  @Test
+  void update_phone_withLetters_throwsInvalidInput() {
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(saved(3L, "팀원")));
+
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "010-abcd-5678")))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
+  void update_withoutPhone_keepsExistingPhone() {
+    Member member = saved(3L, "팀원");
+    member.changePhone("010-1111-2222");
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
+
+    memberService.update(3L, new MemberUpdateRequest("새이름", null));
+
+    assertThat(member.getPhone()).isEqualTo("010-1111-2222");
+  }
 }

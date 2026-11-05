@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
 import { MembersPage } from "./members/MembersPage";
-import { AdminRoute } from "./user/AdminRoute";
 import { DocumentPage } from "./documents/DocumentPage";
 import { FilePage } from "./documents/FilePage";
 import { SpacePage } from "./documents/SpacePage";
@@ -31,8 +30,7 @@ export default function App() {
               <Route path="/documents/:documentId" element={<DocumentPage />} />
               <Route path="/files/:documentId" element={<FilePage />} />
               <Route path="/trash" element={<TrashPage />} />
-              {/* 팀원 관리는 관리자만 */}
-              <Route path="/members" element={<AdminRoute><MembersPage /></AdminRoute>} />
+              <Route path="/members" element={<MembersPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

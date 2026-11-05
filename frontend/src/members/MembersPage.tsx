@@ -144,8 +144,9 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
   const [name, setName] = useState(member.name);
   const [department, setDepartment] = useState(member.department ?? "");
   const [jobRank, setJobRank] = useState<JobRank | null>(member.jobRank ?? null);
+  const [phone, setPhone] = useState(member.phone ?? "");
   const save = useMutation({
-    mutationFn: () => updateMember(member.id, { name: name.trim(), department: department.trim(), jobRank: jobRank! }),
+    mutationFn: () => updateMember(member.id, { name: name.trim(), department: department.trim(), jobRank: jobRank!, phone: phone.trim() }),
     onSuccess: () => {
       refresh();
       onClose();
@@ -161,6 +162,8 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
           <TextInput label="이름" value={name} maxLength={50} onChange={(e) => setName(e.currentTarget.value)} data-autofocus />
           <TextInput label="부서" value={department} maxLength={100} onChange={(e) => setDepartment(e.currentTarget.value)} />
           <Select label="직급" placeholder="직급 선택" data={JOB_RANKS} value={jobRank} onChange={(v) => setJobRank(v as JobRank | null)} />
+          <TextInput label="전화번호" placeholder="010-0000-0000" value={phone} maxLength={20} inputMode="tel"
+            onChange={(e) => setPhone(e.currentTarget.value)} />
           {save.error && <Alert color="red">{errorMessage(save.error, "저장하지 못했습니다.")}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>취소</Button>
@@ -175,10 +178,13 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
 type MemberAction = "edit" | "delete" | null;
 
 // 팀원 한 줄: 정보는 읽기 전용으로 보여주고 변경은 ⋯ 메뉴에서
-function MemberRow({ member, me, refresh, reorder }: {
+// 관리자는 모든 줄을 바꾸고, 일반 팀원은 본인 줄의 정보 수정만 가능
+function MemberRow({ member, me, admin, refresh, reorder }: {
   member: MemberDto;
   // 로그인한 본인 (자기 자신은 삭제 불가)
   me: boolean;
+  // 로그인한 사람이 관리자인지
+  admin: boolean;
   refresh: () => void;
   reorder: ReturnType<typeof useMemberReorder>;
 }) {
@@ -192,8 +198,10 @@ function MemberRow({ member, me, refresh, reorder }: {
       style={member.active ? undefined : { opacity: 0.55 }}
     >
       <Table.Td style={{ position: "relative" }}>
-        <button type="button" className="member-drag-handle" draggable aria-label={`${member.name} 순서 변경`}
-          onDragStart={(e) => reorder.start(e, member.id)} onDragEnd={reorder.end}>⠿</button>
+        {admin && (
+          <button type="button" className="member-drag-handle" draggable aria-label={`${member.name} 순서 변경`}
+            onDragStart={(e) => reorder.start(e, member.id)} onDragEnd={reorder.end}>⠿</button>
+        )}
         <Group gap={6}>
           <Text size="sm" fw={500}>{member.name}</Text>
           {!member.active && <Badge color="gray" variant="light" size="xs">비활성</Badge>}
@@ -203,31 +211,34 @@ function MemberRow({ member, me, refresh, reorder }: {
       </Table.Td>
       <Table.Td><Text size="sm">{member.department || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{rankLabel(member.jobRank)}</Text></Table.Td>
+      <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
       <Table.Td>
         <Badge variant="light" size="sm" color={member.admin ? "blue" : "gray"}>{member.admin ? "관리자" : "팀원"}</Badge>
       </Table.Td>
       <Table.Td w={40}>
-        <Menu position="bottom-end" withinPortal>
+        {(admin || me) && <Menu position="bottom-end" withinPortal>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray" aria-label={`${member.name} 메뉴`}>⋯</ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
-            <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
-              {member.admin ? "관리자 권한 빼기" : "관리자 권한 주기"}
-            </Menu.Item>
+            {admin && (
+              <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
+                {member.admin ? "관리자 권한 빼기" : "관리자 권한 주기"}
+              </Menu.Item>
+            )}
             {/* 퇴사자는 삭제로 처리하고, 예전에 비활성으로 바꿔 둔 팀원만 다시 켤 수 있음 */}
-            {!member.active && (
+            {admin && !member.active && (
               <Menu.Item onClick={() => action.mutate(() => updateMember(member.id, { active: true }))}>다시 활성화</Menu.Item>
             )}
-            {!me && (
+            {admin && !me && (
               <>
                 <Menu.Divider />
                 <Menu.Item color="red" onClick={() => setOpen("delete")}>팀원 삭제</Menu.Item>
               </>
             )}
           </Menu.Dropdown>
-        </Menu>
+        </Menu>}
         {open === "edit" && <MemberEditModal member={member} onClose={() => setOpen(null)} refresh={refresh} />}
         <ConfirmModal
           opened={open === "delete"}
@@ -246,13 +257,14 @@ function MemberRow({ member, me, refresh, reorder }: {
   );
 }
 
-// 관리자 전용 팀원 관리: 가입 요청 승인과 팀원 정보·권한·순서 관리
+// 팀원 관리: 목록은 누구나 보고, 가입 승인과 팀원 정보·권한·순서 변경은 관리자만 (본인 정보는 본인도 수정)
 export function MembersPage() {
   const client = useQueryClient();
   const { user } = useCurrentUser();
+  const admin = !!user?.admin;
   const { data: members = [], error } = useQuery({ queryKey: ["members", true], queryFn: () => listMembers(true) });
-  const { data: requests = [] } = useQuery({ queryKey: ["admin", "signup-requests"], queryFn: listSignupRequests });
-  const reorder = useMemberReorder(members.map((m) => m.id), true);
+  const { data: requests = [] } = useQuery({ queryKey: ["admin", "signup-requests"], queryFn: listSignupRequests, enabled: admin });
+  const reorder = useMemberReorder(members.map((m) => m.id), admin);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["members"] });
     void client.invalidateQueries({ queryKey: ["admin"] });
@@ -264,10 +276,12 @@ export function MembersPage() {
     <Stack maw={960} gap="xl">
       <div>
         <Title order={3}>팀원 관리</Title>
-        <Text size="sm" c="dimmed">가입 요청을 승인하고 팀원 정보와 권한을 관리합니다.</Text>
+        <Text size="sm" c="dimmed">
+          {admin ? "가입 요청을 승인하고 팀원 정보와 권한을 관리합니다." : "팀원 목록입니다. 본인 정보는 ⋯ 메뉴에서 고칠 수 있습니다."}
+        </Text>
       </div>
 
-      <Stack gap="sm">
+      {admin && <Stack gap="sm">
         <Group gap="xs">
           <Title order={5}>가입 요청</Title>
           {pendingCount > 0 && <Badge size="sm" variant="filled">{pendingCount}</Badge>}
@@ -277,7 +291,7 @@ export function MembersPage() {
         ) : (
           requests.map((request) => <RequestCard key={request.id} request={request} members={members} refresh={refresh} />)
         )}
-      </Stack>
+      </Stack>}
 
       <Stack gap="sm">
         <Group justify="space-between">
@@ -285,7 +299,7 @@ export function MembersPage() {
             <Title order={5}>팀원</Title>
             <Text size="sm" c="dimmed">{members.filter((m) => m.active).length}명</Text>
           </Group>
-          <Text size="xs" c="dimmed">왼쪽 손잡이를 끌어 순서를 바꿀 수 있습니다.</Text>
+          {admin && <Text size="xs" c="dimmed">왼쪽 손잡이를 끌어 순서를 바꿀 수 있습니다.</Text>}
         </Group>
         {error && <Alert color="red">팀원 목록을 불러오지 못했습니다.</Alert>}
         {reorder.error && <Alert color="red">팀원 순서를 저장하지 못했습니다.</Alert>}
@@ -296,13 +310,15 @@ export function MembersPage() {
                 <Table.Th>이름</Table.Th>
                 <Table.Th>부서</Table.Th>
                 <Table.Th>직급</Table.Th>
+                <Table.Th>전화번호</Table.Th>
                 <Table.Th>권한</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {members.map((member) => (
-                <MemberRow key={member.id} member={member} me={member.id === user?.id} refresh={refresh} reorder={reorder} />
+                <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin}
+                  refresh={refresh} reorder={reorder} />
               ))}
             </Table.Tbody>
           </Table>

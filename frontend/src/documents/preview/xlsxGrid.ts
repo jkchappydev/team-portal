@@ -116,7 +116,7 @@ export function buildSheetGrid(worksheet: Worksheet): SheetGrid {
       const span = spans.get(key);
       cells.push({
         key,
-        text: cell.text ?? "",
+        text: cellText(cell),
         colSpan: Math.min(span?.colSpan ?? 1, columnCount - c + 1),
         rowSpan: Math.min(span?.rowSpan ?? 1, rowCount - r + 1),
         style: cellStyle(cell),
@@ -125,4 +125,30 @@ export function buildSheetGrid(worksheet: Worksheet): SheetGrid {
     rows.push({ key: r, height: rowPx(row.height), cells });
   }
   return { name: worksheet.name, columnWidths, rows };
+}
+
+// 칸에 보일 글자: 서식 섞인 글자·수식 결과·링크처럼 값이 객체인 칸은 안쪽 글자를 꺼냄
+// (ExcelJS의 cell.text는 이런 칸을 "[object Object]"로 바꿔 버림)
+export function cellText(cell: Pick<Cell, "value" | "text">): string {
+  const value = cell.value;
+  if (value !== null && typeof value === "object" && !(value instanceof Date)) return valueText(value);
+  return cell.text ?? "";
+}
+
+function valueText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value !== "object") return String(value);
+  const object = value as Record<string, unknown>;
+  // 글자 일부에 서식이 다른 칸
+  if (Array.isArray(object.richText)) {
+    return object.richText.map((part: { text?: unknown }) => (typeof part.text === "string" ? part.text : "")).join("");
+  }
+  // 수식 칸은 계산 결과 (결과가 다시 서식 글자일 수 있음)
+  if ("formula" in object || "sharedFormula" in object || "result" in object) return valueText(object.result);
+  // 링크 칸은 보이는 글자
+  if ("text" in object) return valueText(object.text);
+  // #N/A 같은 오류 값
+  if ("error" in object) return String(object.error);
+  return "";
 }
