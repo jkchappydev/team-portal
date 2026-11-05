@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:8080',
+      '/oauth2': { target: 'http://localhost:8080', changeOrigin: false },
+      '/login/oauth2': { target: 'http://localhost:8080', changeOrigin: false },
       // 협업 서버: /collab 접두사를 제거해 웹소켓으로 전달
       '/collab': {
         target: 'ws://localhost:1234',

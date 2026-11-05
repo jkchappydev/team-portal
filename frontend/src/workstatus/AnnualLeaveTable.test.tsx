@@ -3,10 +3,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { AnnualLeaveTable } from "./AnnualLeaveTable";
-import { updateAnnualLeave } from "../api/annualLeaves";
+import { listAnnualLeaves, updateAnnualLeave } from "../api/annualLeaves";
+import { moveMember } from "../api/members";
+import { useCurrentUser } from "../user/currentUser";
 
 vi.mock("../api/annualLeaves", () => ({
-  listAnnualLeaves: () => Promise.resolve([{
+  listAnnualLeaves: vi.fn(() => Promise.resolve([{
     memberId: 1,
     memberName: "홍길동",
     confirmedDays: 15,
@@ -15,9 +17,11 @@ vi.mock("../api/annualLeaves", () => ({
     usedDays: 2.75,
     remainingDays: 13.25,
     weeklyUsages: [{ month: 11, week: 2, days: 1.75 }, { month: 3, week: 1, days: 1 }, { month: 5, week: 3, days: 0.25 }],
-  }]),
+  }])),
   updateAnnualLeave: vi.fn(() => Promise.resolve({})),
 }));
+vi.mock("../api/members", () => ({ moveMember: vi.fn(() => Promise.resolve()) }));
+vi.mock("../user/currentUser", () => ({ useCurrentUser: vi.fn(() => ({ user: null, me: null })) }));
 
 describe("AnnualLeaveTable", () => {
   beforeAll(() => {
@@ -38,7 +42,7 @@ describe("AnnualLeaveTable", () => {
     } as unknown as typeof ResizeObserver;
   });
 
-  afterEach(cleanup);
+  afterEach(() => { cleanup(); vi.mocked(useCurrentUser).mockReturnValue({ user: null, me: null }); });
 
   function renderTable() {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -92,5 +96,22 @@ describe("AnnualLeaveTable", () => {
     fireEvent.change(input, { target: { value: "16" } });
     fireEvent.blur(input);
     await waitFor(() => expect(updateAnnualLeave).toHaveBeenCalledWith(1, 2026, { confirmedDays: 16, carriedDays: 1 }));
+  });
+
+  it("관리자는 손잡이로 순서를 바꾸고 서버에 저장한다", async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "관리자", active: true, admin: true }, me: null });
+    vi.mocked(listAnnualLeaves).mockResolvedValueOnce([
+      { memberId: 1, memberName: "첫째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [] },
+      { memberId: 2, memberName: "둘째", confirmedDays: 0, carriedDays: 0, totalDays: 0, usedDays: 0, remainingDays: 0, weeklyUsages: [] },
+    ]);
+    renderTable();
+    const handle = await screen.findByLabelText("둘째 순서 변경");
+    const target = screen.getByText("첫째").closest("tr")!;
+    const transfer = { clearData: vi.fn(), setData: vi.fn(), effectAllowed: "move" };
+    fireEvent.dragStart(handle, { dataTransfer: transfer });
+    fireEvent.dragOver(target, { clientY: -1, dataTransfer: transfer });
+    expect(target.getAttribute("data-member-drop")).toBe("before");
+    fireEvent.drop(target, { clientY: -1, dataTransfer: transfer });
+    await waitFor(() => expect(moveMember).toHaveBeenCalledWith(2, 1));
   });
 });

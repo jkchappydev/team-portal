@@ -3,6 +3,8 @@ package dev.jkchappy.portal.attachment;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.jkchappy.portal.TestcontainersConfig;
+import dev.jkchappy.portal.account.Account;
+import dev.jkchappy.portal.account.AccountRepository;
 import dev.jkchappy.portal.document.Document;
 import dev.jkchappy.portal.document.DocumentRepository;
 import dev.jkchappy.portal.member.Member;
@@ -12,6 +14,14 @@ import dev.jkchappy.portal.space.SpaceRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +39,14 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
+import org.springframework.session.Session;
+import org.springframework.session.SessionRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
 // 실제 포트로 기동해 Tomcat/멀티파트 한도 동작까지 확인
 @Import(TestcontainersConfig.class)
@@ -64,20 +82,116 @@ class AttachmentControllerTest {
   @Autowired
   private DocumentRepository documentRepository;
 
-  private Long userId;
+  @Autowired
+  private AccountRepository accountRepository;
+
+  @Autowired
+  private JdbcIndexedSessionRepository sessions;
+
   private Long documentId;
+  private String subject;
   private RestClient client;
 
   @BeforeEach
+  @SuppressWarnings({"rawtypes", "unchecked"})
   void setUp() {
     Member member = memberRepository.save(Member.create("홍길동"));
+    subject = "attachment-test-" + member.getId();
+    Account account = Account.createPending(subject, subject + "@example.com", "홍길동", Instant.now());
+    account.approve(member, member.getId(), Instant.now());
+    accountRepository.save(account);
     Space space = spaceRepository.save(Space.create("개발", null, member.getId()));
     Document doc = documentRepository.save(Document.create(space.getId(), "문서", member.getId()));
-    userId = member.getId();
     documentId = doc.getId();
+    String sessionCookie = createSession(subject);
     client = RestClient.builder().baseUrl("http://localhost:" + port)
+      .defaultHeader(HttpHeaders.COOKIE, "SESSION=" + sessionCookie + "; XSRF-TOKEN=test-csrf")
+      .defaultHeader("X-XSRF-TOKEN", "test-csrf")
       .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { })
       .build();
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private String createSession(String subject) {
+    var idToken = OidcIdToken.withTokenValue("test-token").subject(subject)
+      .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(600)).build();
+    var user = new DefaultOidcUser(List.of(new SimpleGrantedAuthority("ROLE_USER")), idToken);
+    var context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(new OAuth2AuthenticationToken(user, user.getAuthorities(), "google"));
+    Session session = sessions.createSession();
+    session.setAttribute("SPRING_SECURITY_CONTEXT", context);
+    ((SessionRepository) sessions).save(session);
+    return Base64.getEncoder().encodeToString(session.getId().getBytes(StandardCharsets.UTF_8));
+  }
+
+  private RestClient sessionClient(String subject) {
+    return RestClient.builder().baseUrl("http://localhost:" + port)
+      .defaultHeader(HttpHeaders.COOKIE, "SESSION=" + createSession(subject) + "; XSRF-TOKEN=test-csrf")
+      .defaultHeader("X-XSRF-TOKEN", "test-csrf")
+      .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+  }
+
+  @Test
+  void pendingAccountCannotAccessFilesOrTickets() {
+    String subject = "pending-" + documentId;
+    accountRepository.save(Account.createPending(subject, subject + "@example.com", "대기", Instant.now()));
+    RestClient pending = sessionClient(subject);
+    var download = pending.get().uri("/api/attachments/1/download").retrieve().toEntity(String.class);
+    var ticket = pending.post().uri("/api/collab/tickets").retrieve().toEntity(String.class);
+    assertThat(download.getStatusCode().value()).isEqualTo(403);
+    assertThat(download.getBody()).contains("ACCOUNT_PENDING");
+    assertThat(ticket.getStatusCode().value()).isEqualTo(403);
+    assertThat(ticket.getBody()).contains("ACCOUNT_PENDING");
+  }
+
+  @Test
+  void inactiveMemberCannotAccessApi() {
+    Member member = memberRepository.save(Member.create("비활성"));
+    String subject = "inactive-" + member.getId();
+    Account account = Account.createPending(subject, subject + "@example.com", "비활성", Instant.now());
+    account.approve(member, member.getId(), Instant.now());
+    accountRepository.save(account);
+    member.deactivate();
+    memberRepository.save(member);
+    var response = sessionClient(subject).get().uri("/api/members").retrieve().toEntity(String.class);
+    assertThat(response.getStatusCode().value()).isEqualTo(403);
+    assertThat(response.getBody()).contains("MEMBER_INACTIVE");
+  }
+
+  @Test
+  void unauthenticatedRequestReturnsJson401() {
+    RestClient anonymous = RestClient.builder().baseUrl("http://localhost:" + port)
+      .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+    var response = anonymous.get().uri("/api/members").retrieve().toEntity(String.class);
+    assertThat(response.getStatusCode().value()).isEqualTo(401);
+    assertThat(response.getBody()).contains("UNAUTHENTICATED");
+  }
+
+  @Test
+  void postWithoutCsrfIsRejected() {
+    RestClient noCsrf = RestClient.builder().baseUrl("http://localhost:" + port)
+      .defaultHeader(HttpHeaders.COOKIE, "SESSION=" + createSession(subject))
+      .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+    var response = noCsrf.post().uri("/api/collab/tickets").retrieve().toEntity(String.class);
+    assertThat(response.getStatusCode().value()).isEqualTo(403);
+  }
+
+  @Test
+  void meProvidesCsrfCookieAfterLogin() {
+    RestClient noCsrf = RestClient.builder().baseUrl("http://localhost:" + port)
+      .defaultHeader(HttpHeaders.COOKIE, "SESSION=" + createSession(subject))
+      .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+    var response = noCsrf.get().uri("/api/auth/me").retrieve().toEntity(String.class);
+    assertThat(response.getStatusCode().value()).isEqualTo(200);
+    assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE)).anyMatch(cookie -> cookie.startsWith("XSRF-TOKEN="));
+  }
+
+  @Test
+  void googleAuthorizationIncludesHostedDomainHint() throws Exception {
+    var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/oauth2/authorization/google")).build();
+    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.discarding());
+    assertThat(response.statusCode()).isEqualTo(302);
+    assertThat(response.headers().firstValue("location")).get().asString().contains("hd=example.org");
   }
 
   private ResponseEntity<String> upload(String fileName, byte[] bytes) {
@@ -99,7 +213,6 @@ class AttachmentControllerTest {
     }
     body.add("file", new HttpEntity<>(resource, partHeaders));
     return client.post().uri("/api/documents/{id}/attachments?inline={inline}", documentId, inline)
-      .header("X-User-Id", String.valueOf(userId))
       .contentType(MediaType.MULTIPART_FORM_DATA)
       .body(body)
       .retrieve().toEntity(String.class);
@@ -114,7 +227,6 @@ class AttachmentControllerTest {
     String id = body.replaceAll("(?s).*\"id\":(\\d+).*", "$1");
 
     ResponseEntity<byte[]> download = client.get().uri("/api/attachments/{id}/download", id)
-      .header("X-User-Id", String.valueOf(userId))
       .retrieve().toEntity(byte[].class);
 
     assertThat(download.getStatusCode().value()).isEqualTo(200);
@@ -130,7 +242,6 @@ class AttachmentControllerTest {
       + "Content-Type: foo\r\n\r\nx\r\n--b--\r\n";
     ResponseEntity<String> uploaded = client.post()
       .uri("/api/documents/{id}/attachments", documentId)
-      .header("X-User-Id", String.valueOf(userId))
       .header(HttpHeaders.CONTENT_TYPE, "multipart/form-data; boundary=b")
       .body(raw)
       .retrieve().toEntity(String.class);
@@ -139,7 +250,6 @@ class AttachmentControllerTest {
     String id = uploaded.getBody().replaceAll("(?s).*\"id\":(\\d+).*", "$1");
 
     ResponseEntity<byte[]> download = client.get().uri("/api/attachments/{id}/download", id)
-      .header("X-User-Id", String.valueOf(userId))
       .retrieve().toEntity(byte[].class);
 
     assertThat(download.getStatusCode().value()).isEqualTo(200);
@@ -154,7 +264,6 @@ class AttachmentControllerTest {
 
     ResponseEntity<String> list = client.get()
       .uri("/api/documents/{id}/attachments", documentId)
-      .header("X-User-Id", String.valueOf(userId))
       .retrieve().toEntity(String.class);
 
     assertThat(list.getBody()).contains("normal.txt").doesNotContain("inline.png");

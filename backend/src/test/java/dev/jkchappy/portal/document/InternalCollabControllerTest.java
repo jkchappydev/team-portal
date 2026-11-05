@@ -11,6 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.common.GlobalExceptionHandler;
+import dev.jkchappy.portal.account.AccountService;
+import dev.jkchappy.portal.collab.CollabTicketService;
+import java.util.Optional;
+import dev.jkchappy.portal.support.ControllerTestSecurity;
+import static dev.jkchappy.portal.support.ControllerTestSecurity.loginAs;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.junit.jupiter.api.BeforeEach;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
 import dev.jkchappy.portal.member.Member;
@@ -26,10 +34,23 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(InternalCollabController.class)
-@Import({GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
+@Import({ControllerTestSecurity.class, GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
   InternalTokenInterceptor.class})
 @TestPropertySource(properties = "app.internal-token=test-token")
 class InternalCollabControllerTest {
+  @MockitoBean
+  private AccountService accountService;
+
+  @MockitoBean
+  private CollabTicketService tickets;
+
+  @BeforeEach
+  void stubAuthenticatedMember() {
+    lenient().when(tickets.consume("ticket")).thenReturn(Optional.of(2L));
+    lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
+      Long.parseLong(invocation.<String>getArgument(0).substring("test-sub-".length())));
+  }
+
 
   private static final String TOKEN_HEADER = "X-Internal-Token";
 
@@ -61,18 +82,18 @@ class InternalCollabControllerTest {
     when(documentService.getLiveDocument(1L)).thenThrow(new BusinessException(ErrorCode.NOT_FOUND));
 
     mockMvc.perform(get("/internal/collab/authorize")
-        .param("documentId", "1").param("userId", "2").header(TOKEN_HEADER, "test-token"))
+        .param("documentId", "1").param("ticket", "ticket").header(TOKEN_HEADER, "test-token"))
       .andExpect(status().isNotFound());
   }
 
   @Test
   void authorize_inactiveUser_returns401() throws Exception {
     when(memberService.getActiveMember(2L))
-      .thenThrow(new BusinessException(ErrorCode.USER_NOT_SELECTED));
+      .thenThrow(new BusinessException(ErrorCode.MEMBER_INACTIVE));
 
     mockMvc.perform(get("/internal/collab/authorize")
-        .param("documentId", "1").param("userId", "2").header(TOKEN_HEADER, "test-token"))
-      .andExpect(status().isUnauthorized());
+        .param("documentId", "1").param("ticket", "ticket").header(TOKEN_HEADER, "test-token"))
+      .andExpect(status().isForbidden());
   }
 
   @Test
@@ -80,7 +101,7 @@ class InternalCollabControllerTest {
     when(memberService.getActiveMember(2L)).thenReturn(Member.create("홍길동"));
 
     mockMvc.perform(get("/internal/collab/authorize")
-        .param("documentId", "1").param("userId", "2").header(TOKEN_HEADER, "test-token"))
+        .param("documentId", "1").param("ticket", "ticket").header(TOKEN_HEADER, "test-token"))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data.userName").value("홍길동"));
   }

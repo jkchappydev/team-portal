@@ -10,6 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.jkchappy.portal.common.GlobalExceptionHandler;
+import dev.jkchappy.portal.account.AccountService;
+import dev.jkchappy.portal.support.ControllerTestSecurity;
+import static dev.jkchappy.portal.support.ControllerTestSecurity.loginAs;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.junit.jupiter.api.BeforeEach;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.document.dto.HistoryEntry;
 import dev.jkchappy.portal.document.dto.HistoryVersion;
@@ -26,9 +32,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(DocumentHistoryController.class)
-@Import({GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
+@Import({ControllerTestSecurity.class, GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
   InternalTokenInterceptor.class})
 class DocumentHistoryControllerTest {
+  @MockitoBean
+  private AccountService accountService;
+
+  @BeforeEach
+  void stubAuthenticatedMember() {
+    lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
+      Long.parseLong(invocation.<String>getArgument(0).substring("test-sub-".length())));
+  }
+
 
   private static final OffsetDateTime AT = OffsetDateTime.parse("2026-11-05T01:00:00Z");
 
@@ -52,7 +67,7 @@ class DocumentHistoryControllerTest {
     when(documentHistoryService.findHistory(1L))
       .thenReturn(List.of(new HistoryEntry(5L, AT, "김팀원", "AUTO")));
 
-    mockMvc.perform(get("/api/documents/1/history").header("X-User-Id", "1"))
+    mockMvc.perform(get("/api/documents/1/history").with(loginAs(1L)))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data[0].id").value(5))
       .andExpect(jsonPath("$.data[0].createdByName").value("김팀원"))
@@ -64,7 +79,7 @@ class DocumentHistoryControllerTest {
     when(documentHistoryService.getVersion(1L, 5L))
       .thenReturn(new HistoryVersion(5L, AT, null, "AUTO", new byte[] {1, 2, 3}));
 
-    mockMvc.perform(get("/api/documents/1/history/5").header("X-User-Id", "1"))
+    mockMvc.perform(get("/api/documents/1/history/5").with(loginAs(1L)))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data.contentState").value("AQID"));
   }
@@ -74,7 +89,7 @@ class DocumentHistoryControllerTest {
     when(documentHistoryService.saveCheckpoint(eq(1L), any(), eq(2L)))
       .thenReturn(new HistoryEntry(6L, AT, "김팀원", "BEFORE_RESTORE"));
 
-    mockMvc.perform(post("/api/documents/1/history").header("X-User-Id", "2")
+    mockMvc.perform(post("/api/documents/1/history").with(loginAs(2L))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"contentState\":\"AQID\"}"))
       .andExpect(status().isOk())
@@ -84,7 +99,7 @@ class DocumentHistoryControllerTest {
 
   @Test
   void checkpoint_emptyContent_returns400() throws Exception {
-    mockMvc.perform(post("/api/documents/1/history").header("X-User-Id", "2")
+    mockMvc.perform(post("/api/documents/1/history").with(loginAs(2L))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"contentState\":\"\"}"))
       .andExpect(status().isBadRequest());

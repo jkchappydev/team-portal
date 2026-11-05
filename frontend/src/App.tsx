@@ -10,6 +10,7 @@ import { TrashPage } from "./documents/TrashPage";
 import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
+import { AuthGate, LoginRoute } from "./user/AuthGate";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -19,7 +20,8 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route element={<AppLayout />}>
+            <Route path="/login" element={<LoginRoute />} />
+            <Route element={<AuthGate><AppLayout /></AuthGate>}>
               <Route path="/" element={<Navigate to="/work-status" replace />} />
               {/* 없는 주소는 첫 화면(근무 상황표)으로 */}
               <Route path="*" element={<Navigate to="/work-status" replace />} />

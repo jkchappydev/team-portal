@@ -6,12 +6,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 팀원 (로그인 없이 이름 선택으로 식별)
+// 팀원
 @Entity
 @Table(name = "member")
 @Getter
@@ -27,6 +29,19 @@ public class Member {
 
   @Column(nullable = false)
   private boolean active = true;
+
+  @Column(nullable = false)
+  private boolean admin;
+
+  @Column(length = 100)
+  private String department;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "job_rank", length = 20)
+  private JobRank jobRank;
+
+  @Column(name = "sort_order")
+  private Long sortOrder;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -49,5 +64,22 @@ public class Member {
 
   public void activate() {
     this.active = true;
+  }
+
+  public void grantAdmin() {
+    this.admin = true;
+  }
+
+  public void revokeAdmin() {
+    this.admin = false;
+  }
+
+  public void setOrganization(String department, JobRank jobRank) {
+    this.department = department;
+    this.jobRank = jobRank;
+  }
+
+  public void changeSortOrder(Long sortOrder) {
+    this.sortOrder = sortOrder;
   }
 }

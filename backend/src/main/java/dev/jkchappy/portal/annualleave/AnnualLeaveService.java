@@ -8,6 +8,7 @@ import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.member.Member;
 import dev.jkchappy.portal.member.MemberRepository;
 import dev.jkchappy.portal.member.MemberService;
+import dev.jkchappy.portal.member.MemberOrder;
 import dev.jkchappy.portal.workstatus.WorkStatus;
 import dev.jkchappy.portal.workstatus.WorkStatusRepository;
 import dev.jkchappy.portal.workstatus.WorkStatusType;
@@ -42,7 +43,7 @@ public class AnnualLeaveService {
       .collect(Collectors.toMap(AnnualLeaveBalance::getMemberId, Function.identity()));
     Map<Long, TreeMap<Integer, BigDecimal>> usage = calculateUsage(year);
 
-    return memberRepository.findByActiveTrueOrderByNameAsc().stream()
+    return MemberOrder.sorted(memberRepository.findByActiveTrueOrderByNameAsc()).stream()
       .map(member -> toResponse(member, balances.get(member.getId()),
         usage.getOrDefault(member.getId(), new TreeMap<>())))
       .toList();

@@ -10,7 +10,7 @@ const config = { port: 0, backendUrl: "http://backend", internalToken: "t" };
 
 function mockClient(overrides: Partial<BackendClient> = {}): BackendClient {
   return {
-    authorize: vi.fn().mockResolvedValue({ userName: "홍길동" }),
+    authorize: vi.fn().mockResolvedValue({ userId: 7, userName: "홍길동" }),
     fetchContent: vi.fn().mockResolvedValue(null),
     storeContent: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -61,7 +61,7 @@ describe("createServer", () => {
       connect(url, "document-9", "1", { onAuthenticationFailed: () => resolve() });
     });
     await failed;
-    expect(client.authorize).toHaveBeenCalledWith(9, 1);
+    expect(client.authorize).toHaveBeenCalledWith(9, "1");
   });
 
   it("편집 후 storeContent가 plainText, updatedBy와 함께 호출된다", async () => {

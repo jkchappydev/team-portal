@@ -1,6 +1,7 @@
 package dev.jkchappy.portal.member;
 
 import dev.jkchappy.portal.common.ApiResponse;
+import dev.jkchappy.portal.account.AccountService;
 import dev.jkchappy.portal.member.dto.MemberCreateRequest;
 import dev.jkchappy.portal.member.dto.MemberResponse;
 import dev.jkchappy.portal.member.dto.MemberUpdateRequest;
@@ -15,29 +16,43 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
-// 팀원 API (처음 이름 선택 전에도 써야 하므로 X-User-Id 불필요)
+// 팀원 API
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
 public class MemberController {
 
   private final MemberService memberService;
+  private final AccountService accountService;
 
   @GetMapping
   public ApiResponse<List<MemberResponse>> list(
-    @RequestParam(defaultValue = "false") boolean includeInactive) {
+    @RequestParam(defaultValue = "false") boolean includeInactive, @CurrentUser Long userId) {
     return ApiResponse.ok(memberService.findAll(includeInactive));
   }
 
   @PostMapping
-  public ApiResponse<MemberResponse> create(@Valid @RequestBody MemberCreateRequest request) {
+  public ApiResponse<MemberResponse> create(@Valid @RequestBody MemberCreateRequest request, @CurrentUser Long userId) {
+    accountService.requireAdmin(userId);
     return ApiResponse.ok(memberService.create(request));
   }
 
   @PatchMapping("/{id}")
   public ApiResponse<MemberResponse> update(
-    @PathVariable Long id, @Valid @RequestBody MemberUpdateRequest request) {
+    @PathVariable Long id, @Valid @RequestBody MemberUpdateRequest request, @CurrentUser Long userId) {
+    accountService.requireAdmin(userId);
     return ApiResponse.ok(memberService.update(id, request));
+  }
+
+  public record MoveRequest(Long beforeId) {}
+
+  @PatchMapping("/{id}/position")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void move(@PathVariable Long id, @RequestBody MoveRequest request, @CurrentUser Long userId) {
+    accountService.requireAdmin(userId);
+    memberService.move(id, request.beforeId());
   }
 }

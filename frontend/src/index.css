@@ -377,3 +377,12 @@ a:not([draggable="true"]) {
 .page-row[data-selected] {
   background: var(--mantine-color-default-hover);
 }
+tr[data-member-drop] { position: relative; }
+tr[data-member-drop]::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--mantine-primary-color-filled); pointer-events: none; z-index: 2; }
+tr[data-member-drop="before"]::after { top: -1px; }
+tr[data-member-drop="after"]::after { bottom: -1px; }
+.member-drag-handle { position: absolute; left: -8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; width: 14px; height: 20px; padding: 0; font-size: 0; cursor: grab; opacity: 0; z-index: 3; }
+.member-drag-handle::before { content: ""; position: absolute; left: 5px; top: 3px; width: 4px; height: 14px; border-radius: 2px; background: var(--mantine-color-gray-5); }
+tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
+.member-drag-handle:active { cursor: grabbing; }
+.annual-leave-scroll { box-sizing: border-box; width: calc(100% + 10px); margin-left: -10px; padding-left: 10px; overflow-x: auto; }

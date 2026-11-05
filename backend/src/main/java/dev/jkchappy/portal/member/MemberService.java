@@ -2,6 +2,8 @@ package dev.jkchappy.portal.member;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
+import dev.jkchappy.portal.account.Account;
+import dev.jkchappy.portal.account.AccountRepository;
 import dev.jkchappy.portal.member.dto.MemberCreateRequest;
 import dev.jkchappy.portal.member.dto.MemberResponse;
 import dev.jkchappy.portal.member.dto.MemberUpdateRequest;
@@ -9,6 +11,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,20 +21,28 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberService {
 
   private final MemberRepository memberRepository;
+  private final AccountRepository accountRepository;
 
   // 이름순 조회 (기본은 활성 팀원만)
   @Transactional(readOnly = true)
   public List<MemberResponse> findAll(boolean includeInactive) {
-    List<Member> members = includeInactive
+    List<Member> members = MemberOrder.sorted(includeInactive
       ? memberRepository.findAllByOrderByNameAsc()
-      : memberRepository.findByActiveTrueOrderByNameAsc();
-    return members.stream().map(MemberResponse::from).toList();
+      : memberRepository.findByActiveTrueOrderByNameAsc());
+    Map<Long, String> emails = new HashMap<>();
+    if (!members.isEmpty()) {
+      accountRepository.findByMemberIdIn(members.stream().map(Member::getId).toList())
+        .forEach(account -> emails.put(account.getMember().getId(), account.getEmail()));
+    }
+    return members.stream().map(member -> MemberResponse.from(member, emails.get(member.getId()))).toList();
   }
 
   @Transactional
   public MemberResponse create(MemberCreateRequest request) {
     String name = normalizeName(request.name());
-    return MemberResponse.from(memberRepository.save(Member.create(name)));
+    Member member = Member.create(name);
+    MemberOrder.placeNew(member, memberRepository.lockAllForOrder());
+    return MemberResponse.from(memberRepository.save(member));
   }
 
   @Transactional
@@ -41,23 +52,30 @@ public class MemberService {
     if (request.name() != null) {
       member.rename(normalizeName(request.name()));
     }
+    if (request.department() != null || request.jobRank() != null) {
+      member.setOrganization(request.department() == null ? member.getDepartment() : normalizeDepartment(request.department()),
+        request.jobRank() == null ? member.getJobRank() : request.jobRank());
+    }
     // 삭제 대신 비활성화로 과거 작성 이력 보존
     if (request.active() != null) {
       if (request.active()) {
         member.activate();
       } else {
+        if (member.isActive() && member.isAdmin() && memberRepository.lockActiveAdmins().size() <= 1) {
+          throw new BusinessException(ErrorCode.LAST_ADMIN);
+        }
         member.deactivate();
       }
     }
-    return MemberResponse.from(member);
+    return MemberResponse.from(member, accountRepository.findByMemberId(id).map(Account::getEmail).orElse(null));
   }
 
-  // 현재 사용자 검증용: 없거나 비활성이면 사용자 미선택으로 처리
+  // 공동 편집 접속 팀원의 활성 상태 확인
   @Transactional(readOnly = true)
   public Member getActiveMember(Long id) {
     return memberRepository.findById(id)
       .filter(Member::isActive)
-      .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_SELECTED));
+      .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_INACTIVE));
   }
 
   // 작성자 이름 표시용: 비활성 팀원 포함
@@ -69,6 +87,31 @@ public class MemberService {
     }
     memberRepository.findAllById(ids).forEach(m -> names.put(m.getId(), m.getName()));
     return names;
+  }
+
+  @Transactional
+  public void move(Long memberId, Long beforeId) {
+    List<Member> members = new ArrayList<>(MemberOrder.sorted(memberRepository.lockAllForOrder()));
+    Member moving = members.stream().filter(member -> member.getId().equals(memberId)).findFirst()
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    if (memberId.equals(beforeId)) return;
+    members.remove(moving);
+    int target = members.size();
+    if (beforeId != null) {
+      target = -1;
+      for (int i = 0; i < members.size(); i++) {
+        if (members.get(i).getId().equals(beforeId)) { target = i; break; }
+      }
+      if (target < 0) throw new BusinessException(ErrorCode.INVALID_INPUT);
+    }
+    members.add(target, moving);
+    for (int i = 0; i < members.size(); i++) members.get(i).changeSortOrder((long) i);
+  }
+
+  public static String normalizeDepartment(String department) {
+    String value = department == null ? "" : department.trim();
+    if (value.isEmpty() || value.length() > 100) throw new BusinessException(ErrorCode.INVALID_INPUT, "부서는 1~100자여야 합니다.");
+    return value;
   }
 
   private String normalizeName(String name) {

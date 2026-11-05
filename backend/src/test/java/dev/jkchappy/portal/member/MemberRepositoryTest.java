@@ -19,6 +19,19 @@ class MemberRepositoryTest {
   private MemberRepository memberRepository;
 
   @Test
+  void countByAdminTrueAndActiveTrue() {
+    Member activeAdmin = Member.create("활성 관리자");
+    activeAdmin.grantAdmin();
+    memberRepository.save(activeAdmin);
+    Member inactiveAdmin = Member.create("비활성 관리자");
+    inactiveAdmin.grantAdmin();
+    inactiveAdmin.deactivate();
+    memberRepository.save(inactiveAdmin);
+    memberRepository.save(Member.create("일반 팀원"));
+    assertThat(memberRepository.countByAdminTrueAndActiveTrue()).isEqualTo(1);
+  }
+
+  @Test
   void findAll_excludesInactiveByDefault() {
     memberRepository.save(Member.create("김철수"));
     Member inactive = Member.create("이영희");

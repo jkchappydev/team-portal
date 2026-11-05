@@ -37,10 +37,10 @@ export async function versionToBlocks(contentState: string): Promise<Block[]> {
 }
 
 // 지금 본문을 사본으로 남긴 뒤 협업 본문을 고른 버전 내용으로 바꿈 (열린 편집기에는 공동 편집으로 반영)
-export async function restoreVersion(documentId: number, userId: number, contentState: string): Promise<void> {
+export async function restoreVersion(documentId: number, _userId: number, contentState: string): Promise<void> {
   const blocks = await versionToBlocks(contentState);
   const { blocksToYXmlFragment } = await import("@blocknote/core/yjs");
-  await withSyncedDocument(documentId, userId, async ({ Y, doc, fragment, provider, editor }) => {
+  await withSyncedDocument(documentId, async ({ Y, doc, fragment, provider, editor }) => {
     await saveHistoryCheckpoint(documentId, bytesToBase64(Y.encodeStateAsUpdate(doc)));
     blocksToYXmlFragment(editor, blocks as never, fragment);
     await waitUntilSynced(provider);

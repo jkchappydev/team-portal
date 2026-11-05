@@ -10,6 +10,7 @@ import { SideMenu, SideMenuController, TableHandlesController, useCreateBlockNot
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { uploadAttachment } from "../api/attachments";
+import { fetchCollabTicket } from "../api/collab";
 import type { MemberDto } from "../api/members";
 import { collabUrl, FRAGMENT_NAME } from "./collab";
 import { NotionDragHandleMenu } from "./editor/NotionDragHandleMenu";
@@ -42,7 +43,7 @@ export default function CollaborativeEditor({ documentId, user }: Props) {
     const provider = new HocuspocusProvider({
       url: collabUrl(),
       name: `document-${documentId}`,
-      token: String(user.id),
+      token: fetchCollabTicket,
       document: doc,
     });
     const current: Session = { doc, provider };

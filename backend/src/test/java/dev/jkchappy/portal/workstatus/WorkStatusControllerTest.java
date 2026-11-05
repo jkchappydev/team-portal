@@ -7,6 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.jkchappy.portal.common.GlobalExceptionHandler;
+import dev.jkchappy.portal.account.AccountService;
+import dev.jkchappy.portal.support.ControllerTestSecurity;
+import static dev.jkchappy.portal.support.ControllerTestSecurity.loginAs;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.junit.jupiter.api.BeforeEach;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
 import dev.jkchappy.portal.member.MemberService;
@@ -21,9 +27,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(WorkStatusController.class)
-@Import({GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
+@Import({ControllerTestSecurity.class, GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
   dev.jkchappy.portal.document.InternalTokenInterceptor.class})
 class WorkStatusControllerTest {
+  @MockitoBean
+  private AccountService accountService;
+
+  @BeforeEach
+  void stubAuthenticatedMember() {
+    lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
+      Long.parseLong(invocation.<String>getArgument(0).substring("test-sub-".length())));
+  }
+
 
   @Autowired
   private MockMvc mockMvc;
@@ -40,7 +55,7 @@ class WorkStatusControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"memberId\":1,\"type\":\"LEAVE\",\"startDate\":\"2026-11-02\",\"endDate\":\"2026-11-02\"}"))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value("USER_NOT_SELECTED"));
+      .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
   }
 
   @Test

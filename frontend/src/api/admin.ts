@@ -1,0 +1,18 @@
+import { apiFetch } from "./client";
+import type { MemberDto } from "./members";
+import type { JobRank } from "./members";
+
+export interface SignupRequestDto {
+  id: number;
+  email: string;
+  googleName: string;
+  status: "PENDING" | "REJECTED";
+  requestedAt: string;
+}
+export const listSignupRequests = () => apiFetch<SignupRequestDto[]>("/api/admin/signup-requests");
+export const countPendingSignups = async () => (await apiFetch<{ pending: number }>("/api/admin/signup-requests/count")).pending;
+export const approveSignup = (id: number, data: ({ memberId: number } | { newMemberName: string }) & { department: string; jobRank: JobRank }) =>
+  apiFetch<void>(`/api/admin/signup-requests/${id}/approve`, { method: "POST", body: JSON.stringify(data) });
+export const rejectSignup = (id: number) => apiFetch<void>(`/api/admin/signup-requests/${id}/reject`, { method: "POST" });
+export const reopenSignup = (id: number) => apiFetch<void>(`/api/admin/signup-requests/${id}/reopen`, { method: "POST" });
+export const setMemberAdmin = (id: number, admin: boolean) => apiFetch<MemberDto>(`/api/admin/members/${id}/admin`, { method: "PATCH", body: JSON.stringify({ admin }) });

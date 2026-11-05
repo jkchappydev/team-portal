@@ -5,6 +5,7 @@ import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.dto.CollabContentRequest;
 import dev.jkchappy.portal.member.MemberService;
+import dev.jkchappy.portal.collab.CollabTicketService;
 import jakarta.validation.Valid;
 import java.util.Base64;
 import java.util.HashMap;
@@ -28,13 +29,15 @@ public class InternalCollabController {
 
   private final DocumentService documentService;
   private final MemberService memberService;
+  private final CollabTicketService tickets;
 
   // 문서가 살아 있고 사용자가 활성일 때만 접속 허용
   @GetMapping("/collab/authorize")
-  public ApiResponse<Map<String, String>> authorize(
-    @RequestParam Long documentId, @RequestParam Long userId) {
+  public ApiResponse<Map<String, Object>> authorize(
+    @RequestParam Long documentId, @RequestParam String ticket) {
+    Long userId = tickets.consume(ticket).orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHENTICATED));
     documentService.getLiveDocument(documentId);
-    return ApiResponse.ok(Map.of("userName", memberService.getActiveMember(userId).getName()));
+    return ApiResponse.ok(Map.of("userId", userId, "userName", memberService.getActiveMember(userId).getName()));
   }
 
   @GetMapping("/documents/{id}/content")

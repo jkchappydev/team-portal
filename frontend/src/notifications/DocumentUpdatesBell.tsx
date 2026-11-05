@@ -7,6 +7,8 @@ import { listSpaces } from "../api/spaces";
 import { pageIcon } from "../documents/pageIcon";
 import { formatRelative, updatePath } from "./updateFormat";
 import { DOCUMENT_UPDATES_KEY } from "./useMarkDocumentRead";
+import { countPendingSignups } from "../api/admin";
+import { useCurrentUser } from "../user/currentUser";
 
 // 다른 팀원의 수정을 주기적으로 다시 조회하는 간격
 const POLL_MS = 30_000;
@@ -26,6 +28,9 @@ export function DocumentUpdatesBell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [opened, setOpened] = useState(false);
+  const { user } = useCurrentUser();
+  const { data: pending = 0 } = useQuery({ queryKey: ["admin", "signup-count"], queryFn: countPendingSignups,
+    enabled: !!user?.admin, refetchInterval: POLL_MS });
   const { data: updates = [] } = useQuery({
     queryKey: DOCUMENT_UPDATES_KEY,
     queryFn: listDocumentUpdates,
@@ -40,7 +45,7 @@ export function DocumentUpdatesBell() {
   return (
     <Popover opened={opened} onChange={setOpened} position="bottom-start" width={300} shadow="md" withinPortal>
       <Popover.Target>
-        <Indicator label={updates.length > 9 ? "9+" : updates.length} disabled={updates.length === 0}
+        <Indicator label={updates.length + pending > 9 ? "9+" : updates.length + pending} disabled={updates.length + pending === 0}
           size={16} offset={4} color="red">
           <ActionIcon variant="subtle" color="gray" aria-label="수정 알림" onClick={() => setOpened((v) => !v)}>
             <BellIcon />
@@ -48,6 +53,9 @@ export function DocumentUpdatesBell() {
         </Indicator>
       </Popover.Target>
       <Popover.Dropdown p={0}>
+        {pending > 0 && <UnstyledButton px="sm" py="xs" onClick={() => { setOpened(false); navigate("/members"); }}>
+          가입 요청 {pending}건
+        </UnstyledButton>}
         <Group justify="space-between" px="sm" py={8}
           style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
           <Text size="sm" fw={600}>수정된 페이지</Text>

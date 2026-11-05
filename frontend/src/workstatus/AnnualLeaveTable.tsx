@@ -6,6 +6,8 @@ import { listAnnualLeaves, updateAnnualLeave } from "../api/annualLeaves";
 import type { AnnualLeaveSummaryDto } from "../api/annualLeaves";
 import { leaveWeekRangeLabel } from "./calendar";
 import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf } from "./highlight";
+import { useCurrentUser } from "../user/currentUser";
+import { useMemberReorder } from "../members/useMemberReorder";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const WEEKS = [1, 2, 3, 4, 5];
@@ -44,9 +46,11 @@ interface AnnualLeaveRowProps {
   item: AnnualLeaveSummaryDto;
   year: number;
   currentMonth: number | null;
+  admin: boolean;
+  reorder: ReturnType<typeof useMemberReorder>;
 }
 
-function AnnualLeaveRow({ item, year, currentMonth }: AnnualLeaveRowProps) {
+function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeaveRowProps) {
   const queryClient = useQueryClient();
   const [confirmedDays, setConfirmedDays] = useState<number | string>(item.confirmedDays);
   const [carriedDays, setCarriedDays] = useState<number | string>(item.carriedDays);
@@ -92,8 +96,11 @@ function AnnualLeaveRow({ item, year, currentMonth }: AnnualLeaveRowProps) {
   const usage = new Map(item.weeklyUsages.map((u) => [`${u.month}-${u.week}`, u.days]));
 
   return (
-    <tr>
-      <td style={{ ...cell, textAlign: "left", paddingLeft: 6, fontWeight: 600 }} title={item.memberName}>
+    <tr data-member-drop={reorder.target?.id === item.memberId ? (reorder.target.after ? "after" : "before") : undefined}
+      onDragOver={(event) => reorder.over(event, item.memberId)} onDrop={(event) => reorder.drop(event, item.memberId)}>
+      <td style={{ ...cell, position: "relative", overflow: "visible", textAlign: "left", paddingLeft: 6, fontWeight: 600 }} title={item.memberName}>
+        {admin && <button type="button" className="member-drag-handle" draggable
+          aria-label={`${item.memberName} 순서 변경`} onDragStart={(event) => reorder.start(event, item.memberId)} onDragEnd={reorder.end}>⠿</button>}
         {item.memberName}
       </td>
       {MONTHS.flatMap((month) => WEEKS.map((week) => {
@@ -125,6 +132,8 @@ export function AnnualLeaveTable({ year }: { year: number }) {
     queryKey: ["annualLeaves", year],
     queryFn: () => listAnnualLeaves(year),
   });
+  const { user } = useCurrentUser();
+  const reorder = useMemberReorder(data.map((item) => item.memberId), !!user?.admin);
 
   return (
     <section>
@@ -133,8 +142,9 @@ export function AnnualLeaveTable({ year }: { year: number }) {
         <Text c="dimmed" fz="xs">연차 1일 · 반차 0.5일 · 반반차 0.25일 · 주는 월요일 시작 달력 기준</Text>
       </Group>
       {error && <Alert color="red" mb="sm">연차 정보를 불러오지 못했습니다.</Alert>}
+      {reorder.error && <Alert color="red" mb="sm">팀원 순서를 저장하지 못했습니다.</Alert>}
       {/* 아주 좁은 화면에서만 가로 스크롤 허용 */}
-      <div style={{ overflowX: "auto" }}>
+      <div className="annual-leave-scroll">
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 900, tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: 64 }} />
@@ -186,6 +196,8 @@ export function AnnualLeaveTable({ year }: { year: number }) {
                 item={item}
                 year={year}
                 currentMonth={currentMonth}
+                admin={!!user?.admin}
+                reorder={reorder}
               />
             ))}
           </tbody>

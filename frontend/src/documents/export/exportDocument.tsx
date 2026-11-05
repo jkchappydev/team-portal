@@ -21,9 +21,9 @@ function escapeHtml(text: string): string {
 }
 
 // 협업 서버에서 본문을 받아 블록으로 변환 (편집기를 열지 않은 사이드바에서도 동작)
-async function loadDocument(documentId: number, userId: number) {
+async function loadDocument(documentId: number) {
   const { yXmlFragmentToBlocks } = await import("@blocknote/core/yjs");
-  return withSyncedDocument(documentId, userId, ({ editor, fragment }) => ({
+  return withSyncedDocument(documentId, ({ editor, fragment }) => ({
     editor,
     blocks: yXmlFragmentToBlocks(editor, fragment),
   }));
@@ -90,8 +90,8 @@ function download(blob: Blob, fileName: string) {
 
 // 페이지 본문을 고른 형식의 파일로 만들어 바로 내려받기
 export async function exportDocument(params: { documentId: number; title: string; format: ExportFormat; userId: number }) {
-  const { documentId, title, format, userId } = params;
-  const { editor, blocks } = await loadDocument(documentId, userId);
+  const { documentId, title, format } = params;
+  const { editor, blocks } = await loadDocument(documentId);
   let blob: Blob;
   if (format === "pdf") {
     blob = await toPdf(title, blocks as unknown as ExportBlock[]);

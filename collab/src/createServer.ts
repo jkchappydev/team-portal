@@ -102,11 +102,10 @@ export function createServer(
     // 문서 이름 형식과 사용자·문서 유효성을 backend에 확인
     async onAuthenticate({ documentName, token }) {
       const documentId = parseDocumentId(documentName);
-      const userId = Number(token);
-      if (documentId === null || !Number.isInteger(userId) || userId <= 0) {
+      if (documentId === null || !token) {
         throw new Error("잘못된 접속 정보");
       }
-      const { userName } = await client.authorize(documentId, userId);
+      const { userId, userName } = await client.authorize(documentId, token);
       return { userId, userName };
     },
 

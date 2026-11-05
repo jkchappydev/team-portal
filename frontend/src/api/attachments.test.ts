@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uploadAttachment } from "./attachments";
-import { setStoredUserId } from "../user/currentUser";
+
 
 describe("uploadAttachment", () => {
   const fetchMock = vi.fn();
@@ -16,7 +16,7 @@ describe("uploadAttachment", () => {
   });
 
   it("uploadAttachment는 FormData에 file과 inline=true를 넣고 Content-Type을 지정하지 않는다", async () => {
-    setStoredUserId(5);
+
     const dto = {
       id: 11,
       originalName: "사진.png",
@@ -41,7 +41,7 @@ describe("uploadAttachment", () => {
     expect(body.get("inline")).toBe("true");
     const headers = new Headers(init.headers);
     expect(headers.has("Content-Type")).toBe(false);
-    expect(headers.get("X-User-Id")).toBe("5");
+    expect(headers.has("X-User-Id")).toBe(false);
   });
 
   it("inline을 생략하면 inline=false로 보낸다", async () => {

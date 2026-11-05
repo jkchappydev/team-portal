@@ -8,6 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import dev.jkchappy.portal.annualleave.dto.AnnualLeaveSummaryResponse;
 import dev.jkchappy.portal.common.GlobalExceptionHandler;
+import dev.jkchappy.portal.account.AccountService;
+import dev.jkchappy.portal.support.ControllerTestSecurity;
+import static dev.jkchappy.portal.support.ControllerTestSecurity.loginAs;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.junit.jupiter.api.BeforeEach;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.document.InternalTokenInterceptor;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
@@ -23,9 +29,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AnnualLeaveController.class)
-@Import({GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
+@Import({ControllerTestSecurity.class, GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
   InternalTokenInterceptor.class})
 class AnnualLeaveControllerTest {
+  @MockitoBean
+  private AccountService accountService;
+
+  @BeforeEach
+  void stubAuthenticatedMember() {
+    lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
+      Long.parseLong(invocation.<String>getArgument(0).substring("test-sub-".length())));
+  }
+
 
   @Autowired
   private MockMvc mockMvc;
@@ -57,13 +72,13 @@ class AnnualLeaveControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"confirmedDays\":15,\"carriedDays\":0}"))
       .andExpect(status().isUnauthorized())
-      .andExpect(jsonPath("$.error.code").value("USER_NOT_SELECTED"));
+      .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
   }
 
   @Test
   void update_negativeDays_returns400() throws Exception {
     mockMvc.perform(put("/api/annual-leaves/1").param("year", "2026")
-        .header("X-User-Id", "1")
+        .with(loginAs(1L))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"confirmedDays\":-1,\"carriedDays\":0}"))
       .andExpect(status().isBadRequest())

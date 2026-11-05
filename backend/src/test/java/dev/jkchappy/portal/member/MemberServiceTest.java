@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
+import dev.jkchappy.portal.account.AccountRepository;
 import dev.jkchappy.portal.member.dto.MemberCreateRequest;
 import dev.jkchappy.portal.member.dto.MemberResponse;
 import dev.jkchappy.portal.member.dto.MemberUpdateRequest;
@@ -18,12 +19,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
 
   @Mock
   private MemberRepository memberRepository;
+
+  @Mock
+  private AccountRepository accountRepository;
 
   @InjectMocks
   private MemberService memberService;
@@ -46,7 +51,7 @@ class MemberServiceTest {
 
     assertThatThrownBy(() -> memberService.getActiveMember(1L))
       .isInstanceOfSatisfying(BusinessException.class,
-        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.USER_NOT_SELECTED));
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.MEMBER_INACTIVE));
   }
 
   @Test
@@ -55,7 +60,7 @@ class MemberServiceTest {
 
     assertThatThrownBy(() -> memberService.getActiveMember(9L))
       .isInstanceOfSatisfying(BusinessException.class,
-        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.USER_NOT_SELECTED));
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.MEMBER_INACTIVE));
   }
 
   @Test
@@ -76,6 +81,30 @@ class MemberServiceTest {
 
     assertThat(response.name()).isEqualTo("새이름");
     assertThat(response.active()).isFalse();
+  }
+
+  @Test
+  void updateCannotDeactivateLastActiveAdmin() {
+    Member admin = Member.create("관리자");
+    admin.grantAdmin();
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(admin));
+    when(memberRepository.lockActiveAdmins()).thenReturn(List.of(admin));
+    assertThatThrownBy(() -> memberService.update(1L, new MemberUpdateRequest(null, false)))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.LAST_ADMIN));
+    assertThat(admin.isActive()).isTrue();
+  }
+
+  @Test
+  void movePersistsSharedOrder() {
+    Member first = Member.create("가");
+    Member second = Member.create("나");
+    ReflectionTestUtils.setField(first, "id", 1L);
+    ReflectionTestUtils.setField(second, "id", 2L);
+    when(memberRepository.lockAllForOrder()).thenReturn(List.of(first, second));
+    memberService.move(2L, 1L);
+    assertThat(first.getSortOrder()).isEqualTo(1L);
+    assertThat(second.getSortOrder()).isZero();
   }
 
   @Test

@@ -152,7 +152,7 @@ describe("CollaborativeEditor 연결 수명주기", () => {
     expect(registry.providers.length).toBeGreaterThanOrEqual(1);
     expect(registry.docs.filter((d) => !d.destroyed)).toHaveLength(1);
     expect(provider.configuration.name).toBe("document-42");
-    expect(provider.configuration.token).toBe("3");
+    expect(provider.configuration.token).toBeTypeOf("function");
     expect(provider.configuration.url).toMatch(/^ws:\/\/.+\/collab$/);
     expect(screen.queryByTestId("editor")).toBeNull();
 

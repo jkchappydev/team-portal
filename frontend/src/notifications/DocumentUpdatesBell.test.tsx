@@ -2,10 +2,12 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentUpdatesBell } from "./DocumentUpdatesBell";
 import { listDocumentUpdates, markAllDocumentUpdatesRead } from "../api/notifications";
 import { formatRelative, updatePath } from "./updateFormat";
+import { useCurrentUser } from "../user/currentUser";
+import { countPendingSignups } from "../api/admin";
 
 const update = (id: number, title: string, kind: "PAGE" | "FILE" = "PAGE") => ({
   id, spaceId: 1, spaceName: "스쿨북스", title, icon: null, updatedByName: "김동료",
@@ -19,6 +21,8 @@ vi.mock("../api/notifications", () => ({
 vi.mock("../api/spaces", () => ({
   listSpaces: () => Promise.resolve([{ id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, icon: null }]),
 }));
+vi.mock("../user/currentUser", () => ({ useCurrentUser: vi.fn() }));
+vi.mock("../api/admin", () => ({ countPendingSignups: vi.fn() }));
 
 describe("DocumentUpdatesBell", () => {
   beforeAll(() => {
@@ -36,6 +40,10 @@ describe("DocumentUpdatesBell", () => {
   });
 
   afterEach(cleanup);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "팀원", active: true, admin: false }, me: null });
+  });
 
   function renderBell() {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,6 +54,7 @@ describe("DocumentUpdatesBell", () => {
             <Routes>
               <Route path="/" element={<DocumentUpdatesBell />} />
               <Route path="/documents/:id" element={<div>페이지 화면</div>} />
+              <Route path="/members" element={<div>팀원 화면</div>} />
             </Routes>
           </MemoryRouter>
         </QueryClientProvider>
@@ -79,6 +88,24 @@ describe("DocumentUpdatesBell", () => {
     renderBell();
     fireEvent.click(screen.getByLabelText("수정 알림"));
     expect(await screen.findByText("새로 수정된 페이지가 없습니다.")).toBeTruthy();
+  });
+
+  it("관리자는 가입 요청 건수를 함께 보고 팀원 화면으로 이동한다", async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "관리자", active: true, admin: true }, me: null });
+    vi.mocked(countPendingSignups).mockResolvedValue(2);
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
+    renderBell();
+    expect(await screen.findByText("3")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("수정 알림"));
+    fireEvent.click(await screen.findByText("가입 요청 2건"));
+    expect(await screen.findByText("팀원 화면")).toBeTruthy();
+  });
+
+  it("일반 팀원은 가입 요청 수를 조회하지 않는다", async () => {
+    vi.mocked(listDocumentUpdates).mockResolvedValue([]);
+    renderBell();
+    await waitFor(() => expect(listDocumentUpdates).toHaveBeenCalled());
+    expect(countPendingSignups).not.toHaveBeenCalled();
   });
 });
 

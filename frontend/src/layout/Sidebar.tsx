@@ -11,10 +11,10 @@ import { SearchDialog } from "../documents/SearchDialog";
 import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
 import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
+import { logout } from "../api/auth";
 
 interface Props {
   user: MemberDto | null;
-  onChangeUser: () => void;
 }
 
 // 노션처럼 얇은 선으로 그린 휴지통 아이콘 (글자색을 따라감)
@@ -30,7 +30,7 @@ function TrashIcon() {
   );
 }
 
-export function Sidebar({ user, onChangeUser }: Props) {
+export function Sidebar({ user }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -93,7 +93,7 @@ export function Sidebar({ user, onChangeUser }: Props) {
       <ColorSchemeToggle />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
         <Text size="sm">{user?.name ?? "-"}</Text>
-        <Button size="compact-xs" variant="subtle" onClick={onChangeUser}>변경</Button>
+        <Button size="compact-xs" variant="subtle" onClick={() => void logout()}>로그아웃</Button>
       </Group>
       <Modal opened={creating} onClose={() => setCreating(false)} title="새 페이지" centered>
         <form

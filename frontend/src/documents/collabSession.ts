@@ -2,6 +2,7 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type * as YType from "yjs";
 import { collabUrl, FRAGMENT_NAME } from "./collab";
+import { fetchCollabTicket } from "../api/collab";
 
 // 협업 서버 응답을 기다리는 최대 시간
 const SYNC_TIMEOUT_MS = 15000;
@@ -21,7 +22,6 @@ export interface SyncedDocument {
 // 편집기를 열지 않은 화면에서도 협업 서버에 잠깐 접속해 본문을 다룸 (끝나면 연결 해제)
 export async function withSyncedDocument<T>(
   documentId: number,
-  userId: number,
   work: (session: SyncedDocument) => T | Promise<T>,
 ): Promise<T> {
   const [{ HocuspocusProvider }, Y, { BlockNoteEditor }] = await Promise.all([
@@ -33,7 +33,7 @@ export async function withSyncedDocument<T>(
   const provider = new HocuspocusProvider({
     url: collabUrl(),
     name: `document-${documentId}`,
-    token: String(userId),
+    token: fetchCollabTicket,
     document: doc,
   });
   try {
