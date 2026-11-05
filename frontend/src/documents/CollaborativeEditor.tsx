@@ -1,19 +1,22 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { useEffect, useState } from "react";
-import { Alert, Badge, Box, Button, Group, Loader, Text } from "@mantine/core";
+import type { DragEvent } from "react";
+import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme } from "@mantine/core";
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import { SideMenu, SideMenuController, TableHandlesController, useCreateBlockNote } from "@blocknote/react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { uploadAttachment } from "../api/attachments";
 import type { MemberDto } from "../api/members";
+import { collabUrl, FRAGMENT_NAME } from "./collab";
+import { NotionDragHandleMenu } from "./editor/NotionDragHandleMenu";
+import { dropTargetAt, insertDroppedFiles } from "./fileDrop";
+import type { DropEditor } from "./fileDrop";
 import { userColor } from "./userColor";
 
-// BlockNote가 협업 본문을 저장하는 Yjs 조각 이름 (collab 서버 텍스트 추출과 동일)
-const FRAGMENT_NAME = "document-store";
 
 interface Props {
   documentId: number;
@@ -25,10 +28,6 @@ interface Session {
   provider: HocuspocusProvider;
 }
 
-function collabUrl(): string {
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${location.host}/collab`;
-}
 
 // 문서가 바뀌면 상위에서 key로 다시 마운트하므로 상태 초기화는 마운트 단위로 처리
 export default function CollaborativeEditor({ documentId, user }: Props) {
@@ -89,18 +88,19 @@ export default function CollaborativeEditor({ documentId, user }: Props) {
 
   return (
     <Box>
-      <Group gap="xs" mb={6}>
-        {authFailed ? (
-          <Badge color="red" variant="light" size="sm">접속 거부됨</Badge>
-        ) : (
-          <Badge color={connected ? "green" : "yellow"} variant="dot" size="sm">
-            {connected ? "연결됨" : "재연결 중"}
-          </Badge>
-        )}
-        {!authFailed && !connected && session && (
-          <Text size="xs" c="dimmed">연결이 끊겨 읽기 전용입니다. 다시 연결되면 편집할 수 있습니다.</Text>
-        )}
-      </Group>
+      {/* 정상 연결 상태는 표시하지 않고 거부·재연결 상태만 안내 */}
+      {(authFailed || !connected) && (
+        <Group gap="xs" mb={6}>
+          {authFailed ? (
+            <Badge color="red" variant="light" size="sm">접속 거부됨</Badge>
+          ) : (
+            <Badge color="yellow" variant="dot" size="sm">재연결 중</Badge>
+          )}
+          {!authFailed && session && (
+            <Text size="xs" c="dimmed">연결이 끊겨 읽기 전용입니다. 다시 연결되면 편집할 수 있습니다.</Text>
+          )}
+        </Group>
+      )}
       {/* backend 일시 장애 등으로 접속이 거부되면 provider가 재시도하지 않으므로 새로고침 안내 */}
       {authFailed && (
         <Alert color="red" variant="light" mb="sm" title="문서에 접속하지 못했습니다">
@@ -109,7 +109,13 @@ export default function CollaborativeEditor({ documentId, user }: Props) {
         </Alert>
       )}
       {session ? (
-        <EditorView key={`${documentId}-${user.id}`} session={session} documentId={documentId} user={user} editable={editable} />
+        <EditorView
+          key={`${documentId}-${user.id}`}
+          session={session}
+          documentId={documentId}
+          user={user}
+          editable={editable}
+        />
       ) : authFailed ? null : (
         <Group gap="xs" p="md">
           <Loader size="xs" />
@@ -118,6 +124,11 @@ export default function CollaborativeEditor({ documentId, user }: Props) {
       )}
     </Box>
   );
+}
+
+// 표 칸을 누르면 모서리에 뜨는 칸 메뉴 버튼을 그리지 않음 (행·열 색칠은 행·열 손잡이 메뉴로)
+function HiddenCellButton() {
+  return null;
 }
 
 // BlockNote 편집기는 외부 가변 객체이고 isEditable 세터가 공식 잠금 API
@@ -133,6 +144,8 @@ interface EditorViewProps {
 }
 
 function EditorView({ session, documentId, user, editable }: EditorViewProps) {
+  // 편집기 테마를 앱의 라이트/다크 설정에 맞춤
+  const colorScheme = useComputedColorScheme("light");
   const editor = useCreateBlockNote(
     withCollaboration({
       dictionary: ko,
@@ -143,6 +156,10 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
       },
       // 본문에 넣는 파일은 inline 첨부로 업로드 후 다운로드 URL 사용
       uploadFile: (file: File) => uploadAttachment(documentId, file, true).then((a) => a.url),
+      // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 2px로 축소)
+      dropCursor: { width: 2, color: "var(--mantine-primary-color-filled)" },
+      // 노션처럼 표의 행·열 색칠(배경·글자), 첫 행·첫 열 머리글, 셀 병합·분할 허용
+      tables: { cellBackgroundColor: true, cellTextColor: true, headers: true, splitCells: true },
     }),
     [session, documentId, user.id, user.name],
   );
@@ -152,5 +169,39 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
     setEditorEditable(editor, editable);
   }, [editor, editable]);
 
-  return <BlockNoteView editor={editor} theme="light" />;
+  const [dropError, setDropError] = useState<string | null>(null);
+  const hasFiles = (e: DragEvent) => editable && Array.from(e.dataTransfer.types).includes("Files");
+
+  // 본문 아래 빈 곳에도 파일을 놓을 수 있게 허용
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (hasFiles(e)) e.preventDefault();
+  };
+
+  // 기본 드롭 처리 대신 떨어뜨린 위치에 여러 파일을 순서대로 넣고 동시에 업로드
+  const onDropCapture = (e: DragEvent<HTMLDivElement>) => {
+    const files = Array.from(e.dataTransfer.files);
+    if (!hasFiles(e) || files.length === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // 편집기까지 이벤트가 가지 않아 남는 드롭 위치 표시줄 정리
+    editor.prosemirrorView?.dom.dispatchEvent(new Event("dragleave"));
+    setDropError(null);
+    const target = dropTargetAt(e.currentTarget, e.clientX, e.clientY);
+    void insertDroppedFiles(editor as unknown as DropEditor, files, target,
+      (file) => uploadAttachment(documentId, file, true).then((a) => a.url))
+      .then((failed) => {
+        if (failed.length > 0) setDropError(`업로드하지 못한 파일: ${failed.join(", ")}`);
+      });
+  };
+
+  return (
+    <Box className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}>
+      {dropError && <Alert color="red" mb="xs" withCloseButton onClose={() => setDropError(null)}>{dropError}</Alert>}
+      {/* 블록 손잡이(⠿) 메뉴는 노션식 메뉴로 교체, 표는 행·열 손잡이만 두고 칸 모서리 메뉴 버튼은 숨김 */}
+      <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false}>
+        <SideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
+        <TableHandlesController tableCellHandle={HiddenCellButton} />
+      </BlockNoteView>
+    </Box>
+  );
 }

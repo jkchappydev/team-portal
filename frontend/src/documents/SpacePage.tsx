@@ -1,55 +1,66 @@
 import { useState } from "react";
-import { Alert, Button, Group, Modal, Stack, Table, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Loader, Menu } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
-import { createDocument, listDocuments } from "../api/documents";
-import { deleteSpace, listSpaces, updateSpace } from "../api/spaces";
-import { formatDateTime } from "./format";
+import { changeDocumentIcon, getDocument, renameDocument } from "../api/documents";
+import { deleteSpace, listSpaces } from "../api/spaces";
+import { useCurrentUser } from "../user/currentUser";
+import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
+import { ChildPages } from "./ChildPages";
+import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
+import { DeleteSpaceModal } from "./DeleteSpaceModal";
+import { ExportModal } from "./export/ExportModal";
+import { HistoryModal } from "./history/HistoryModal";
+import { PageView } from "./PageView";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+// 프로젝트 화면: 프로젝트 본문 페이지를 노션처럼 바로 편집하고 아래에 하위 페이지 목록
 export function SpacePage() {
   const spaceId = Number(useParams().spaceId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const { user } = useCurrentUser();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [showingHistory, setShowingHistory] = useState(false);
 
   const { data: spaces, isPending: spacesPending, error: spacesError } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
   const space = spaces?.find((s) => s.id === spaceId);
-  const {
-    data: documents = [],
-    error: documentsError,
-    isPending: documentsPending,
-  } = useQuery({
-    queryKey: ["documents", spaceId],
-    queryFn: () => listDocuments(spaceId),
-    enabled: Number.isInteger(spaceId),
-  });
+  const homeId = space?.homeDocumentId ?? null;
 
-  const create = useMutation({
-    mutationFn: () => createDocument(spaceId),
-    onSuccess: (doc) => {
-      queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
+  const { data: home, error: homeError } = useQuery({
+    queryKey: ["document", homeId],
+    queryFn: () => getDocument(homeId as number),
+    enabled: homeId !== null,
+  });
+  // 열어 본 페이지는 수정 알림에서 제외
+  useMarkDocumentRead(homeId);
+
+  // 본문 제목 변경은 서버에서 프로젝트 이름에도 반영됨
+  const rename = useMutation({
+    mutationFn: (next: string) => renameDocument(homeId as number, next),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(["document", homeId], detail);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      navigate(`/documents/${doc.id}`);
+      queryClient.invalidateQueries({ queryKey: ["search"] });
     },
   });
 
-  const update = useMutation({
-    mutationFn: () => updateSpace(spaceId, name.trim(), description.trim() || undefined),
-    onSuccess: () => {
+  // 본문 페이지 아이콘이 곧 프로젝트 아이콘이므로 사이드바 프로젝트 목록도 갱신
+  const changeIcon = useMutation({
+    mutationFn: (icon: string | null) => changeDocumentIcon(homeId as number, icon),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(["document", homeId], detail);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["search"] });
     },
   });
 
-  // 공간 삭제 후 근무 상황표로 이동, 사이드바·휴지통 목록 갱신
+  // 프로젝트 삭제 후 근무 상황표로 이동, 사이드바·휴지통 목록 갱신
   const remove = useMutation({
     mutationFn: () => deleteSpace(spaceId),
     onSuccess: () => {
@@ -61,101 +72,50 @@ export function SpacePage() {
   });
 
   if (spacesError) {
-    return <Alert color="red">공간 정보를 불러오지 못했습니다.</Alert>;
+    return <Alert color="red">페이지 정보를 불러오지 못했습니다.</Alert>;
   }
   if (!spacesPending && !space) {
-    return <Alert color="gray">삭제되었거나 없는 공간입니다.</Alert>;
+    return <Alert color="gray">삭제되었거나 없는 페이지입니다.</Alert>;
   }
-
-  const openEdit = () => {
-    setName(space?.name ?? "");
-    setDescription(space?.description ?? "");
-    update.reset();
-    setEditing(true);
-  };
+  if (homeError) {
+    return <Alert color="red">{errorMessage(homeError, "페이지 본문을 불러오지 못했습니다.")}</Alert>;
+  }
+  if (!space || !home || !user) {
+    return <Loader size="sm" />;
+  }
 
   return (
     <>
-      <Group justify="space-between" align="flex-start" mb="md">
-        <Stack gap={2}>
-          <Title order={3}>{space?.name ?? ""}</Title>
-          {space?.description && <Text c="dimmed" size="sm">{space.description}</Text>}
-        </Stack>
-        <Group>
-          <Button variant="default" onClick={openEdit} disabled={!space}>공간 수정</Button>
-          <Button variant="default" color="red" onClick={() => setConfirmDelete(true)} disabled={!space}>
-            공간 삭제
-          </Button>
-          <Button onClick={() => create.mutate()} loading={create.isPending}>+ 새 문서</Button>
-        </Group>
-      </Group>
-      {create.error && <Alert color="red" mb="sm">{errorMessage(create.error, "문서를 만들지 못했습니다.")}</Alert>}
-      {documentsError && <Alert color="red" mb="sm">문서 목록을 불러오지 못했습니다.</Alert>}
-      {!documentsPending && documents.length === 0 ? (
-        <Text c="dimmed">문서가 없습니다. "+ 새 문서"로 첫 문서를 만들어 보세요.</Text>
-      ) : (
-        <Table highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>제목</Table.Th>
-              <Table.Th w={160}>마지막 수정자</Table.Th>
-              <Table.Th w={180}>수정 시각</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {documents.map((doc) => (
-              <Table.Tr key={doc.id}>
-                <Table.Td>
-                  <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
-                </Table.Td>
-                <Table.Td>{doc.updatedByName ?? "-"}</Table.Td>
-                <Table.Td>{formatDateTime(doc.updatedAt)}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      )}
-
-      <Modal opened={editing} onClose={() => setEditing(false)} title="공간 수정" centered>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (name.trim()) update.mutate();
-          }}
-        >
-          <Stack>
-            <TextInput
-              label="공간 이름"
-              maxLength={100}
-              required
-              value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
-              data-autofocus
-            />
-            <Textarea
-              label="설명"
-              maxLength={500}
-              autosize
-              minRows={2}
-              value={description}
-              onChange={(e) => setDescription(e.currentTarget.value)}
-            />
-            {update.error && <Alert color="red">{errorMessage(update.error, "공간을 수정하지 못했습니다.")}</Alert>}
-            <Button type="submit" loading={update.isPending}>저장</Button>
-          </Stack>
-        </form>
-      </Modal>
-
-      <Modal opened={confirmDelete} onClose={() => setConfirmDelete(false)} title="공간 삭제" centered>
-        <Stack>
-          <Text size="sm">"{space?.name}" 공간을 삭제할까요? 휴지통에서 복원할 수 있습니다.</Text>
-          {remove.error && <Alert color="red">{errorMessage(remove.error, "공간을 삭제하지 못했습니다.")}</Alert>}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirmDelete(false)}>취소</Button>
-            <Button color="red" loading={remove.isPending} onClick={() => remove.mutate()}>삭제</Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <PageView
+        doc={home}
+        user={user}
+        menuItems={
+          <>
+            <CopyLinkMenuItem path={`/spaces/${spaceId}`} />
+            <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
+            <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
+            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>페이지 삭제</Menu.Item>
+          </>
+        }
+        onRename={(title) => rename.mutate(title)}
+        renameError={
+          rename.error ? errorMessage(rename.error, "페이지 이름을 저장하지 못했습니다.")
+            : changeIcon.error ? errorMessage(changeIcon.error, "아이콘을 저장하지 못했습니다.")
+              : null
+        }
+        onChangeIcon={(icon) => changeIcon.mutate(icon)}
+        footer={<ChildPages spaceId={spaceId} parentId={null} />}
+      />
+      <ExportModal opened={exporting} documentId={home.id} title={space.name} onClose={() => setExporting(false)} />
+      <HistoryModal opened={showingHistory} documentId={home.id} title={space.name} onClose={() => setShowingHistory(false)} />
+      <DeleteSpaceModal
+        opened={confirmDelete}
+        name={space.name}
+        pending={remove.isPending}
+        error={remove.error ? errorMessage(remove.error, "페이지를 삭제하지 못했습니다.") : null}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => remove.mutate()}
+      />
     </>
   );
 }

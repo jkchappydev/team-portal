@@ -3,6 +3,8 @@ package dev.jkchappy.portal.document;
 import dev.jkchappy.portal.common.ApiResponse;
 import dev.jkchappy.portal.document.dto.DocumentCreateRequest;
 import dev.jkchappy.portal.document.dto.DocumentDetail;
+import dev.jkchappy.portal.document.dto.DocumentIconRequest;
+import dev.jkchappy.portal.document.dto.DocumentMoveRequest;
 import dev.jkchappy.portal.document.dto.DocumentSummary;
 import dev.jkchappy.portal.document.dto.DocumentTitleRequest;
 import dev.jkchappy.portal.member.CurrentUser;
@@ -33,7 +35,8 @@ public class DocumentController {
   public ApiResponse<DocumentSummary> create(@PathVariable Long spaceId,
     @Valid @RequestBody(required = false) DocumentCreateRequest request, @CurrentUser Long userId) {
     String title = request == null ? null : request.title();
-    return ApiResponse.ok(documentService.create(spaceId, title, userId));
+    Long parentId = request == null ? null : request.parentId();
+    return ApiResponse.ok(documentService.create(spaceId, title, parentId, userId));
   }
 
   @GetMapping("/api/documents/search")
@@ -50,6 +53,18 @@ public class DocumentController {
   public ApiResponse<DocumentDetail> rename(@PathVariable Long id,
     @Valid @RequestBody DocumentTitleRequest request, @CurrentUser Long userId) {
     return ApiResponse.ok(documentService.rename(id, request.title(), userId));
+  }
+
+  @PatchMapping("/api/documents/{id}/parent")
+  public ApiResponse<DocumentDetail> move(@PathVariable Long id,
+    @Valid @RequestBody DocumentMoveRequest request, @CurrentUser Long userId) {
+    return ApiResponse.ok(documentService.move(id, request.parentId(), request.index()));
+  }
+
+  @PatchMapping("/api/documents/{id}/icon")
+  public ApiResponse<DocumentDetail> changeIcon(@PathVariable Long id,
+    @Valid @RequestBody DocumentIconRequest request, @CurrentUser Long userId) {
+    return ApiResponse.ok(documentService.changeIcon(id, request.icon(), userId));
   }
 
   @DeleteMapping("/api/documents/{id}")

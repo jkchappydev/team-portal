@@ -1,42 +1,92 @@
-import { Alert, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Button, Group, Paper, Stack, Text, Title, Tooltip } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { getTrash, restoreDocument } from "../api/documents";
 import type { TrashItemDto } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { formatDateTime } from "./format";
+import { pageIcon } from "./pageIcon";
 
-type Kind = "space" | "document";
+// 하위 페이지 한 단계당 들여쓰기 폭
+const INDENT = 20;
 
-interface TrashListProps {
-  title: string;
-  items: TrashItemDto[];
-  pendingId: number | null;
-  onRestore: (id: number) => void;
+function iconOf(item: TrashItemDto): string {
+  return pageIcon(item.icon);
 }
 
-function TrashList({ title, items, pendingId, onRestore }: TrashListProps) {
+// 복원 대상 (하위 페이지는 페이지 복원 API로 위치만 옮김)
+interface RestoreTarget {
+  kind: "space" | "document";
+  id: number;
+}
+
+interface TrashRowProps {
+  item: TrashItemDto;
+  pending: RestoreTarget | undefined;
+  onRestore: (target: RestoreTarget) => void;
+}
+
+// 삭제된 페이지 한 줄과 그 아래 함께 숨겨진 하위 페이지들
+// 하위만 복원하면 가장 가까운 살아 있는 상위 페이지 아래로 옮겨짐 (그 하위도 함께)
+function TrashRow({ item, pending, onRestore }: TrashRowProps) {
+  const isPending = (kind: RestoreTarget["kind"], id: number) => pending?.kind === kind && pending.id === id;
+  // 삭제된 프로젝트 안의 페이지는 둘 곳이 없어 프로젝트 복원이 먼저
+  const childBlocked = item.kind === "space";
   return (
-    <Paper withBorder p="sm" radius="md">
-      <Title order={5} mb="xs">{title}</Title>
-      {items.length === 0 ? (
-        <Text size="sm" c="dimmed">삭제된 항목이 없습니다.</Text>
-      ) : (
-        <Stack gap={6}>
-          {items.map((item) => (
-            <Group key={item.id} justify="space-between" wrap="nowrap">
-              <Stack gap={0} style={{ minWidth: 0 }}>
-                <Text size="sm" truncate>{item.name}</Text>
-                <Text size="xs" c="dimmed">삭제 {formatDateTime(item.deletedAt)}</Text>
-              </Stack>
-              <Button size="compact-sm" variant="light" loading={pendingId === item.id} onClick={() => onRestore(item.id)}>
+    <Box>
+      <Group justify="space-between" wrap="nowrap">
+        <Stack gap={0} style={{ minWidth: 0 }}>
+          <Text size="sm" truncate>
+            <span aria-hidden style={{ marginRight: 6 }}>{iconOf(item)}</span>
+            <span>{item.name}</span>
+          </Text>
+          <Text size="xs" c="dimmed">삭제 {formatDateTime(item.deletedAt)}</Text>
+        </Stack>
+        <Button
+          size="compact-sm"
+          variant="light"
+          loading={isPending(item.kind, item.id)}
+          onClick={() => onRestore({ kind: item.kind, id: item.id })}
+        >
+          복원
+        </Button>
+      </Group>
+      {item.children.map((child) => (
+        <Group
+          key={child.id}
+          justify="space-between"
+          wrap="nowrap"
+          py={2}
+          pl={child.depth * INDENT}
+          data-testid={`trash-child-${child.id}`}
+          data-depth={child.depth}
+        >
+          <Text size="sm" c="dimmed" truncate>
+            <span aria-hidden style={{ marginRight: 6 }}>{pageIcon(child.icon)}</span>
+            <span>{child.title}</span>
+          </Text>
+          <Tooltip
+            label={childBlocked ? "상위 페이지를 먼저 복원하세요" : "이 페이지만 꺼내 가장 가까운 상위 페이지 아래로 복원"}
+            withArrow
+            openDelay={300}
+          >
+            {/* 비활성 버튼에도 툴팁이 뜨도록 감싸기 */}
+            <span>
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                aria-label={`${child.title} 복원`}
+                disabled={childBlocked}
+                loading={isPending("document", child.id)}
+                onClick={() => onRestore({ kind: "document", id: child.id })}
+              >
                 복원
               </Button>
-            </Group>
-          ))}
-        </Stack>
-      )}
-    </Paper>
+            </span>
+          </Tooltip>
+        </Group>
+      ))}
+    </Box>
   );
 }
 
@@ -46,8 +96,7 @@ export function TrashPage() {
 
   // 복원 후 휴지통·사이드바·문서 목록 갱신
   const restore = useMutation({
-    mutationFn: ({ kind, id }: { kind: Kind; id: number }) =>
-      kind === "space" ? restoreSpace(id) : restoreDocument(id),
+    mutationFn: (target: RestoreTarget) => (target.kind === "space" ? restoreSpace(target.id) : restoreDocument(target.id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trash"] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -56,6 +105,7 @@ export function TrashPage() {
     },
   });
   const pending = restore.isPending ? restore.variables : undefined;
+  const items = data?.items ?? [];
 
   return (
     <>
@@ -66,20 +116,22 @@ export function TrashPage() {
           {restore.error instanceof ApiError ? restore.error.message : "복원하지 못했습니다."}
         </Alert>
       )}
-      <Stack>
-        <TrashList
-          title="공간"
-          items={data?.spaces ?? []}
-          pendingId={pending?.kind === "space" ? pending.id : null}
-          onRestore={(id) => restore.mutate({ kind: "space", id })}
-        />
-        <TrashList
-          title="문서"
-          items={data?.documents ?? []}
-          pendingId={pending?.kind === "document" ? pending.id : null}
-          onRestore={(id) => restore.mutate({ kind: "document", id })}
-        />
-      </Stack>
+      <Paper withBorder p="sm" radius="md">
+        {items.length === 0 ? (
+          <Text size="sm" c="dimmed">삭제된 페이지가 없습니다.</Text>
+        ) : (
+          <Stack gap="sm">
+            {items.map((item) => (
+              <TrashRow
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                pending={pending}
+                onRestore={(target) => restore.mutate(target)}
+              />
+            ))}
+          </Stack>
+        )}
+      </Paper>
     </>
   );
 }

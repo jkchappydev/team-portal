@@ -4,6 +4,8 @@ import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.dto.DocumentDetail;
 import dev.jkchappy.portal.document.dto.DocumentSummary;
+import dev.jkchappy.portal.document.dto.PageRef;
+import dev.jkchappy.portal.document.dto.TrashChild;
 import dev.jkchappy.portal.document.dto.TrashItem;
 import dev.jkchappy.portal.document.dto.TrashResponse;
 import dev.jkchappy.portal.member.MemberService;
@@ -13,10 +15,16 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,14 +43,38 @@ public class DocumentService {
   private final DocumentSnapshotRepository snapshotRepository;
   private final Clock clock;
 
-  // 문서 자신이나 소속 공간이 삭제됐으면 없는 문서로 취급
+  // 하위 페이지 최대 깊이 (순환 데이터 방어)
+  private static final int MAX_DEPTH = 50;
+
+  // 상위 페이지가 없는(프로젝트 최상위) 페이지를 묶는 키
+  private static final Long ROOT_KEY = 0L;
+
+  // 페이지 자신이나 상위 페이지, 소속 프로젝트가 삭제됐으면 없는 페이지로 취급
   @Transactional(readOnly = true)
   public Document getLiveDocument(Long id) {
     Document doc = documentRepository.findById(id)
       .filter(d -> !d.isDeleted())
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     getLiveSpace(doc.getSpaceId());
+    ancestors(doc).forEach(ancestor -> {
+      if (ancestor.isDeleted()) {
+        throw new BusinessException(ErrorCode.NOT_FOUND);
+      }
+    });
     return doc;
+  }
+
+  // 바로 위 페이지부터 최상위까지 (순환 데이터 방어로 최대 깊이 제한)
+  private List<Document> ancestors(Document doc) {
+    List<Document> result = new ArrayList<>();
+    Long parentId = doc.getParentId();
+    while (parentId != null && result.size() < MAX_DEPTH) {
+      Document parent = documentRepository.findById(parentId)
+        .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+      result.add(parent);
+      parentId = parent.getParentId();
+    }
+    return result;
   }
 
   @Transactional(readOnly = true)
@@ -52,43 +84,200 @@ public class DocumentService {
     Map<Long, String> names = memberService.findNamesByIds(
       new HashSet<>(List.of(doc.getCreatedBy(), doc.getUpdatedBy())));
     return DocumentDetail.from(doc, space.getName(),
-      names.getOrDefault(doc.getCreatedBy(), ""), names.getOrDefault(doc.getUpdatedBy(), ""));
+      names.getOrDefault(doc.getCreatedBy(), ""), names.getOrDefault(doc.getUpdatedBy(), ""),
+      space.isHomeDocument(doc.getId()),
+      ancestors(doc).reversed().stream().map(a -> new PageRef(a.getId(), a.getTitle(), a.getIcon())).toList());
   }
 
+  // 프로젝트의 전체 페이지 트리 (본문 페이지 제외, 삭제된 페이지의 하위 페이지도 제외)
   @Transactional(readOnly = true)
   public List<DocumentSummary> findBySpace(Long spaceId) {
-    getLiveSpace(spaceId);
-    return toSummaries(
-      documentRepository.findBySpaceIdAndDeletedAtIsNullOrderByUpdatedAtDesc(spaceId));
+    Space space = getLiveSpace(spaceId);
+    List<Document> live =
+      documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(spaceId).stream()
+        .filter(doc -> !space.isHomeDocument(doc.getId()))
+        .toList();
+    Map<Long, Document> byId = live.stream().collect(Collectors.toMap(Document::getId, d -> d));
+    return toSummaries(live.stream().filter(doc -> reachable(doc, byId)).toList());
+  }
+
+  // 상위 페이지를 따라 올라가 모두 살아 있는 목록 안에 있으면 표시 대상
+  private boolean reachable(Document doc, Map<Long, Document> byId) {
+    Long parentId = doc.getParentId();
+    int depth = 0;
+    while (parentId != null) {
+      Document parent = byId.get(parentId);
+      if (parent == null || ++depth > MAX_DEPTH) {
+        return false;
+      }
+      parentId = parent.getParentId();
+    }
+    return true;
   }
 
   @Transactional
-  public DocumentSummary create(Long spaceId, String title, Long userId) {
+  public DocumentSummary create(Long spaceId, String title, Long parentId, Long userId) {
     Space space = getLiveSpace(spaceId);
     // 비어 있는 제목은 기본 제목 사용
     String resolved = title == null || title.isBlank() ? Document.DEFAULT_TITLE : title.trim();
-    Document saved = documentRepository.save(Document.create(spaceId, resolved, userId));
+    Document saved = placeAndSave(space, Document.create(spaceId, resolved, userId), parentId);
     Map<Long, String> names = memberService.findNamesByIds(Set.of(userId));
     return DocumentSummary.from(saved, space.getName(), names.getOrDefault(userId, ""));
+  }
+
+  // 사이드바에 끌어다 놓은 파일 항목 생성 (파일 본체는 호출한 쪽에서 업로드 후 연결)
+  @Transactional
+  public Document createFile(Long spaceId, String fileName, Long parentId, Long userId) {
+    Space space = getLiveSpace(spaceId);
+    return placeAndSave(space, Document.createFile(spaceId, fileName, userId), parentId);
+  }
+
+  // 파일 항목에 업로드한 파일 본체 연결
+  @Transactional
+  public void attachFile(Long id, Long attachmentId) {
+    getLiveDocument(id).attachFile(attachmentId);
+  }
+
+  @Transactional(readOnly = true)
+  public DocumentSummary getSummary(Long id) {
+    return toSummaries(List.of(getLiveDocument(id))).get(0);
+  }
+
+  // 최상위 본문 아래는 최상위, 그 외에는 같은 최상위 페이지 안의 살아 있는 페이지 아래에 두고 맨 아래 순서로 저장
+  private Document placeAndSave(Space space, Document doc, Long parentId) {
+    if (parentId != null && !space.isHomeDocument(parentId)) {
+      checkParent(getLiveDocument(parentId), space.getId());
+      doc.placeUnder(parentId);
+    }
+    doc.changeSortOrder(siblingsOf(space.getId(), doc.getParentId(), null).stream()
+      .mapToInt(Document::getSortOrder).max().orElse(-1) + 1);
+    return documentRepository.save(doc);
+  }
+
+  // 상위가 될 수 있는 것은 같은 최상위 페이지 안의 페이지뿐 (파일 아래에는 둘 수 없음)
+  private void checkParent(Document parent, Long spaceId) {
+    if (!parent.getSpaceId().equals(spaceId)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "다른 최상위 페이지 안으로는 넣을 수 없습니다.");
+    }
+    if (parent.isFile()) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "파일 안에는 넣을 수 없습니다.");
+    }
   }
 
   // 제목 수정 시 수정자와 수정 시각 갱신
   @Transactional
   public DocumentDetail rename(Long id, String title, Long userId) {
-    getLiveDocument(id).rename(title.trim(), userId);
+    Document doc = getLiveDocument(id);
+    String resolved = title.trim();
+    doc.rename(resolved, userId);
+    // 본문 페이지 제목은 프로젝트 이름과 같게 유지
+    Space space = getLiveSpace(doc.getSpaceId());
+    if (space.isHomeDocument(id)) {
+      space.change(resolved, space.getDescription());
+    }
     return getDetail(id);
   }
 
+  // 페이지를 다른 페이지 아래(또는 프로젝트 최상위)의 index 위치로 이동, 하위 페이지는 함께 따라옴
+  // index가 없으면 새 상위 페이지 안의 맨 아래
+  @Transactional
+  public DocumentDetail move(Long id, Long parentId, Integer index) {
+    Document doc = getLiveDocument(id);
+    Space space = getLiveSpace(doc.getSpaceId());
+    if (space.isHomeDocument(id)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "최상위 페이지 본문은 옮길 수 없습니다.");
+    }
+    // 최상위 페이지 본문 아래로 옮기면 최상위
+    Long resolved = parentId == null || space.isHomeDocument(parentId) ? null : parentId;
+    if (resolved != null) {
+      if (resolved.equals(id)) {
+        throw new BusinessException(ErrorCode.INVALID_INPUT, "자기 자신 아래로는 옮길 수 없습니다.");
+      }
+      Document parent = getLiveDocument(resolved);
+      checkParent(parent, doc.getSpaceId());
+      // 새 상위의 경로에 자신이 있으면 자기 하위 페이지 안으로 옮기는 것이라 순환이 생김
+      if (ancestors(parent).stream().anyMatch(a -> a.getId().equals(id))) {
+        throw new BusinessException(ErrorCode.INVALID_INPUT, "하위 페이지 안으로는 옮길 수 없습니다.");
+      }
+    }
+    doc.placeUnder(resolved);
+    // 새 상위 페이지 안의 형제들 사이에 끼워 넣고 0부터 다시 번호를 매김
+    List<Document> siblings = new ArrayList<>(siblingsOf(doc.getSpaceId(), resolved, id));
+    int position = index == null ? siblings.size() : Math.clamp(index, 0, siblings.size());
+    siblings.add(position, doc);
+    for (int i = 0; i < siblings.size(); i++) {
+      siblings.get(i).changeSortOrder(i);
+    }
+    return getDetail(id);
+  }
+
+  // 같은 상위 페이지 아래의 살아 있는 페이지를 표시 순서대로 (프로젝트 본문과 excludedId 제외)
+  private List<Document> siblingsOf(Long spaceId, Long parentId, Long excludedId) {
+    Space space = getLiveSpace(spaceId);
+    return documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(spaceId)
+      .stream()
+      .filter(d -> Objects.equals(d.getParentId(), parentId))
+      .filter(d -> !space.isHomeDocument(d.getId()) && !d.getId().equals(excludedId))
+      .toList();
+  }
+
+  // 아이콘 변경 (비어 있으면 제거)
+  @Transactional
+  public DocumentDetail changeIcon(Long id, String icon, Long userId) {
+    Document doc = getLiveDocument(id);
+    String resolved = icon == null || icon.isBlank() ? null : icon.trim();
+    doc.changeIcon(resolved, userId);
+    return getDetail(id);
+  }
+
+  // 프로젝트 본문 페이지는 프로젝트 삭제로만 지울 수 있음
   @Transactional
   public void delete(Long id) {
-    getLiveDocument(id).softDelete();
+    Document doc = getLiveDocument(id);
+    if (getLiveSpace(doc.getSpaceId()).isHomeDocument(id)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "최상위 페이지 본문은 최상위 페이지를 삭제해야 지울 수 있습니다.");
+    }
+    doc.softDelete();
   }
 
   @Transactional
   public void restore(Long id) {
     Document doc = documentRepository.findById(id)
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    // 프로젝트가 삭제된 상태면 페이지를 둘 곳이 없으므로 프로젝트 복원이 먼저
+    Space space = spaceRepository.findById(doc.getSpaceId())
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    if (space.isDeleted()) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "최상위 페이지를 먼저 복원하세요.");
+    }
+    // 삭제된 페이지면 되살리고, 상위 삭제로 함께 숨겨진 페이지면 위치만 옮김
     doc.restore();
+    relocateUnderLiveAncestor(doc);
+  }
+
+  // 상위 경로에 삭제된 페이지가 있으면 그 위에서 가장 가까운 살아 있는 페이지 아래로 옮김
+  // (모두 삭제됐거나 상위를 찾을 수 없으면 프로젝트 최상위, 하위 페이지는 그대로 따라옴)
+  private void relocateUnderLiveAncestor(Document doc) {
+    List<Document> chain = new ArrayList<>();
+    Long parentId = doc.getParentId();
+    while (parentId != null && chain.size() < MAX_DEPTH) {
+      Document parent = documentRepository.findById(parentId).orElse(null);
+      if (parent == null) {
+        doc.placeUnder(null);
+        return;
+      }
+      chain.add(parent);
+      parentId = parent.getParentId();
+    }
+    // 최상위부터 내려오며 처음 삭제된 페이지 바로 위가 새 상위
+    Long newParentId = null;
+    for (Document ancestor : chain.reversed()) {
+      if (ancestor.isDeleted()) {
+        doc.placeUnder(newParentId);
+        return;
+      }
+      newParentId = ancestor.getId();
+    }
   }
 
   // 협업 서버의 본문 저장, 마지막 스냅샷이 없거나 10분 이상 지났으면 스냅샷 추가
@@ -104,7 +293,7 @@ public class DocumentService {
       .map(last -> !last.getCreatedAt().plus(SNAPSHOT_INTERVAL).isAfter(now))
       .orElse(true);
     if (needSnapshot) {
-      snapshotRepository.save(DocumentSnapshot.create(id, state, now));
+      snapshotRepository.save(DocumentSnapshot.create(id, state, now, doc.getUpdatedBy(), SnapshotReason.AUTO));
     }
   }
 
@@ -115,24 +304,69 @@ public class DocumentService {
     if (query.length() < MIN_QUERY_LENGTH) {
       return List.of();
     }
-    return toSummaries(documentRepository.search("%" + escapeLike(query) + "%"));
+    // 상위 페이지가 삭제된 페이지는 검색 결과에서 제외
+    return summarizeVisible(documentRepository.search("%" + escapeLike(query) + "%"));
   }
 
+  // 삭제된 프로젝트와 페이지를 최근 삭제순으로 합치고, 각 항목 아래에 함께 숨겨진 하위 페이지를 붙임
   @Transactional(readOnly = true)
   public TrashResponse findTrash() {
-    List<TrashItem> spaces = spaceRepository.findByDeletedAtIsNotNullOrderByDeletedAtDesc().stream()
-      .map(s -> new TrashItem(s.getId(), s.getName(), s.getDeletedAt().atOffset(ZoneOffset.UTC)))
-      .toList();
-    List<TrashItem> documents = documentRepository.findTrashed().stream()
-      .map(d -> new TrashItem(d.getId(), d.getTitle(), d.getDeletedAt().atOffset(ZoneOffset.UTC)))
-      .toList();
-    return new TrashResponse(spaces, documents);
+    // 프로젝트별 살아 있는 페이지를 상위 페이지 ID로 묶어 한 번만 조회
+    Map<Long, Map<Long, List<Document>>> childrenBySpace = new HashMap<>();
+    Function<Long, Map<Long, List<Document>>> childrenOf = spaceId ->
+      childrenBySpace.computeIfAbsent(spaceId, id -> documentRepository
+        .findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(id).stream()
+        .collect(Collectors.groupingBy(d -> d.getParentId() == null ? ROOT_KEY : d.getParentId(),
+          LinkedHashMap::new, Collectors.toList())));
+
+    List<TrashItem> items = new ArrayList<>();
+    for (Space space : spaceRepository.findByDeletedAtIsNotNullOrderByDeletedAtDesc()) {
+      Long homeId = space.getHomeDocumentId();
+      String icon = homeId == null ? null
+        : documentRepository.findById(homeId).map(Document::getIcon).orElse(null);
+      List<TrashChild> children = new ArrayList<>();
+      // 프로젝트 본문 페이지는 프로젝트 자신이므로 하위 목록에서 제외
+      collectChildren(childrenOf.apply(space.getId()), ROOT_KEY, homeId, 1, children);
+      items.add(new TrashItem("space", space.getId(), space.getName(), icon,
+        space.getDeletedAt().atOffset(ZoneOffset.UTC), children));
+    }
+    for (Document doc : documentRepository.findTrashed()) {
+      List<TrashChild> children = new ArrayList<>();
+      collectChildren(childrenOf.apply(doc.getSpaceId()), doc.getId(), null, 1, children);
+      items.add(new TrashItem("document", doc.getId(), doc.getTitle(), doc.getIcon(),
+        doc.getDeletedAt().atOffset(ZoneOffset.UTC), children));
+    }
+    items.sort(Comparator.comparing(TrashItem::deletedAt).reversed());
+    return new TrashResponse(items);
+  }
+
+  // 상위 페이지 아래를 깊이 우선으로 펼침 (순환 데이터 방어로 최대 깊이 제한)
+  private void collectChildren(Map<Long, List<Document>> byParent, Long parentKey, Long excludedId,
+    int depth, List<TrashChild> result) {
+    if (depth > MAX_DEPTH) {
+      return;
+    }
+    for (Document child : byParent.getOrDefault(parentKey, List.of())) {
+      if (child.getId().equals(excludedId)) {
+        continue;
+      }
+      result.add(new TrashChild(child.getId(), child.getTitle(), child.getIcon(), depth));
+      collectChildren(byParent, child.getId(), excludedId, depth + 1, result);
+    }
   }
 
   private Space getLiveSpace(Long spaceId) {
     return spaceRepository.findById(spaceId)
       .filter(s -> !s.isDeleted())
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+  }
+
+  // 상위 페이지가 삭제돼 숨겨진 문서를 빼고 요약 목록으로 변환
+  @Transactional(readOnly = true)
+  public List<DocumentSummary> summarizeVisible(List<Document> docs) {
+    return toSummaries(docs.stream()
+      .filter(doc -> ancestors(doc).stream().noneMatch(Document::isDeleted))
+      .toList());
   }
 
   // 공간명과 수정자 이름을 한 번에 조회해 요약 목록 생성

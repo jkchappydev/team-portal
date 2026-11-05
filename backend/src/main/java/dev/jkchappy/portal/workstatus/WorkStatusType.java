@@ -7,7 +7,7 @@ import lombok.Getter;
 public enum WorkStatusType {
   LEAVE("연차"),
   HALF_DAY("반차"),
-  EARLY_LEAVE("조퇴"),
+  QUARTER_DAY("반반차"),
   BUSINESS_TRIP("출장"),
   OUTSIDE_WORK("외근"),
   OTHER(null);

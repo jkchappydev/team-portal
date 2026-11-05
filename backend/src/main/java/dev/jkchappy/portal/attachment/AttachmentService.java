@@ -14,8 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.http.InvalidMediaTypeException;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -25,10 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
-
-  private static final int MAX_NAME_LENGTH = 255;
-  private static final int MAX_CONTENT_TYPE_LENGTH = 150;
-  private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
   private final AttachmentRepository attachmentRepository;
   private final FileStorage fileStorage;
@@ -56,8 +50,8 @@ public class AttachmentService {
     Attachment saved;
     try {
       saved = attachmentRepository.save(Attachment.create(documentId,
-        sanitizeName(file.getOriginalFilename()), storedName, resolveContentType(file),
-        file.getSize(), inline, userId));
+        UploadFiles.sanitizeName(file.getOriginalFilename()), storedName,
+        UploadFiles.resolveContentType(file), file.getSize(), inline, userId));
     } catch (RuntimeException e) {
       fileStorage.delete(storedName);
       throw e;
@@ -111,29 +105,5 @@ public class AttachmentService {
         }
       }
     });
-  }
-
-  // 경로 구분자를 제거하고 길이 제한 적용
-  private String sanitizeName(String name) {
-    String base = name == null ? "" : name.replace('\\', '/');
-    base = base.substring(base.lastIndexOf('/') + 1).trim();
-    if (base.isEmpty()) {
-      base = "file";
-    }
-    return base.length() > MAX_NAME_LENGTH ? base.substring(0, MAX_NAME_LENGTH) : base;
-  }
-
-  private String resolveContentType(MultipartFile file) {
-    String type = file.getContentType();
-    if (type == null || type.isBlank()) {
-      return DEFAULT_CONTENT_TYPE;
-    }
-    // 잘못된 형식이거나 컬럼 길이를 넘는 타입은 기본 타입으로 대체
-    try {
-      String parsed = MediaType.parseMediaType(type).toString();
-      return parsed.length() > MAX_CONTENT_TYPE_LENGTH ? DEFAULT_CONTENT_TYPE : parsed;
-    } catch (InvalidMediaTypeException e) {
-      return DEFAULT_CONTENT_TYPE;
-    }
   }
 }

@@ -1,6 +1,6 @@
 import { apiFetch } from "./client";
 
-export type WorkStatusType = "LEAVE" | "HALF_DAY" | "EARLY_LEAVE" | "BUSINESS_TRIP" | "OUTSIDE_WORK" | "OTHER";
+export type WorkStatusType = "LEAVE" | "HALF_DAY" | "QUARTER_DAY" | "BUSINESS_TRIP" | "OUTSIDE_WORK" | "OTHER";
 export type HalfDayPeriod = "AM" | "PM";
 
 export interface WorkStatusDto {

@@ -15,7 +15,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 근무 상황 (연차/반차/조퇴/출장/외근/기타)
+// 근무 상황 (연차/반차/반반차/출장/외근/기타)
 @Entity
 @Table(name = "work_status")
 @Getter
@@ -82,9 +82,9 @@ public class WorkStatus {
     this.type = type;
     this.startDate = startDate;
     this.endDate = endDate;
-    this.halfDayPeriod = type == WorkStatusType.HALF_DAY ? halfDayPeriod : null;
-    boolean usesTime = type == WorkStatusType.EARLY_LEAVE || type == WorkStatusType.OUTSIDE_WORK
-      || type == WorkStatusType.OTHER;
+    boolean usesPeriod = type == WorkStatusType.HALF_DAY || type == WorkStatusType.QUARTER_DAY;
+    this.halfDayPeriod = usesPeriod ? halfDayPeriod : null;
+    boolean usesTime = type == WorkStatusType.OUTSIDE_WORK || type == WorkStatusType.OTHER;
     this.startTime = usesTime ? startTime : null;
     this.endTime = usesTime ? endTime : null;
     this.place = type == WorkStatusType.BUSINESS_TRIP || type == WorkStatusType.OUTSIDE_WORK

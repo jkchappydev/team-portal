@@ -1,3 +1,379 @@
 body {
   margin: 0;
 }
+
+/* 편집기 블록 이동 핸들: 잡을 수 있다는 표시로 손바닥 커서 사용 */
+.bn-side-menu [draggable="true"] {
+  cursor: grab;
+}
+
+.bn-side-menu [draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* 노션식 목록 줄: 마우스를 올리면 옅게 강조 */
+.page-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 제목 위 "아이콘 추가": 제목 영역에 마우스를 올리거나 포커스·선택 창이 열렸을 때만 표시 */
+.page-title .icon-add {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.page-title:hover .icon-add,
+.page-title .icon-add:focus-visible,
+.page-title .icon-add[aria-expanded="true"] {
+  opacity: 1;
+}
+
+/* 사이드바 트리: 평소엔 페이지 아이콘, 마우스를 올리면 같은 자리에 펼치기 화살표 */
+.tree-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tree-slot-icon[data-hidden] {
+  visibility: hidden;
+}
+
+.tree-chevron {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--mantine-color-dimmed);
+  opacity: 0;
+}
+
+.tree-chevron[data-visible],
+.tree-chevron:focus-visible {
+  opacity: 1;
+}
+
+.tree-chevron:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 노션처럼 본문 글자는 제목과 같은 선에서 시작하고, 줄 드래그 핸들은 본문 왼쪽 바깥 여백에 표시 */
+.page-editor .bn-editor {
+  padding-inline-end: 0;
+}
+
+@media (min-width: 48em) {
+  .page-editor .bn-container {
+    margin-inline-start: -54px;
+  }
+}
+
+/* 좁은 화면은 바깥 여백이 없어 핸들 자리를 본문 안쪽에 유지 */
+@media (max-width: 47.99em) {
+  .page-editor .bn-editor {
+    padding-inline-start: 40px;
+  }
+}
+
+/* 연차 표의 이월·확정 칸: 직접 입력할 수 있는 칸임을 점선 테두리로 표시 */
+.balance-input input {
+  border: 1px dashed var(--mantine-color-default-border);
+  border-radius: 4px;
+  background: var(--mantine-color-body);
+  cursor: text;
+}
+
+.balance-input input:hover {
+  border-color: var(--mantine-color-dimmed);
+}
+
+.balance-input input:focus {
+  border-style: solid;
+  border-color: var(--mantine-primary-color-filled);
+  outline: none;
+}
+
+.balance-input[data-error] input,
+.balance-input input[data-error] {
+  border-color: var(--mantine-color-error);
+}
+
+/* 본문 아래 빈 곳까지 파일을 떨어뜨릴 수 있도록 편집 영역 최소 높이 확보 */
+.editor-drop-zone {
+  min-height: 160px;
+}
+
+/* 사이드바에서 끌고 있는 페이지를 넣을 줄 강조 */
+.mantine-NavLink-root[data-drop-target] {
+  background: var(--mantine-primary-color-light);
+  outline: 1px solid var(--mantine-primary-color-filled);
+  outline-offset: -1px;
+  border-radius: 4px;
+}
+
+
+/* 사이드바·하위 페이지 목록에서 놓일 줄 사이 위치를 편집기 블록 이동과 같은 2px 직선으로 표시 */
+.mantine-NavLink-root[data-drop-position],
+.page-row[data-drop-position],
+.tree-end-drop {
+  position: relative;
+}
+
+.mantine-NavLink-root:is([data-drop-position="before"], [data-drop-position="after"])::after,
+.page-row:is([data-drop-position="before"], [data-drop-position="after"])::after,
+.tree-end-drop[data-drop-position="before"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--mantine-primary-color-filled);
+  pointer-events: none;
+}
+
+.mantine-NavLink-root[data-drop-position="before"]::after,
+.page-row[data-drop-position="before"]::after,
+.tree-end-drop[data-drop-position="before"]::after {
+  top: -1px;
+}
+
+.mantine-NavLink-root[data-drop-position="after"]::after,
+.page-row[data-drop-position="after"]::after {
+  bottom: -1px;
+}
+
+/* 끌기용이 아닌 링크는 끌리지 않게 해 Edge "분할 화면에서 열기" 안내가 뜨지 않게 함 */
+a:not([draggable="true"]) {
+  -webkit-user-drag: none;
+}
+
+/* 하위 페이지 줄: 마우스를 올리면 왼쪽 바깥에 편집기 블록과 같은 ⠿ 끌기 손잡이 표시 */
+.child-page-row {
+  position: relative;
+  border-radius: 6px;
+}
+
+.child-page-handle {
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--mantine-color-dimmed);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.child-page-row:hover .child-page-handle {
+  opacity: 1;
+}
+
+.child-page-handle:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.child-page-handle:active {
+  cursor: grabbing;
+}
+
+
+/* 엑셀 미리보기 표: 칸 경계를 옅게 그리고 내용이 넘치면 줄바꿈 없이 자름 */
+.xlsx-preview {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.xlsx-preview td {
+  border: 1px solid var(--mantine-color-default-border);
+  padding: 2px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 워드 미리보기는 종이 모양 그대로 회색 바탕 위에 표시 */
+.docx-preview .docx-wrapper {
+  border-radius: 8px;
+}
+
+/* 텍스트 파일 미리보기 */
+.text-preview {
+  white-space: pre-wrap;
+  font-size: 13px;
+  padding: 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
+}
+
+/* 표 머리글 행·열은 노션처럼 옅은 배경 (직접 칠한 색이 있으면 그 색 우선) */
+.bn-editor [data-content-type="table"] th:not([data-background-color]),
+.bn-editor [data-content-type="table"] th[data-background-color="default"] {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 노션식 블록 메뉴의 켜고 끄는 줄: 다른 메뉴 항목과 같은 높이·여백, 스위치는 오른쪽 끝 */
+.menu-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--bn-colors-menu-text);
+}
+
+.menu-toggle-row:hover {
+  background-color: var(--bn-colors-hovered-background);
+}
+
+.menu-toggle-icon {
+  display: inline-flex;
+}
+
+.menu-toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+/* 색 견본은 정사각형 */
+
+.color-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--mantine-color-default-border);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.notion-color-menu {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* 편집기 글자색·배경색을 노션 팔레트로 통일 (BlockNote 기본 다크 색은 너무 진함)
+   편집기 스타일이 나중에 로드되므로 :root를 붙여 우선순위를 높임 */
+:root .bn-root {
+  --bn-colors-highlights-gray-text: #787774;
+  --bn-colors-highlights-gray-background: #f1f1ef;
+  --bn-colors-highlights-brown-text: #9f6b53;
+  --bn-colors-highlights-brown-background: #f4eeee;
+  --bn-colors-highlights-orange-text: #d9730d;
+  --bn-colors-highlights-orange-background: #fbecdd;
+  --bn-colors-highlights-yellow-text: #cb912f;
+  --bn-colors-highlights-yellow-background: #fbf3db;
+  --bn-colors-highlights-green-text: #448361;
+  --bn-colors-highlights-green-background: #edf3ec;
+  --bn-colors-highlights-blue-text: #337ea9;
+  --bn-colors-highlights-blue-background: #e7f3f8;
+  --bn-colors-highlights-purple-text: #9065b0;
+  --bn-colors-highlights-purple-background: #f6f3f9;
+  --bn-colors-highlights-pink-text: #c14c8a;
+  --bn-colors-highlights-pink-background: #fbf2f5;
+  --bn-colors-highlights-red-text: #d44c47;
+  --bn-colors-highlights-red-background: #fdebec;
+}
+
+:root .bn-root[data-color-scheme="dark"] {
+  --bn-colors-highlights-gray-text: #9b9b9b;
+  --bn-colors-highlights-gray-background: #2f2f2f;
+  --bn-colors-highlights-brown-text: #ba856f;
+  --bn-colors-highlights-brown-background: #4a3228;
+  --bn-colors-highlights-orange-text: #c77d48;
+  --bn-colors-highlights-orange-background: #5c3b23;
+  --bn-colors-highlights-yellow-text: #ca9849;
+  --bn-colors-highlights-yellow-background: #564328;
+  --bn-colors-highlights-green-text: #529e72;
+  --bn-colors-highlights-green-background: #243d30;
+  --bn-colors-highlights-blue-text: #5e87c9;
+  --bn-colors-highlights-blue-background: #143a4e;
+  --bn-colors-highlights-purple-text: #9d68d3;
+  --bn-colors-highlights-purple-background: #3c2d49;
+  --bn-colors-highlights-pink-text: #d15796;
+  --bn-colors-highlights-pink-background: #4e2c3c;
+  --bn-colors-highlights-red-text: #df5452;
+  --bn-colors-highlights-red-background: #522e2a;
+}
+
+/* 다크 모드 표 테두리는 노션처럼 옅은 회색 (기본 흰 테두리는 너무 도드라짐) */
+:root .bn-root[data-color-scheme="dark"] [data-content-type="table"] th,
+:root .bn-root[data-color-scheme="dark"] [data-content-type="table"] td {
+  border-color: #373737;
+}
+
+/* 표 행·열 손잡이를 노션처럼 칸 테두리선 위에 걸친 얇은 막대로
+   BlockNote는 행 손잡이 오른쪽 끝을 칸 왼쪽 테두리 안쪽 10px, 열 손잡이 아래쪽 끝을 위 테두리 안쪽 12px에 둠
+   막대(4×14px) 가운데가 테두리선에 오도록 행은 왼쪽 8px(10-4/2), 열은 위로 5px(12-14/2) 옮김
+   열 손잡이는 BlockNote가 행 손잡이를 90도 돌려 쓰므로(transform) 회전과 따로 적용되는 translate 사용 */
+:root .bn-mantine .bn-table-handle {
+  width: 4px;
+  min-width: 4px;
+  height: 14px;
+  min-height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  box-shadow: none;
+  background-color: var(--mantine-color-gray-5);
+  translate: -8px 0;
+}
+
+:root .bn-mantine .bn-table-handle[style*="rotate"] {
+  translate: 0 -5px;
+}
+
+:root .bn-mantine .bn-table-handle svg {
+  display: none;
+}
+
+:root .bn-mantine .bn-table-handle:hover,
+:root .bn-mantine .bn-table-handle-dragging {
+  background-color: var(--mantine-color-gray-7);
+}
+
+:root .bn-root[data-color-scheme="dark"] .bn-table-handle {
+  background-color: var(--mantine-color-dark-2);
+}
+
+:root .bn-root[data-color-scheme="dark"] .bn-table-handle:hover,
+:root .bn-root[data-color-scheme="dark"] .bn-table-handle-dragging {
+  background-color: var(--mantine-color-dark-0);
+}
+
+/* 사이드바 고정 메뉴: 페이지 트리 줄과 같은 아이콘·글자 간격 6px (오른쪽 단축키 표시는 기본 간격으로 끝에 붙임) */
+.sidebar-menu-link [data-position="left"] {
+  margin-inline-end: 6px;
+}
+
+/* 수정 알림 목록 줄: 사이드바 줄과 같은 옅은 강조 */
+.update-item {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+}
+
+.update-item:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 수정 이력 목록에서 고른 시점 */
+.page-row[data-selected] {
+  background: var(--mantine-color-default-hover);
+}

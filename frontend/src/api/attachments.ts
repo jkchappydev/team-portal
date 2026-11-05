@@ -17,11 +17,3 @@ export function uploadAttachment(documentId: number, file: File, inline = false)
   form.append("inline", String(inline));
   return apiFetch<AttachmentDto>(`/api/documents/${documentId}/attachments`, { method: "POST", body: form });
 }
-
-export function listAttachments(documentId: number): Promise<AttachmentDto[]> {
-  return apiFetch<AttachmentDto[]>(`/api/documents/${documentId}/attachments`);
-}
-
-export function deleteAttachment(id: number): Promise<void> {
-  return apiFetch<void>(`/api/attachments/${id}`, { method: "DELETE" });
-}

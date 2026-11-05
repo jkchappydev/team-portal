@@ -8,4 +8,5 @@ out/
 *.iml
 storage/
 .env
+.env-develop
 *.zip

@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>팀 포털</title>
+    <script>
+      // 첫 렌더 전에 저장된 화면 테마를 적용해 깜빡임 방지
+      (function () {
+        var scheme = "auto";
+        try {
+          scheme = localStorage.getItem("portal.colorScheme") || "auto";
+        } catch (e) {}
+        if (scheme === "auto") {
+          scheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-mantine-color-scheme", scheme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

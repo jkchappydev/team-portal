@@ -40,6 +40,18 @@ class WorkStatusValidatorTest {
   }
 
   @Test
+  void quarterDay_withoutPeriod_rejected() {
+    assertInvalid(req(WorkStatusType.QUARTER_DAY, "2026-11-02", "2026-11-02", null, null, null,
+      null, null));
+  }
+
+  @Test
+  void quarterDay_withPeriod_accepted() {
+    assertThatCode(() -> validator.validate(req(WorkStatusType.QUARTER_DAY, "2026-11-02",
+      "2026-11-02", HalfDayPeriod.PM, null, null, null, null))).doesNotThrowAnyException();
+  }
+
+  @Test
   void outsideWork_withoutPlace_rejected() {
     assertInvalid(req(WorkStatusType.OUTSIDE_WORK, "2026-11-02", "2026-11-02", null,
       LocalTime.of(9, 0), LocalTime.of(10, 0), null, null));
@@ -52,8 +64,8 @@ class WorkStatusValidatorTest {
 
   @Test
   void timeReversed_rejected() {
-    assertInvalid(req(WorkStatusType.EARLY_LEAVE, "2026-11-02", "2026-11-02", null,
-      LocalTime.of(18, 0), LocalTime.of(16, 0), null, null));
+    assertInvalid(req(WorkStatusType.OUTSIDE_WORK, "2026-11-02", "2026-11-02", null,
+      LocalTime.of(18, 0), LocalTime.of(16, 0), "장소", null));
   }
 
   @Test

@@ -81,8 +81,13 @@ vi.mock("@blocknote/react", async () => {
   return {
     // 마운트 동안 같은 편집기 인스턴스 유지
     useCreateBlockNote: () => useState(() => ({ isEditable: true }))[0],
+    // 노션식 블록 메뉴 연결부는 화면에 그리지 않음
+    SideMenuController: () => null,
+    SideMenu: () => null,
+    TableHandlesController: () => null,
   };
 });
+vi.mock("./editor/NotionDragHandleMenu", () => ({ NotionDragHandleMenu: () => null }));
 vi.mock("@blocknote/mantine", () => ({
   // StrictMode에서 버려진 인스턴스와 구분하려고 실제 렌더된 편집기를 기록
   BlockNoteView: ({ editor }: { editor: { isEditable: boolean } }) => {
@@ -166,7 +171,8 @@ describe("CollaborativeEditor 연결 수명주기", () => {
       provider.emit("synced", { state: true });
     });
     expect(registry.rendered!.isEditable).toBe(true);
-    expect(screen.getByText("연결됨")).toBeTruthy();
+    expect(screen.queryByText("연결됨")).toBeNull();
+    expect(screen.queryByText("재연결 중")).toBeNull();
 
     act(() => provider.emit("status", { status: "disconnected" }));
     expect(registry.rendered!.isEditable).toBe(false);

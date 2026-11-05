@@ -27,7 +27,11 @@ public final class WorkStatusLabelFormatter {
           details.add(ws.getHalfDayPeriod().getDisplayName());
         }
       }
-      case EARLY_LEAVE -> addIfPresent(details, time(ws));
+      case QUARTER_DAY -> {
+        if (ws.getHalfDayPeriod() != null) {
+          details.add(ws.getHalfDayPeriod().getDisplayName());
+        }
+      }
       case BUSINESS_TRIP -> {
         addIfPresent(details, ws.getPlace());
         addIfPresent(details, period(ws));

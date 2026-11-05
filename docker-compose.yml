@@ -1,3 +1,5 @@
+name: team_portal
+
 services:
   postgres:
     image: postgres:17
@@ -27,6 +29,7 @@ services:
       STORAGE_PATH: /app/storage
       MAX_UPLOAD_SIZE: 50MB
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN을 .env에 설정하세요}
+      HOLIDAY_API_KEY: ${HOLIDAY_API_KEY:-}
     volumes:
       - storage:/app/storage
 

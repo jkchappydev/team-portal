@@ -51,6 +51,36 @@ class DocumentControllerTest {
   }
 
   @Test
+  void changeIcon_tooLong_returns400() throws Exception {
+    mockMvc.perform(patch("/api/documents/1/icon")
+        .header("X-User-Id", "1")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"icon\":\"" + "a".repeat(33) + "\"}"))
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void changeIcon_withoutUser_returns401() throws Exception {
+    mockMvc.perform(patch("/api/documents/1/icon")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"icon\":\"🚀\"}"))
+      .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void changeIcon_returnsDetail() throws Exception {
+    when(documentService.changeIcon(1L, "🚀", 1L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentDetail(
+      1L, 10L, "개발", "문서", "🚀", "홍길동", "홍길동", null, false, null, List.of(), "PAGE", null));
+
+    mockMvc.perform(patch("/api/documents/1/icon")
+        .header("X-User-Id", "1")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"icon\":\"🚀\"}"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.icon").value("🚀"));
+  }
+
+  @Test
   void search_returnsApiResponse() throws Exception {
     when(documentService.search("배포")).thenReturn(List.of());
 

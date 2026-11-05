@@ -37,9 +37,9 @@ class WorkStatusLabelFormatterTest {
   }
 
   @Test
-  void earlyLeave() {
-    assertThat(f(ws(WorkStatusType.EARLY_LEAVE, "2026-11-02", "2026-11-02", null,
-      LocalTime.of(16, 0), LocalTime.of(18, 0), null, null))).isEqualTo("홍길동 조퇴(16:00~18:00)");
+  void quarterDay() {
+    assertThat(f(ws(WorkStatusType.QUARTER_DAY, "2026-11-02", "2026-11-02", HalfDayPeriod.PM,
+      null, null, null, null))).isEqualTo("홍길동 반반차(오후)");
   }
 
   @Test

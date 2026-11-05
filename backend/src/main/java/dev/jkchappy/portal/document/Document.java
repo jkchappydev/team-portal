@@ -2,6 +2,8 @@ package dev.jkchappy.portal.document;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,8 +32,54 @@ public class Document {
   @Column(name = "space_id", nullable = false, updatable = false)
   private Long spaceId;
 
+  // 상위 페이지 (null이면 프로젝트 최상위)
+  @Column(name = "parent_id")
+  private Long parentId;
+
+  public void placeUnder(Long parentId) {
+    this.parentId = parentId;
+  }
+
+  // 페이지 또는 파일 항목
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 10)
+  private DocumentKind kind = DocumentKind.PAGE;
+
+  // 파일 항목의 파일 본체 (페이지는 null)
+  @Column(name = "attachment_id")
+  private Long attachmentId;
+
+  public boolean isFile() {
+    return kind == DocumentKind.FILE;
+  }
+
+  // 업로드한 파일 본체 연결
+  public void attachFile(Long attachmentId) {
+    this.attachmentId = attachmentId;
+  }
+
+  // 사이드바에 끌어다 놓은 파일 항목 (제목은 파일 이름, 아이콘은 확장자별 기본 아이콘)
+  public static Document createFile(Long spaceId, String fileName, Long createdBy) {
+    Document doc = create(spaceId, fileName, createdBy);
+    doc.kind = DocumentKind.FILE;
+    doc.icon = FileIcons.forName(fileName);
+    return doc;
+  }
+
+  // 같은 상위 페이지 안에서의 표시 순서 (작을수록 위)
+  @Column(name = "sort_order", nullable = false)
+  private int sortOrder;
+
+  public void changeSortOrder(int sortOrder) {
+    this.sortOrder = sortOrder;
+  }
+
   @Column(nullable = false, length = 200)
   private String title;
+
+  // 제목 앞 이모지 아이콘 (null이면 없음)
+  @Column(length = 32)
+  private String icon;
 
   @Column(name = "content_state")
   private byte[] contentState;
@@ -71,6 +119,18 @@ public class Document {
     this.title = title;
     this.updatedBy = userId;
     this.updatedAt = Instant.now();
+  }
+
+  // 아이콘 변경 시 수정자와 수정 시각 갱신
+  public void changeIcon(String icon, Long userId) {
+    this.icon = icon;
+    this.updatedBy = userId;
+    this.updatedAt = Instant.now();
+  }
+
+  // 프로젝트 이름 변경에 맞춘 본문 페이지 제목 동기화 (수정자는 유지)
+  public void changeTitle(String title) {
+    this.title = title;
   }
 
   // 협업 저장 시 본문 상태, 검색용 평문, 수정자, 수정 시각 갱신

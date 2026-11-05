@@ -2,6 +2,7 @@ package dev.jkchappy.portal.space;
 
 import dev.jkchappy.portal.common.ApiResponse;
 import dev.jkchappy.portal.member.CurrentUser;
+import dev.jkchappy.portal.space.dto.SpacePositionRequest;
 import dev.jkchappy.portal.space.dto.SpaceRequest;
 import dev.jkchappy.portal.space.dto.SpaceResponse;
 import jakarta.validation.Valid;
@@ -38,6 +39,14 @@ public class SpaceController {
   public ApiResponse<SpaceResponse> update(
     @PathVariable Long id, @Valid @RequestBody SpaceRequest request, @CurrentUser Long userId) {
     return ApiResponse.ok(spaceService.update(id, request));
+  }
+
+  // 사이드바에서 끌어 옮긴 최상위 페이지 순서 변경
+  @PatchMapping("/{id}/position")
+  public ApiResponse<Void> move(@PathVariable Long id, @Valid @RequestBody SpacePositionRequest request,
+    @CurrentUser Long userId) {
+    spaceService.move(id, request.index());
+    return ApiResponse.ok(null);
   }
 
   @DeleteMapping("/{id}")

@@ -5,10 +5,11 @@ import { listMembers } from "../api/members";
 import { createWorkStatus, deleteWorkStatus, updateWorkStatus } from "../api/workStatuses";
 import type { HalfDayPeriod, WorkStatusDto, WorkStatusRequest, WorkStatusType } from "../api/workStatuses";
 import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER } from "./types";
+import { DEFAULT_END_TIME, DEFAULT_START_TIME, buildTimeOptions } from "./timeOptions";
 
 // 종류별 입력 규칙 (백엔드 WorkStatusValidator와 동일)
 const RANGE_TYPES: WorkStatusType[] = ["LEAVE", "BUSINESS_TRIP", "OTHER"];
-const TIME_TYPES: WorkStatusType[] = ["EARLY_LEAVE", "OUTSIDE_WORK", "OTHER"];
+const TIME_TYPES: WorkStatusType[] = ["OUTSIDE_WORK", "OTHER"];
 const PLACE_TYPES: WorkStatusType[] = ["BUSINESS_TRIP", "OUTSIDE_WORK"];
 
 export interface WorkStatusFormProps {
@@ -45,8 +46,11 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
   const [startDate, setStartDate] = useState(editing?.startDate ?? defaultDate);
   const [endDate, setEndDate] = useState(editing?.endDate ?? defaultDate);
   const [halfDayPeriod, setHalfDayPeriod] = useState<HalfDayPeriod>(editing?.halfDayPeriod ?? "AM");
-  const [startTime, setStartTime] = useState(toTimeInput(editing?.startTime ?? null));
-  const [endTime, setEndTime] = useState(toTimeInput(editing?.endTime ?? null));
+  // 신규 등록은 기본 근무 시간(09:00~18:00)으로 시작
+  const [startTime, setStartTime] = useState(editing ? toTimeInput(editing.startTime) : DEFAULT_START_TIME);
+  const [endTime, setEndTime] = useState(editing ? toTimeInput(editing.endTime) : DEFAULT_END_TIME);
+  const [startTimeOptions] = useState(() => buildTimeOptions(editing ? toTimeInput(editing.startTime) : undefined));
+  const [endTimeOptions] = useState(() => buildTimeOptions(editing ? toTimeInput(editing.endTime) : undefined));
   const [place, setPlace] = useState(editing?.place ?? "");
   const [content, setContent] = useState(editing?.content ?? "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -58,6 +62,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
 
   const onDone = () => {
     queryClient.invalidateQueries({ queryKey: ["workStatuses"] });
+    queryClient.invalidateQueries({ queryKey: ["annualLeaves"] });
     onClose();
   };
   const onError = (e: Error) => setErrorMessage(e.message);
@@ -81,7 +86,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
       type,
       startDate,
       endDate: isRange ? endDate : startDate,
-      halfDayPeriod: type === "HALF_DAY" ? halfDayPeriod : null,
+      halfDayPeriod: type === "HALF_DAY" || type === "QUARTER_DAY" ? halfDayPeriod : null,
       startTime: showTimes && startTime ? startTime : null,
       endTime: showTimes && endTime ? endTime : null,
       place: showPlace ? place.trim() || null : null,
@@ -129,7 +134,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
           <TextInput type="date" label="종료일" value={endDate} min={startDate} onChange={(e) => setEndDate(e.currentTarget.value)} />
         )}
       </Group>
-      {type === "HALF_DAY" && (
+      {(type === "HALF_DAY" || type === "QUARTER_DAY") && (
         <Select
           label="오전/오후"
           data={[{ value: "AM", label: "오전" }, { value: "PM", label: "오후" }]}
@@ -140,8 +145,24 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
       )}
       {showTimes && (
         <Group grow>
-          <TextInput type="time" label="시작 시간" value={startTime} onChange={(e) => setStartTime(e.currentTarget.value)} />
-          <TextInput type="time" label="종료 시간" value={endTime} onChange={(e) => setEndTime(e.currentTarget.value)} />
+          <Select
+            label="시작 시간"
+            data={startTimeOptions}
+            value={startTime || null}
+            onChange={(v) => setStartTime(v ?? "")}
+            searchable
+            clearable={type === "OTHER"}
+            maxDropdownHeight={240}
+          />
+          <Select
+            label="종료 시간"
+            data={endTimeOptions}
+            value={endTime || null}
+            onChange={(v) => setEndTime(v ?? "")}
+            searchable
+            clearable={type === "OTHER"}
+            maxDropdownHeight={240}
+          />
         </Group>
       )}
       {showPlace && <TextInput label="장소" value={place} maxLength={100} onChange={(e) => setPlace(e.currentTarget.value)} />}

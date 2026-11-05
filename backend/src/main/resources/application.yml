@@ -1,6 +1,10 @@
 spring:
   application:
     name: portal
+  config:
+    import:
+      - optional:file:./.env-develop[.properties]
+      - optional:file:../.env-develop[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/portal}
     username: ${DB_USERNAME:portal}
@@ -18,3 +22,5 @@ app:
   storage:
     path: ${STORAGE_PATH:./storage}
   internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  holiday:
+    api-key: ${HOLIDAY_API_KEY:}

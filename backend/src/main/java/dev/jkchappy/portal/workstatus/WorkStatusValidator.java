@@ -14,10 +14,10 @@ public class WorkStatusValidator {
       throw invalid("종료일은 시작일보다 빠를 수 없습니다.");
     }
     WorkStatusType type = r.type();
-    boolean singleDayOnly = type == WorkStatusType.HALF_DAY || type == WorkStatusType.EARLY_LEAVE
+    boolean singleDayOnly = type == WorkStatusType.HALF_DAY || type == WorkStatusType.QUARTER_DAY
       || type == WorkStatusType.OUTSIDE_WORK;
     if (singleDayOnly && !r.startDate().equals(r.endDate())) {
-      throw invalid("반차, 조퇴, 외근은 하루만 등록할 수 있습니다.");
+      throw invalid("반차, 반반차, 외근은 하루만 등록할 수 있습니다.");
     }
 
     switch (type) {
@@ -26,7 +26,11 @@ public class WorkStatusValidator {
           throw invalid("반차는 오전/오후를 선택해야 합니다.");
         }
       }
-      case EARLY_LEAVE -> requireTimes(r, "조퇴");
+      case QUARTER_DAY -> {
+        if (r.halfDayPeriod() == null) {
+          throw invalid("반반차는 오전/오후를 선택해야 합니다.");
+        }
+      }
       case BUSINESS_TRIP -> requirePlace(r, "출장");
       case OUTSIDE_WORK -> {
         requirePlace(r, "외근");

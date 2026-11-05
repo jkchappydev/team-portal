@@ -40,4 +40,19 @@ class WorkStatusRepositoryTest {
     assertThat(count("2026-11")).isEqualTo(1);
     assertThat(count("2026-12")).isEqualTo(0);
   }
+
+  @Test
+  void findLeaveOverlapping_excludesNonLeaveTypes() {
+    Member member = memberRepository.save(Member.create("홍길동"));
+    workStatusRepository.save(WorkStatus.create(member.getId(), WorkStatusType.LEAVE,
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null,
+      member.getId()));
+    workStatusRepository.save(WorkStatus.create(member.getId(), WorkStatusType.BUSINESS_TRIP,
+      LocalDate.of(2026, 11, 3), LocalDate.of(2026, 11, 3), null, null, null, "서울", null,
+      member.getId()));
+
+    assertThat(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
+      LocalDate.of(2026, 12, 31))).extracting(WorkStatus::getType)
+      .containsExactly(WorkStatusType.LEAVE);
+  }
 }

@@ -2,6 +2,8 @@ package dev.jkchappy.portal.attachment;
 
 import dev.jkchappy.portal.attachment.dto.AttachmentResponse;
 import dev.jkchappy.portal.common.ApiResponse;
+import dev.jkchappy.portal.document.dto.DocumentSummary;
+import jakarta.validation.constraints.Min;
 import dev.jkchappy.portal.member.CurrentUser;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -24,6 +26,15 @@ import org.springframework.web.multipart.MultipartFile;
 public class AttachmentController {
 
   private final AttachmentService attachmentService;
+  private final FileNodeService fileNodeService;
+
+  // 사이드바 트리에 파일 항목 올리기 (parentId 없으면 최상위, index 없으면 맨 아래)
+  @PostMapping("/api/spaces/{spaceId}/files")
+  public ApiResponse<DocumentSummary> uploadFileNode(@PathVariable Long spaceId,
+    @RequestParam("file") MultipartFile file, @RequestParam(required = false) Long parentId,
+    @RequestParam(required = false) @Min(0) Integer index, @CurrentUser Long userId) {
+    return ApiResponse.ok(fileNodeService.upload(spaceId, parentId, index, file, userId));
+  }
 
   @PostMapping("/api/documents/{documentId}/attachments")
   public ApiResponse<AttachmentResponse> upload(@PathVariable Long documentId,

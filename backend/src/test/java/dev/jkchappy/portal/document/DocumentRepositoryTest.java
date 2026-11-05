@@ -112,19 +112,36 @@ class DocumentRepositoryTest {
         org.assertj.core.groups.Tuple.tuple(b.getId(), 1L));
   }
 
+  // 프로젝트 본문 페이지는 하위 페이지 수에서 제외
   @Test
-  void listBySpace_orderedByUpdatedAtDesc() {
+  void countLiveBySpaceIds_excludesHomeDocument() {
+    Space space = spaceRepository.save(Space.create("A", null, 1L));
+    Document home = save(space.getId(), "A", "");
+    save(space.getId(), "하위", "");
+    space.assignHomeDocument(home.getId());
+    spaceRepository.saveAndFlush(space);
+
+    var rows = documentRepository.countLiveBySpaceIds(List.of(space.getId()));
+
+    assertThat(rows).extracting(r -> (Long) r[1]).containsExactly(1L);
+  }
+
+  @Test
+  // 나중에 만든 페이지를 더 최근에 고쳐도 먼저 만든 페이지가 위
+  void listBySpace_orderedByCreatedAt() {
     Space space = spaceRepository.save(Space.create("개발", null, 1L));
-    Document older = save(space.getId(), "오래된 문서", "");
-    Document newer = save(space.getId(), "최근 문서", "");
-    ReflectionTestUtils.setField(older, "updatedAt", Instant.parse("2026-11-01T00:00:00Z"));
-    ReflectionTestUtils.setField(newer, "updatedAt", Instant.parse("2026-11-03T00:00:00Z"));
-    documentRepository.saveAllAndFlush(List.of(older, newer));
+    Document first = save(space.getId(), "테스트1", "");
+    Document second = save(space.getId(), "테스트2", "");
+    ReflectionTestUtils.setField(first, "createdAt", Instant.parse("2026-11-01T00:00:00Z"));
+    ReflectionTestUtils.setField(first, "updatedAt", Instant.parse("2026-11-01T00:00:00Z"));
+    ReflectionTestUtils.setField(second, "createdAt", Instant.parse("2026-11-02T00:00:00Z"));
+    ReflectionTestUtils.setField(second, "updatedAt", Instant.parse("2026-11-05T00:00:00Z"));
+    documentRepository.saveAllAndFlush(List.of(first, second));
 
     List<Document> result =
-      documentRepository.findBySpaceIdAndDeletedAtIsNullOrderByUpdatedAtDesc(space.getId());
+      documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(space.getId());
 
-    assertThat(result).extracting(Document::getTitle).containsExactly("최근 문서", "오래된 문서");
+    assertThat(result).extracting(Document::getTitle).containsExactly("테스트1", "테스트2");
   }
 
   // 각자 커밋되는 트랜잭션으로 문서를 만들고, 테스트 후 직접 정리

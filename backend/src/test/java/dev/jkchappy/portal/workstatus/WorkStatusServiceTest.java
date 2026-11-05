@@ -93,6 +93,21 @@ class WorkStatusServiceTest {
   }
 
   @Test
+  void create_quarterDay_keepsPeriodAndClearsTimes() {
+    Member member = Member.create("홍길동");
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+    when(workStatusRepository.save(any(WorkStatus.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    WorkStatusResponse response = service().create(new WorkStatusRequest(1L,
+      WorkStatusType.QUARTER_DAY, LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2),
+      HalfDayPeriod.PM, LocalTime.of(16, 0), LocalTime.of(18, 0), null, null), 1L);
+
+    assertThat(response.halfDayPeriod()).isEqualTo(HalfDayPeriod.PM);
+    assertThat(response.startTime()).isNull();
+    assertThat(response.endTime()).isNull();
+  }
+
+  @Test
   void create_inactiveTargetMember_throwsInvalidInput() {
     Member inactive = Member.create("비활성");
     inactive.deactivate();
