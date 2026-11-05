@@ -67,6 +67,9 @@ public class MemberService {
     if (request.phone() != null) {
       member.changePhone(normalizePhone(request.phone()));
     }
+    if (request.extension() != null) {
+      member.changeExtension(normalizeExtension(request.extension()));
+    }
     // 삭제 대신 비활성화로 과거 작성 이력 보존
     if (request.active() != null) {
       if (request.active()) {
@@ -147,6 +150,16 @@ public class MemberService {
     if (value.isEmpty()) return null;
     if (!value.matches("[0-9+() -]{7,20}")) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "전화번호는 숫자와 하이픈(-)으로 7~20자 입력해 주세요.");
+    }
+    return value;
+  }
+
+  // 빈 값은 지움, 숫자 2~10자리만 허용
+  static String normalizeExtension(String extension) {
+    String value = extension.trim();
+    if (value.isEmpty()) return null;
+    if (!value.matches("[0-9]{2,10}")) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "내선번호는 숫자 2~10자리로 입력해 주세요.");
     }
     return value;
   }

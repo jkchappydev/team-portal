@@ -44,6 +44,9 @@ public class Member {
   @Column(length = 20)
   private String phone;
 
+  @Column(length = 10)
+  private String extension;
+
   @Column(name = "sort_order")
   private Long sortOrder;
 
@@ -89,6 +92,10 @@ public class Member {
 
   public void changePhone(String phone) {
     this.phone = phone;
+  }
+
+  public void changeExtension(String extension) {
+    this.extension = extension;
   }
 
   public void changeSortOrder(Long sortOrder) {

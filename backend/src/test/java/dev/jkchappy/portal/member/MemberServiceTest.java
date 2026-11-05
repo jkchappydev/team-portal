@@ -249,6 +249,39 @@ class MemberServiceTest {
   }
 
   @Test
+  void update_extension_savesTrimmedAndClearsWhenEmpty() {
+    Member member = saved(3L, "팀원");
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
+
+    MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, " 1234 "));
+    assertThat(saved.extension()).isEqualTo("1234");
+
+    memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, ""));
+    assertThat(member.getExtension()).isNull();
+  }
+
+  @Test
+  void update_extension_withNonDigits_throwsInvalidInput() {
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(saved(3L, "팀원")));
+
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "12-34")))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "1")))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
+  void update_withoutExtension_keepsExistingExtension() {
+    Member member = saved(3L, "팀원");
+    member.changeExtension("1234");
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
+
+    memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "010-1111-2222"));
+
+    assertThat(member.getExtension()).isEqualTo("1234");
+  }
+
+  @Test
   void update_withoutPhone_keepsExistingPhone() {
     Member member = saved(3L, "팀원");
     member.changePhone("010-1111-2222");

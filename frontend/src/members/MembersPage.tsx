@@ -145,8 +145,11 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
   const [department, setDepartment] = useState(member.department ?? "");
   const [jobRank, setJobRank] = useState<JobRank | null>(member.jobRank ?? null);
   const [phone, setPhone] = useState(member.phone ?? "");
+  const [extension, setExtension] = useState(member.extension ?? "");
   const save = useMutation({
-    mutationFn: () => updateMember(member.id, { name: name.trim(), department: department.trim(), jobRank: jobRank!, phone: phone.trim() }),
+    mutationFn: () => updateMember(member.id, {
+      name: name.trim(), department: department.trim(), jobRank: jobRank!, phone: phone.trim(), extension: extension.trim(),
+    }),
     onSuccess: () => {
       refresh();
       onClose();
@@ -164,6 +167,8 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
           <Select label="직급" placeholder="직급 선택" data={JOB_RANKS} value={jobRank} onChange={(v) => setJobRank(v as JobRank | null)} />
           <TextInput label="전화번호" placeholder="010-0000-0000" value={phone} maxLength={20} inputMode="tel"
             onChange={(e) => setPhone(e.currentTarget.value)} />
+          <TextInput label="내선번호" placeholder="1234" value={extension} maxLength={10} inputMode="numeric"
+            onChange={(e) => setExtension(e.currentTarget.value)} />
           {save.error && <Alert color="red">{errorMessage(save.error, "저장하지 못했습니다.")}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>취소</Button>
@@ -212,6 +217,7 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
       <Table.Td><Text size="sm">{member.department || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{rankLabel(member.jobRank)}</Text></Table.Td>
       <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
+      <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
       <Table.Td>
         <Badge variant="light" size="sm" color={member.admin ? "blue" : "gray"}>{member.admin ? "관리자" : "팀원"}</Badge>
       </Table.Td>
@@ -311,6 +317,7 @@ export function MembersPage() {
                 <Table.Th>부서</Table.Th>
                 <Table.Th>직급</Table.Th>
                 <Table.Th>전화번호</Table.Th>
+                <Table.Th>내선번호</Table.Th>
                 <Table.Th>권한</Table.Th>
                 <Table.Th />
               </Table.Tr>

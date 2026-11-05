@@ -127,7 +127,7 @@ describe("팀원 관리", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("부서"), { target: { value: "기획팀" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "기획팀", jobRank: "SENIOR", phone: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "기획팀", jobRank: "SENIOR", phone: "", extension: "" }));
   });
 
   it("⋯ 메뉴의 팀원 삭제는 확인 후 처리하고, 본인 줄에는 삭제 메뉴가 없다", async () => {
@@ -188,7 +188,7 @@ describe("팀원 관리", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("부서"), { target: { value: "기획팀" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "기획팀", jobRank: "SENIOR", phone: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "기획팀", jobRank: "SENIOR", phone: "", extension: "" }));
   });
 
   it("전화번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {
@@ -200,6 +200,19 @@ describe("팀원 관리", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("전화번호"), { target: { value: " 010-3333-4444 " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "010-3333-4444" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "010-3333-4444", extension: "" }));
+  });
+
+  it("내선번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {
+    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", extension: "1234" }]);
+    renderPage();
+    expect(await screen.findByText("1234")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "내선번호" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("기존 팀원 메뉴"));
+    fireEvent.click(await screen.findByText("정보 수정"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("내선번호"), { target: { value: " 5678 " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "5678" }));
   });
 });
