@@ -5,6 +5,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { changeDocumentIcon, getDocument, renameDocument } from "../api/documents";
 import { deleteSpace, listSpaces } from "../api/spaces";
+import type { SpaceDto } from "../api/spaces";
+import { pathAfterSpaceDeleted } from "./spaceNavigation";
 import { useCurrentUser } from "../user/currentUser";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
 import { ChildPages } from "./ChildPages";
@@ -60,14 +62,15 @@ export function SpacePage() {
     },
   });
 
-  // 프로젝트 삭제 후 근무 상황표로 이동, 사이드바·휴지통 목록 갱신
+  // 프로젝트 삭제 후 사이드바 옆 최상위 페이지(없으면 근무 상황표)로 이동, 사이드바·휴지통 목록 갱신
   const remove = useMutation({
     mutationFn: () => deleteSpace(spaceId),
     onSuccess: () => {
+      const nextPath = pathAfterSpaceDeleted(queryClient.getQueryData<SpaceDto[]>(["spaces"]), spaceId);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["trash"] });
       setConfirmDelete(false);
-      navigate("/work-status");
+      navigate(nextPath);
     },
   });
 

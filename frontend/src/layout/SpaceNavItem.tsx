@@ -4,6 +4,7 @@ import { ActionIcon, Box, Group, Menu, NavLink, Text, Tooltip, UnstyledButton } 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { focusTitleState } from "../documents/titleFocus";
+import { pathAfterSpaceDeleted } from "../documents/spaceNavigation";
 import { ApiError } from "../api/client";
 import { createDocument, deleteDocument, listDocuments, moveDocument, uploadFileNode } from "../api/documents";
 import type { DocumentDetailDto, DocumentSummaryDto } from "../api/documents";
@@ -399,7 +400,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
 }
 
 // 사이드바의 프로젝트: 하위 페이지를 노션처럼 여러 단계 트리로 펼침
-// 프로젝트를 휴지통으로 보내고, 그 프로젝트나 소속 페이지를 보고 있었으면 근무 상황표로 이동
+// 프로젝트를 휴지통으로 보내고, 그 프로젝트나 소속 페이지를 보고 있었으면 사이드바 옆 최상위 페이지로 이동
 function useDeleteSpace(space: SpaceDto, onDeleted: () => void) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -407,6 +408,8 @@ function useDeleteSpace(space: SpaceDto, onDeleted: () => void) {
   return useMutation({
     mutationFn: () => deleteSpace(space.id),
     onSuccess: () => {
+      // 목록을 다시 불러오기 전에 지운 페이지의 위치로 다음 페이지를 정함
+      const nextPath = pathAfterSpaceDeleted(queryClient.getQueryData<SpaceDto[]>(["spaces"]), space.id);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["trash"] });
       queryClient.invalidateQueries({ queryKey: ["search"] });
@@ -415,7 +418,7 @@ function useDeleteSpace(space: SpaceDto, onDeleted: () => void) {
       const viewingPage = pageId !== undefined
         && queryClient.getQueryData<DocumentDetailDto>(["document", Number(pageId)])?.spaceId === space.id;
       if (location.pathname === `/spaces/${space.id}` || viewingPage) {
-        navigate("/work-status");
+        navigate(nextPath);
       }
     },
   });
