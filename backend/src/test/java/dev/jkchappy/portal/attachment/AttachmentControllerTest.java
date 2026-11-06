@@ -187,11 +187,11 @@ class AttachmentControllerTest {
   }
 
   @Test
-  void googleAuthorizationIncludesHostedDomainHint() throws Exception {
+  void googleAuthorizationOmitsHostedDomainHint() throws Exception {
     var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/oauth2/authorization/google")).build();
     var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.discarding());
     assertThat(response.statusCode()).isEqualTo(302);
-    assertThat(response.headers().firstValue("location")).get().asString().contains("hd=example.org");
+    assertThat(response.headers().firstValue("location")).get().asString().startsWith("https://accounts.google.com").doesNotContain("hd=");
   }
 
   private ResponseEntity<String> upload(String fileName, byte[] bytes) {

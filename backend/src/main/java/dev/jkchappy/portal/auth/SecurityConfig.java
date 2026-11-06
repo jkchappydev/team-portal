@@ -13,8 +13,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
@@ -31,10 +29,8 @@ public class SecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http, PortalOidcUserService users,
-    ClientRegistrationRepository registrations, AccountService accounts,
+    AccountService accounts,
     HandlerExceptionResolver handlerExceptionResolver) throws Exception {
-    var resolver = new DefaultOAuth2AuthorizationRequestResolver(registrations, "/oauth2/authorization");
-    resolver.setAuthorizationRequestCustomizer(builder -> builder.additionalParameters(parameters -> parameters.put("hd", "example.org")));
     // 실시간 알림(SSE) 응답을 이어 쓰는 비동기 디스패치는 처음 요청에서 이미 인증을 거침
     http.authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
         .requestMatchers("/internal/**", "/oauth2/**", "/login/oauth2/**").permitAll()
@@ -42,7 +38,7 @@ public class SecurityConfig {
       .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/internal/**"))
       .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) ->
         handlerExceptionResolver.resolveException(request, response, null, new BusinessException(ErrorCode.UNAUTHENTICATED))))
-      .oauth2Login(oauth -> oauth.authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(resolver))
+      .oauth2Login(oauth -> oauth
         .userInfoEndpoint(info -> info.oidcUserService(users))
         .defaultSuccessUrl("/", true)
         .failureHandler((request, response, exception) -> {
