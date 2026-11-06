@@ -1,6 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/client";
@@ -33,15 +33,21 @@ describe("ScheduleBlockView", () => {
 
   afterEach(cleanup);
 
-  it("연결된 WBS의 제목, 크게 열기 링크와 일정표를 보여준다", async () => {
-    vi.mocked(getDocument).mockResolvedValueOnce({
+  it("크게 보기는 페이지를 떠나지 않고 전체 화면으로 열고, 작게 보기로 본문 블록 크기로 돌아온다", async () => {
+    vi.mocked(getDocument).mockResolvedValue({
       id: 9, spaceId: 1, spaceName: "개발", title: "일정", icon: "📊", createdByName: null, updatedByName: null,
       updatedAt: "", home: false, parentId: 3, path: [], kind: "WBS", fileUrl: null,
     });
     renderBlock(9);
     expect(await screen.findByText("일정표 9")).toBeTruthy();
     expect(await screen.findByText("일정")).toBeTruthy();
-    expect(screen.getByText("크게 열기").closest("a")!.getAttribute("href")).toBe("/wbs/9");
+    fireEvent.click(screen.getByRole("button", { name: "크게 보기" }));
+    expect(await screen.findByRole("button", { name: "작게 보기" })).toBeTruthy();
+    // 같은 일정표를 두 번 그리지 않음
+    expect(screen.getAllByText("일정표 9")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "작게 보기" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "작게 보기" })).toBeNull());
+    expect(screen.getByText("일정표 9")).toBeTruthy();
   });
 
   it("연결된 WBS가 휴지통에 있거나 없으면 안내만 보여준다", async () => {

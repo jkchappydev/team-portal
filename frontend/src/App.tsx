@@ -28,7 +28,7 @@ export default function App() {
               <Route path="/work-status" element={<WorkStatusPage />} />
               <Route path="/spaces/:spaceId" element={<SpacePage />} />
               <Route path="/documents/:documentId" element={<DocumentPage />} />
-              {/* WBS도 제목·아이콘·⋯ 메뉴는 페이지 화면과 같고 본문만 일정표 */}
+              {/* 예전 WBS 주소는 그 일정이 들어 있는 페이지로 이동 */}
               <Route path="/wbs/:documentId" element={<DocumentPage />} />
               <Route path="/files/:documentId" element={<FilePage />} />
               <Route path="/trash" element={<TrashPage />} />
