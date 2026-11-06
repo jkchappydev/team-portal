@@ -4,4 +4,5 @@ package dev.jkchappy.portal.live;
 public record LiveUpdateEvent(String topic) {
 
   public static final String WORK_STATUS = "work-status";
+  public static final String WBS = "wbs";
 }

@@ -6,7 +6,18 @@ import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme 
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
-import { SideMenu, SideMenuController, TableHandlesController, useCreateBlockNote } from "@blocknote/react";
+import { filterSuggestionItems } from "@blocknote/core";
+import {
+  getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
+  useCreateBlockNote,
+} from "@blocknote/react";
+import type { DefaultReactSuggestionItem } from "@blocknote/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "../api/client";
+import { createDocument } from "../api/documents";
+import { placeScheduleBlock } from "./editor/scheduleCommand";
+import type { ScheduleEditor } from "./editor/scheduleCommand";
+import { editorSchema } from "./editor/schema";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { uploadAttachment } from "../api/attachments";
@@ -24,6 +35,8 @@ import { userColor } from "./userColor";
 interface Props {
   documentId: number;
   user: MemberDto;
+  // 슬래시 메뉴 "/일정"으로 이 페이지 아래에 WBS를 만들 최상위 페이지 (없으면 메뉴에서 제외)
+  scheduleSpaceId?: number;
 }
 
 interface Session {
@@ -33,7 +46,7 @@ interface Session {
 
 
 // 문서가 바뀌면 상위에서 key로 다시 마운트하므로 상태 초기화는 마운트 단위로 처리
-export default function CollaborativeEditor({ documentId, user }: Props) {
+export default function CollaborativeEditor({ documentId, user, scheduleSpaceId }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [connected, setConnected] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
@@ -118,6 +131,7 @@ export default function CollaborativeEditor({ documentId, user }: Props) {
           documentId={documentId}
           user={user}
           editable={editable}
+          scheduleSpaceId={scheduleSpaceId}
         />
       ) : authFailed ? null : (
         <Group gap="xs" p="md">
@@ -144,13 +158,16 @@ interface EditorViewProps {
   documentId: number;
   user: MemberDto;
   editable: boolean;
+  scheduleSpaceId?: number;
 }
 
-function EditorView({ session, documentId, user, editable }: EditorViewProps) {
+function EditorView({ session, documentId, user, editable, scheduleSpaceId }: EditorViewProps) {
   // 편집기 테마를 앱의 라이트/다크 설정에 맞춤
   const colorScheme = useComputedColorScheme("light");
   const editor = useCreateBlockNote(
     withCollaboration({
+      // 기본 블록 + 일정(WBS) 블록
+      schema: editorSchema,
       dictionary: ko,
       collaboration: {
         provider: { awareness: session.provider.awareness ?? undefined },
@@ -197,6 +214,29 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
     };
   }, [session]);
 
+  // "/일정": 이 페이지 아래에 WBS 항목을 만들고, 슬래시를 입력한 줄에 그 일정 블록을 넣음
+  const queryClient = useQueryClient();
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const scheduleItem: DefaultReactSuggestionItem = {
+    title: "일정",
+    subtext: "WBS 표와 간트 차트",
+    aliases: ["일정", "wbs", "schedule", "간트", "gantt"],
+    group: "기타",
+    icon: <span aria-hidden>📊</span>,
+    onItemClick: () => {
+      if (scheduleSpaceId === undefined) return;
+      const block = editor.getTextCursorPosition().block;
+      setScheduleError(null);
+      createDocument(scheduleSpaceId, documentId, "일정", "WBS")
+        .then((created) => {
+          void queryClient.invalidateQueries({ queryKey: ["documents", scheduleSpaceId] });
+          void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+          placeScheduleBlock(editor as unknown as ScheduleEditor, block, created.id);
+        })
+        .catch((error: unknown) => setScheduleError(error instanceof ApiError ? error.message : "일정을 만들지 못했습니다."));
+    },
+  };
+
   const [dropError, setDropError] = useState<string | null>(null);
   const hasFiles = (e: DragEvent) => editable && Array.from(e.dataTransfer.types).includes("Files");
 
@@ -226,9 +266,20 @@ function EditorView({ session, documentId, user, editable }: EditorViewProps) {
     <Box ref={editorBoxRef} className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}>
       {dropError && <Alert color="red" mb="xs" withCloseButton onClose={() => setDropError(null)}>{dropError}</Alert>}
       {/* 블록 손잡이(⠿) 메뉴는 노션식 메뉴로 교체, 표는 행·열 손잡이만 두고 칸 모서리 메뉴 버튼은 숨김 */}
-      <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false}>
+      {scheduleError && (
+        <Alert color="red" mb="xs" withCloseButton onClose={() => setScheduleError(null)}>{scheduleError}</Alert>
+      )}
+      <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false} slashMenu={false}>
         <SideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
         <TableHandlesController tableCellHandle={HiddenCellButton} />
+        {/* 기본 슬래시 메뉴에 "/일정" 추가 */}
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={async (query) => filterSuggestionItems(
+            [...getDefaultReactSlashMenuItems(editor), ...(scheduleSpaceId === undefined ? [] : [scheduleItem])],
+            query,
+          )}
+        />
       </BlockNoteView>
     </Box>
   );

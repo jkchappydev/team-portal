@@ -1,5 +1,8 @@
 import { apiFetch } from "./client";
 
+// PAGE: 편집하는 페이지, FILE: 내려받는 파일 항목, WBS: 작업 일정표
+export type DocumentKind = "PAGE" | "FILE" | "WBS";
+
 export interface DocumentSummaryDto {
   id: number;
   spaceId: number;
@@ -11,8 +14,7 @@ export interface DocumentSummaryDto {
   updatedAt: string;
   // 상위 페이지 (null이면 최상위)
   parentId: number | null;
-  // PAGE: 편집하는 페이지, FILE: 내려받는 파일 항목
-  kind: "PAGE" | "FILE";
+  kind: DocumentKind;
   // 파일 항목의 다운로드 주소 (페이지는 null)
   fileUrl: string | null;
 }
@@ -37,8 +39,7 @@ export interface DocumentDetailDto {
   parentId: number | null;
   // 최상위부터 바로 위 페이지까지
   path: PageRefDto[];
-  // PAGE: 페이지, FILE: 파일 항목
-  kind: "PAGE" | "FILE";
+  kind: DocumentKind;
   // 파일 항목의 다운로드 주소 (페이지는 null)
   fileUrl: string | null;
 }
@@ -71,10 +72,12 @@ export function listDocuments(spaceId: number): Promise<DocumentSummaryDto[]> {
   return apiFetch<DocumentSummaryDto[]>(`/api/spaces/${spaceId}/documents`);
 }
 
-export function createDocument(spaceId: number, parentId?: number | null, title?: string): Promise<DocumentSummaryDto> {
+// kind가 없으면 페이지 (파일은 uploadFileNode로만 생성)
+export function createDocument(spaceId: number, parentId?: number | null, title?: string,
+  kind?: Exclude<DocumentKind, "FILE">): Promise<DocumentSummaryDto> {
   return apiFetch<DocumentSummaryDto>(`/api/spaces/${spaceId}/documents`, {
     method: "POST",
-    body: JSON.stringify({ title: title || undefined, parentId: parentId ?? undefined }),
+    body: JSON.stringify({ title: title || undefined, parentId: parentId ?? undefined, kind: kind ?? undefined }),
   });
 }
 

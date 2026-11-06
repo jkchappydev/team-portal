@@ -147,6 +147,30 @@ body {
   bottom: -1px;
 }
 
+/* WBS 표·간트 차트 가로 스크롤: 마지막 줄을 덮지 않고 아래에 얇게 표시 */
+.wbs-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.wbs-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.wbs-scroll::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-gray-4);
+  border-radius: 3px;
+}
+
+/* WBS 줄 끌기 손잡이: 연차 표 손잡이(.member-drag-handle)와 같은 회색 막대를 표 왼쪽 테두리선 위에 표시
+   가로 스크롤과 따로 움직이도록 표 밖 층에 줄 위치(top)대로 놓고, 마우스를 올린 줄만 보임 */
+.wbs-drag-handle[data-visible],
+.wbs-drag-handle:hover,
+.wbs-drag-handle:focus-visible {
+  opacity: 1;
+}
+
 /* 끌기용이 아닌 링크는 끌리지 않게 해 Edge "분할 화면에서 열기" 안내가 뜨지 않게 함 */
 a:not([draggable="true"]) {
   -webkit-user-drag: none;

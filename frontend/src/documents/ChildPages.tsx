@@ -7,6 +7,7 @@ import { focusTitleState } from "./titleFocus";
 import { ApiError } from "../api/client";
 import { createDocument, listDocuments, moveDocument } from "../api/documents";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
+import { itemPath } from "./itemPath";
 import { PageIcon } from "./PageIconView";
 import { childrenOf, groupByParent } from "./pageTree";
 
@@ -149,7 +150,7 @@ export function ChildPages({ spaceId, parentId }: Props) {
           </span>
           <UnstyledButton
             component={Link}
-            to={page.kind === "FILE" ? `/files/${page.id}` : `/documents/${page.id}`}
+            to={itemPath(page.kind, page.id)}
             style={rowStyle}
             draggable={false}
           >

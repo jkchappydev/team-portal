@@ -4,6 +4,7 @@ import { ActionIcon, Box, Group, Menu, NavLink, Text, Tooltip, UnstyledButton } 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { focusTitleState } from "../documents/titleFocus";
+import { itemIdOfPath, itemPath } from "../documents/itemPath";
 import { pathAfterSpaceDeleted } from "../documents/spaceNavigation";
 import { ApiError } from "../api/client";
 import { createDocument, deleteDocument, listDocuments, moveDocument, uploadFileNode } from "../api/documents";
@@ -51,7 +52,7 @@ function useDeletePage(page: DocumentSummaryDto, onDeleted: () => void) {
       queryClient.invalidateQueries({ queryKey: ["search"] });
       queryClient.removeQueries({ queryKey: ["document", page.id] });
       onDeleted();
-      if (location.pathname === `/documents/${page.id}`) {
+      if (itemIdOfPath(location.pathname) === page.id) {
         navigate(page.parentId ? `/documents/${page.parentId}` : `/spaces/${page.spaceId}`);
       }
     },
@@ -77,8 +78,8 @@ interface TreeRowProps {
   onDragStart?: () => void;
   // 줄 위·아래 가장자리에 놓아 형제로 끼워 넣기 허용 여부 (최상위 페이지 줄은 안쪽만)
   siblingDrop?: boolean;
-  // 파일 항목 줄: 누르면 이 주소로 내려받고, 펼치기·하위 추가·안쪽 놓기가 없음
-  fileUrl?: string | null;
+  // 하위를 둘 수 없는 줄(파일·WBS): 펼치기·하위 추가·안쪽 놓기가 없음
+  leaf?: boolean;
   // 줄을 선택(포커스)한 채 Delete 키를 누르면 삭제 확인 창 열기
   onDeleteKey?: () => void;
   // 지금 끌고 있는 페이지를 이 위치에 놓을 수 있는지
@@ -140,9 +141,9 @@ function Chevron({ opened }: { opened: boolean }) {
 // 트리 한 줄: 평소엔 아이콘, 마우스를 올리면 그 자리에 펼치기 화살표와 오른쪽 + / ⋯ 버튼
 function TreeRow({
   label, icon, to, active, opened, onToggle, addLabel, addTooltip, onAdd, adding, menuItems,
-  onDragStart, siblingDrop = false, fileUrl, onDeleteKey, canDrop, onDrop, onDropFiles, pagePositionOf, spaceRow, spaceDropLine, children,
+  onDragStart, siblingDrop = false, leaf = false, onDeleteKey, canDrop, onDrop, onDropFiles, pagePositionOf, spaceRow, spaceDropLine, children,
 }: TreeRowProps) {
-  const isFile = !!fileUrl;
+  const isFile = leaf;
   const [hovered, setHovered] = useState(false);
   // 끌고 있는 페이지가 이 줄 위에 있을 때 놓일 위치 (안쪽은 줄 강조, 앞·뒤는 가로선)
   const [dropPosition, setDropPosition] = useState<DropPosition | null>(null);
@@ -154,7 +155,7 @@ function TreeRow({
   // ⋯ 메뉴가 열려 있는 동안은 마우스가 벗어나도 버튼 유지
   const [menuOpened, setMenuOpened] = useState(false);
   const showActions = hovered || menuOpened;
-  // 파일은 펼칠 하위가 없어 아이콘만 표시
+  // 파일·WBS는 펼칠 하위가 없어 아이콘만 표시
   const showChevron = !isFile && (showActions || !icon);
   return (
     <Box>
@@ -294,6 +295,9 @@ interface PageNavItemProps {
 function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemProps) {
   const location = useLocation();
   const isFile = page.kind === "FILE";
+  // 파일·WBS는 하위를 둘 수 없고, 본문이 없어 내보내기·수정 이력이 없음
+  const isLeaf = page.kind === "FILE" || page.kind === "WBS";
+  const path = itemPath(page.kind, page.id);
   const [opened, setOpened] = useState(false);
   const create = useCreatePage(spaceId, () => setOpened(true));
   const children = childrenOf(groups, page.id);
@@ -302,7 +306,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
   const [exporting, setExporting] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
   // 펼친 줄 아래쪽에 놓으면 노션처럼 그 페이지의 첫 하위로 들어감
-  const afterAsFirstChild = !isFile && opened && children.length > 0;
+  const afterAsFirstChild = !isLeaf && opened && children.length > 0;
 
   // 놓은 위치에 해당하는 새 상위 페이지와 순서 (excludedId: 형제 목록에서 뺄 끌고 있는 항목)
   const placementOf = (position: DropPosition, excludedId?: number) => {
@@ -342,10 +346,10 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
       <TreeRow
         label={page.title}
         icon={<PageIcon icon={page.icon} />}
-        // 파일 항목은 미리보기 화면, 페이지는 편집 화면
-        to={isFile ? `/files/${page.id}` : `/documents/${page.id}`}
-        fileUrl={isFile ? page.fileUrl : undefined}
-        active={location.pathname === (isFile ? `/files/${page.id}` : `/documents/${page.id}`)}
+        // 파일 항목은 미리보기 화면, WBS는 일정표, 페이지는 편집 화면
+        to={path}
+        leaf={isLeaf}
+        active={location.pathname === path}
         opened={opened}
         onToggle={() => setOpened((v) => !v)}
         addLabel={`${page.title}에 하위 페이지 추가`}
@@ -358,12 +362,12 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
             {isFile && page.fileUrl && (
               <Menu.Item component="a" href={page.fileUrl} download={page.title}>다운로드</Menu.Item>
             )}
-            <CopyLinkMenuItem path={isFile ? `/files/${page.id}` : `/documents/${page.id}`} />
-            {!isFile && <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>}
-            {!isFile && <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>}
+            <CopyLinkMenuItem path={path} />
+            {!isLeaf && <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>}
+            {!isLeaf && <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>}
             <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>
-              {isFile ? "파일 삭제" : "페이지 삭제"}
+              {isFile ? "파일 삭제" : page.kind === "WBS" ? "WBS 삭제" : "페이지 삭제"}
             </Menu.Item>
           </>
         }
@@ -381,16 +385,16 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
         {children.length === 0 && <Text size="xs" c="dimmed" px="sm" py={4}>하위 페이지 없음</Text>}
       </TreeRow>
       {/* 링크 밖에 두어 확인 창 안의 클릭이 페이지 이동으로 이어지지 않게 함 */}
-      {!isFile && (
+      {!isLeaf && (
         <ExportModal opened={exporting} documentId={page.id} title={page.title} onClose={() => setExporting(false)} />
       )}
-      {!isFile && (
+      {!isLeaf && (
         <HistoryModal opened={showingHistory} documentId={page.id} title={page.title} onClose={() => setShowingHistory(false)} />
       )}
       <DeletePageModal
         opened={confirmDelete}
         title={page.title}
-        file={isFile}
+        kind={page.kind}
         pending={remove.isPending}
         error={remove.error ? (remove.error instanceof ApiError ? remove.error.message : "삭제하지 못했습니다.") : null}
         onClose={() => setConfirmDelete(false)}
@@ -415,9 +419,9 @@ function useDeleteSpace(space: SpaceDto, onDeleted: () => void) {
       queryClient.invalidateQueries({ queryKey: ["trash"] });
       queryClient.invalidateQueries({ queryKey: ["search"] });
       onDeleted();
-      const pageId = location.pathname.match(/^\/documents\/(\d+)/)?.[1];
-      const viewingPage = pageId !== undefined
-        && queryClient.getQueryData<DocumentDetailDto>(["document", Number(pageId)])?.spaceId === space.id;
+      const pageId = itemIdOfPath(location.pathname);
+      const viewingPage = pageId !== null
+        && queryClient.getQueryData<DocumentDetailDto>(["document", pageId])?.spaceId === space.id;
       if (location.pathname === `/spaces/${space.id}` || viewingPage) {
         navigate(nextPath);
       }

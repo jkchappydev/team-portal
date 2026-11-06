@@ -160,6 +160,10 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
         </View>
       ) : null;
       break;
+    case "schedule":
+      // 일정(WBS) 표는 PDF로 그리지 않고 안내만 남김
+      body = <Text style={styles.fileLink}>일정(WBS) 표는 팀 포털에서 확인하세요.</Text>;
+      break;
     case "file":
     case "video":
     case "audio":

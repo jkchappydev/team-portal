@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { QueryKey } from "@tanstack/react-query";
 
 // 서버가 알리는 변경 종류 (백엔드 LiveUpdateEvent와 같은 값)
-export const LIVE_TOPICS = { workStatus: "work-status" } as const;
+export const LIVE_TOPICS = { workStatus: "work-status", wbs: "wbs" } as const;
 
 // 화면이 열려 있는 동안 서버의 변경 알림(SSE)을 받아 해당 데이터를 다시 불러옴
 // 끊겼다 다시 연결되면 그 사이 놓친 변경이 있을 수 있어 한 번 더 불러옴

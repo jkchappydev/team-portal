@@ -40,7 +40,7 @@ public class Document {
     this.parentId = parentId;
   }
 
-  // 페이지 또는 파일 항목
+  // 페이지, 파일 또는 WBS 항목
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 10)
   private DocumentKind kind = DocumentKind.PAGE;
@@ -53,6 +53,15 @@ public class Document {
     return kind == DocumentKind.FILE;
   }
 
+  public boolean isWbs() {
+    return kind == DocumentKind.WBS;
+  }
+
+  // 본문을 편집하고 하위 항목을 둘 수 있는 페이지인지
+  public boolean isPage() {
+    return kind == DocumentKind.PAGE;
+  }
+
   // 업로드한 파일 본체 연결
   public void attachFile(Long attachmentId) {
     this.attachmentId = attachmentId;
@@ -63,6 +72,14 @@ public class Document {
     Document doc = create(spaceId, fileName, createdBy);
     doc.kind = DocumentKind.FILE;
     doc.icon = FileIcons.forName(fileName);
+    return doc;
+  }
+
+  // 작업 일정표 항목 (기본 아이콘은 표 모양)
+  public static Document createWbs(Long spaceId, String title, Long createdBy) {
+    Document doc = create(spaceId, title, createdBy);
+    doc.kind = DocumentKind.WBS;
+    doc.icon = "📊";
     return doc;
   }
 
@@ -138,6 +155,12 @@ public class Document {
     this.contentState = state;
     this.plainText = plainText;
     this.updatedBy = updatedBy;
+    this.updatedAt = Instant.now();
+  }
+
+  // WBS 작업 변경 시 수정자와 수정 시각만 갱신
+  public void touch(Long userId) {
+    this.updatedBy = userId;
     this.updatedAt = Instant.now();
   }
 

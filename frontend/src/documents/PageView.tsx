@@ -17,18 +17,22 @@ interface Props {
   user: MemberDto;
   // 제목 위 경로 표시 (하위 페이지에서만)
   breadcrumb?: ReactNode;
-  // ⋯ 메뉴 항목
-  menuItems: ReactNode;
+  // ⋯ 메뉴 항목 (없으면 ⋯ 버튼 미표시)
+  menuItems?: ReactNode;
   onRename: (title: string) => void;
   renameError?: string | null;
   // 본문 아래 영역 (프로젝트의 하위 페이지 목록)
   footer?: ReactNode;
   // 아이콘 변경 (없으면 아이콘 영역을 표시하지 않음, null이면 제거)
   onChangeIcon?: (icon: string | null) => void;
+  // 편집기 대신 보여줄 본문 (일정 블록을 크게 연 WBS 화면)
+  body?: ReactNode;
+  // 본문 폭 제한 없이 화면 너비 전체 사용
+  wide?: boolean;
 }
 
 // 노션처럼 큰 제목 + 바로 쓰는 편집기로 구성한 페이지 화면
-export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, footer, onChangeIcon }: Props) {
+export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, footer, onChangeIcon, body, wide }: Props) {
   // 편집 중인 제목 (null이면 서버 제목 표시)
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -57,16 +61,18 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
 
   return (
     // 넓은 화면에서는 본문 왼쪽 바깥에 줄 드래그 핸들이 들어갈 여백 확보
-    <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
+    <Box maw={wide ? undefined : 1100} mx="auto" px={{ base: "md", sm: wide ? "md" : 56 }}>
       {/* 노션처럼 위 경로 줄과 페이지 아이콘·제목 사이에 여백을 둠 */}
       <Group justify="space-between" mb={28} wrap="nowrap" mih={28}>
         <Box style={{ minWidth: 0 }}>{breadcrumb}</Box>
-        <Menu position="bottom-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" aria-label="페이지 메뉴">⋯</ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-        </Menu>
+        {menuItems && (
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon variant="subtle" color="gray" aria-label="페이지 메뉴">⋯</ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
+        )}
       </Group>
       <Box className="page-title">
         {/* 노션처럼 아이콘이 있으면 제목 위에 크게, 없으면 마우스를 올렸을 때 추가 버튼 */}
@@ -120,11 +126,15 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
       </Text>
       {renameError && <Alert color="red" mb="sm">{renameError}</Alert>}
       {/* 첨부 파일은 본문에 끌어다 놓아 넣으므로 별도 첨부 패널 없이 본문만 표시 */}
-      <Box className="page-editor">
-        <Suspense fallback={<Loader size="sm" />}>
-          <CollaborativeEditor key={`${doc.id}-${user.id}`} documentId={doc.id} user={user} />
-        </Suspense>
-      </Box>
+      {/* 페이지 본문에서는 "/일정"으로 이 페이지 아래에 일정 블록을 넣을 수 있음 */}
+      {body ?? (
+        <Box className="page-editor">
+          <Suspense fallback={<Loader size="sm" />}>
+            <CollaborativeEditor key={`${doc.id}-${user.id}`} documentId={doc.id} user={user}
+              scheduleSpaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} />
+          </Suspense>
+        </Box>
+      )}
       {footer}
     </Box>
   );

@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { MantineProvider } from "@mantine/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import CollaborativeEditor from "./CollaborativeEditor";
@@ -88,8 +89,13 @@ vi.mock("@blocknote/react", async () => {
     SideMenuController: () => null,
     SideMenu: () => null,
     TableHandlesController: () => null,
+    // "/일정"을 더한 슬래시 메뉴 연결부도 그리지 않음
+    SuggestionMenuController: () => null,
+    getDefaultReactSlashMenuItems: () => [],
   };
 });
+// 일정 블록 스키마는 실제 편집기 없이 확인하므로 빈 값
+vi.mock("./editor/schema", () => ({ editorSchema: {} }));
 vi.mock("./editor/NotionDragHandleMenu", () => ({ NotionDragHandleMenu: () => null }));
 vi.mock("@blocknote/mantine", () => ({
   // StrictMode에서 버려진 인스턴스와 구분하려고 실제 렌더된 편집기를 기록
@@ -105,7 +111,9 @@ function renderEditor() {
   return render(
     <StrictMode>
       <MantineProvider>
-        <CollaborativeEditor documentId={42} user={user} />
+        <QueryClientProvider client={new QueryClient()}>
+          <CollaborativeEditor documentId={42} user={user} />
+        </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,
   );

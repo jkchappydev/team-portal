@@ -114,4 +114,10 @@ describe("ChildPages", () => {
     dragAt("drop", row("테스트1"), 25);
     expect(moveDocument).not.toHaveBeenCalled();
   });
+
+  it("일정 블록용 WBS는 본문 블록으로만 만들므로 + WBS 추가 버튼이 없다", async () => {
+    renderList();
+    await screen.findByText("+ 페이지 추가");
+    expect(screen.queryByText("+ WBS 추가")).toBeNull();
+  });
 });

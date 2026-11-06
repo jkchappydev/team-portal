@@ -68,10 +68,10 @@ public class DocumentHistoryService {
       saved.getReason().name());
   }
 
-  // 파일 항목은 본문이 없어 이력 대상이 아님
+  // 파일·WBS 항목은 본문이 없어 이력 대상이 아님
   private Document getLivePage(Long documentId) {
     Document doc = documentService.getLiveDocument(documentId);
-    if (doc.isFile()) {
+    if (!doc.isPage()) {
       throw new BusinessException(ErrorCode.NOT_FOUND);
     }
     return doc;

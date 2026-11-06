@@ -562,6 +562,34 @@ class DocumentServiceTest {
   }
 
   @Test
+  void saveContent_fileDocument_rejected() {
+    Document doc = liveDocument();
+    ReflectionTestUtils.setField(doc, "kind", DocumentKind.FILE);
+
+    assertThatThrownBy(() -> service().saveContent(1L, new byte[] {1}, "본문", 2L))
+      .isInstanceOf(BusinessException.class);
+    assertThat(doc.getContentState()).isNull();
+  }
+
+  @Test
+  void saveContent_wbsDocument_savesNotesBelowTable() {
+    Document doc = liveDocument();
+    ReflectionTestUtils.setField(doc, "kind", DocumentKind.WBS);
+    when(snapshotRepository.findFirstByDocumentIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
+
+    service().saveContent(1L, new byte[] {1}, "회의 메모", 2L);
+
+    assertThat(doc.getPlainText()).isEqualTo("회의 메모");
+  }
+
+  @Test
+  void create_fileKind_rejected() {
+    assertThatThrownBy(() -> service().create(10L, "파일", null, DocumentKind.FILE, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
   void saveContent_firstSave_createsSnapshot() {
     Document doc = liveDocument();
     when(memberService.findNamesByIds(Set.of(2L))).thenReturn(Map.of(2L, "김팀원"));

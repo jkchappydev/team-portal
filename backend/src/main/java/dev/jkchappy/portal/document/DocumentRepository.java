@@ -36,20 +36,25 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
   @Query("select d.spaceId, count(d) from Document d where d.deletedAt is null "
     + "and d.spaceId in :spaceIds "
     + "and not exists (select 1 from Space s where s.homeDocumentId = d.id) "
+    + "and d.kind <> dev.jkchappy.portal.document.DocumentKind.WBS "
     + "group by d.spaceId")
   List<Object[]> countLiveBySpaceIds(@Param("spaceIds") Collection<Long> spaceIds);
 
-  // 제목 또는 본문 평문에 pattern(LIKE 패턴, 이스케이프 문자 \)이 포함된 문서, 삭제된 문서와 삭제된 공간 제외
+  // 제목, 본문 평문 또는 본문에 넣은 일정(바로 아래 WBS)의 작업명에 pattern(LIKE 패턴, 이스케이프 문자 \)이 포함된 페이지
+  // WBS 항목 자체와 삭제된 문서·삭제된 공간 제외
   @Query(value = "select d.* from document d join space s on s.id = d.space_id "
-    + "where d.deleted_at is null and s.deleted_at is null "
-    + "and (d.title ilike :pattern escape '\\' or d.plain_text ilike :pattern escape '\\') "
+    + "where d.deleted_at is null and s.deleted_at is null and d.kind <> 'WBS' "
+    + "and (d.title ilike :pattern escape '\\' or d.plain_text ilike :pattern escape '\\' "
+    + "or exists (select 1 from document w join wbs_task t on t.document_id = w.id "
+    + "where w.parent_id = d.id and w.kind = 'WBS' and w.deleted_at is null "
+    + "and t.name ilike :pattern escape '\\')) "
     + "order by d.updated_at desc limit 50", nativeQuery = true)
   List<Document> search(@Param("pattern") String pattern);
 
-  // since 이후 다른 사람이 수정했고 memberId가 그 뒤로 확인하지 않은 문서, 최근 수정순
+  // since 이후 다른 사람이 수정했고 memberId가 그 뒤로 확인하지 않은 문서, 최근 수정순 (본문 블록 저장소인 WBS 항목 제외)
   @Query(value = "select d.* from document d join space s on s.id = d.space_id "
     + "left join document_read r on r.document_id = d.id and r.member_id = :memberId "
-    + "where d.deleted_at is null and s.deleted_at is null "
+    + "where d.deleted_at is null and s.deleted_at is null and d.kind <> 'WBS' "
     + "and d.updated_by <> :memberId and d.updated_at > :since "
     + "and (r.read_at is null or r.read_at < d.updated_at) "
     + "order by d.updated_at desc limit :limit", nativeQuery = true)

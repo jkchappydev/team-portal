@@ -6,7 +6,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 // home: 최상위 페이지 본문 여부, path: 최상위부터 바로 위 페이지까지
-// kind: PAGE 또는 FILE, fileUrl: 파일 항목의 다운로드 주소 (페이지는 null)
+// kind: PAGE, FILE 또는 WBS, fileUrl: 파일 항목의 다운로드 주소 (페이지는 null)
 public record DocumentDetail(Long id, Long spaceId, String spaceName, String title, String icon,
   String createdByName, String updatedByName, OffsetDateTime updatedAt, boolean home,
   Long parentId, List<PageRef> path, String kind, String fileUrl) {

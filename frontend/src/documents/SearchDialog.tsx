@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { searchDocuments } from "../api/documents";
 import type { DocumentSummaryDto } from "../api/documents";
 import { formatDateTime } from "./format";
+import { itemPath } from "./itemPath";
 import { PageIcon } from "./PageIconView";
 
 // 서버 검색은 두 글자 이상부터 동작
@@ -51,7 +52,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   // 페이지는 편집 화면, 파일 항목은 미리보기 화면으로 이동
   const open = (doc: DocumentSummaryDto) => {
     onClose();
-    navigate(doc.kind === "FILE" ? `/files/${doc.id}` : `/documents/${doc.id}`);
+    navigate(itemPath(doc.kind, doc.id));
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

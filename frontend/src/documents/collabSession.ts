@@ -24,10 +24,12 @@ export async function withSyncedDocument<T>(
   documentId: number,
   work: (session: SyncedDocument) => T | Promise<T>,
 ): Promise<T> {
-  const [{ HocuspocusProvider }, Y, { BlockNoteEditor }] = await Promise.all([
+  const [{ HocuspocusProvider }, Y, { BlockNoteEditor }, { editorSchema }] = await Promise.all([
     import("@hocuspocus/provider"),
     import("yjs"),
     import("@blocknote/core"),
+    // 본문에 일정 블록이 있어도 읽을 수 있도록 편집기와 같은 스키마 사용
+    import("./editor/schema"),
   ]);
   const doc = new Y.Doc();
   const provider = new HocuspocusProvider({
@@ -49,7 +51,7 @@ export async function withSyncedDocument<T>(
         reject(new Error("본문에 접속하지 못했습니다."));
       });
     });
-    const editor = BlockNoteEditor.create({ tables: TABLE_OPTIONS }) as unknown as BlockNoteEditor;
+    const editor = BlockNoteEditor.create({ schema: editorSchema, tables: TABLE_OPTIONS }) as unknown as BlockNoteEditor;
     return await work({ Y, doc, fragment: doc.getXmlFragment(FRAGMENT_NAME), provider, editor });
   } finally {
     provider.destroy();

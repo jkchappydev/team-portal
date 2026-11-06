@@ -36,7 +36,8 @@ public class DocumentController {
     @Valid @RequestBody(required = false) DocumentCreateRequest request, @CurrentUser Long userId) {
     String title = request == null ? null : request.title();
     Long parentId = request == null ? null : request.parentId();
-    return ApiResponse.ok(documentService.create(spaceId, title, parentId, userId));
+    DocumentKind kind = request == null || request.kind() == null ? DocumentKind.PAGE : request.kind();
+    return ApiResponse.ok(documentService.create(spaceId, title, parentId, kind, userId));
   }
 
   @GetMapping("/api/documents/search")

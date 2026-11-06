@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Anchor, Group, Loader, Menu, Text } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { changeDocumentIcon, deleteDocument, getDocument, renameDocument } from "../api/documents";
 import { listSpaces } from "../api/spaces";
@@ -12,6 +12,8 @@ import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { DeletePageModal } from "./DeletePageModal";
 import { ExportModal } from "./export/ExportModal";
 import { HistoryModal } from "./history/HistoryModal";
+import { itemPath } from "./itemPath";
+import { WbsBoard } from "../wbs/WbsBoard";
 import { PageIcon } from "./PageIconView";
 import { PageView } from "./PageView";
 
@@ -33,6 +35,7 @@ function errorMessage(error: unknown, fallback: string): string {
 export function DocumentPage() {
   const documentId = Number(useParams().documentId);
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user } = useCurrentUser();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -99,10 +102,12 @@ export function DocumentPage() {
   if (doc.home) {
     return <Navigate to={`/spaces/${doc.spaceId}`} replace />;
   }
-  // 파일 항목 주소로 들어오면 미리보기 화면으로
-  if (doc.kind === "FILE") {
-    return <Navigate to={`/files/${doc.id}`} replace />;
+  // 종류와 다른 주소로 들어오면 그 종류의 화면으로 (파일은 미리보기, WBS는 일정표)
+  const path = itemPath(doc.kind, doc.id);
+  if (doc.kind === "FILE" || location.pathname !== path) {
+    return <Navigate to={path} replace />;
   }
+  const isWbs = doc.kind === "WBS";
 
   const spaceIcon = spaces?.find((space) => space.id === doc.spaceId)?.icon;
 
@@ -129,15 +134,16 @@ export function DocumentPage() {
             <Text size="sm" truncate><IconLabel icon={doc.icon} title={doc.title} /></Text>
           </Group>
         }
-        menuItems={
+        // 일정 블록을 크게 연 WBS 화면은 페이지 본문의 블록이라 ⋯ 메뉴를 두지 않음
+        menuItems={isWbs ? undefined : (
           <>
-            <CopyLinkMenuItem path={`/documents/${doc.id}`} />
+            <CopyLinkMenuItem path={path} />
             <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>페이지 삭제</Menu.Item>
           </>
-        }
+        )}
         onRename={(title) => rename.mutate(title)}
         renameError={
           rename.error ? errorMessage(rename.error, "제목을 저장하지 못했습니다.")
@@ -145,13 +151,18 @@ export function DocumentPage() {
               : null
         }
         onChangeIcon={(icon) => changeIcon.mutate(icon)}
-        footer={<ChildPages spaceId={doc.spaceId} parentId={doc.id} />}
+        body={isWbs ? <WbsBoard documentId={doc.id} /> : undefined}
+        wide={isWbs}
+        footer={isWbs ? undefined : <ChildPages spaceId={doc.spaceId} parentId={doc.id} />}
       />
-      <ExportModal opened={exporting} documentId={doc.id} title={doc.title} onClose={() => setExporting(false)} />
-      <HistoryModal opened={showingHistory} documentId={doc.id} title={doc.title} onClose={() => setShowingHistory(false)} />
+      {!isWbs && <ExportModal opened={exporting} documentId={doc.id} title={doc.title} onClose={() => setExporting(false)} />}
+      {!isWbs && (
+        <HistoryModal opened={showingHistory} documentId={doc.id} title={doc.title} onClose={() => setShowingHistory(false)} />
+      )}
       <DeletePageModal
         opened={confirmDelete}
         title={doc.title}
+        kind={doc.kind}
         pending={remove.isPending}
         error={remove.error ? errorMessage(remove.error, "페이지를 삭제하지 못했습니다.") : null}
         onClose={() => setConfirmDelete(false)}

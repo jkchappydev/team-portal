@@ -99,6 +99,8 @@ public class DocumentService {
     List<Document> live =
       documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(spaceId).stream()
         .filter(doc -> !space.isHomeDocument(doc.getId()))
+        // WBS는 페이지 본문 일정 블록의 데이터 저장소라 트리에 보이지 않음
+        .filter(doc -> !doc.isWbs())
         .toList();
     Map<Long, Document> byId = live.stream().collect(Collectors.toMap(Document::getId, d -> d));
     return toSummaries(live.stream().filter(doc -> reachable(doc, byId)).toList());
@@ -120,10 +122,22 @@ public class DocumentService {
 
   @Transactional
   public DocumentSummary create(Long spaceId, String title, Long parentId, Long userId) {
+    return create(spaceId, title, parentId, DocumentKind.PAGE, userId);
+  }
+
+  // 페이지 또는 WBS 생성 (파일 항목은 업로드 경로로만 생성)
+  @Transactional
+  public DocumentSummary create(Long spaceId, String title, Long parentId, DocumentKind kind, Long userId) {
+    if (kind == DocumentKind.FILE) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "파일은 업로드로만 추가할 수 있습니다.");
+    }
     Space space = getLiveSpace(spaceId);
     // 비어 있는 제목은 기본 제목 사용
     String resolved = title == null || title.isBlank() ? Document.DEFAULT_TITLE : title.trim();
-    Document saved = placeAndSave(space, Document.create(spaceId, resolved, userId), parentId);
+    Document doc = kind == DocumentKind.WBS
+      ? Document.createWbs(spaceId, resolved, userId)
+      : Document.create(spaceId, resolved, userId);
+    Document saved = placeAndSave(space, doc, parentId);
     Map<Long, String> names = memberService.findNamesByIds(Set.of(userId));
     return DocumentSummary.from(saved, space.getName(), names.getOrDefault(userId, ""));
   }
@@ -157,13 +171,16 @@ public class DocumentService {
     return documentRepository.save(doc);
   }
 
-  // 상위가 될 수 있는 것은 같은 최상위 페이지 안의 페이지뿐 (파일 아래에는 둘 수 없음)
+  // 상위가 될 수 있는 것은 같은 최상위 페이지 안의 페이지뿐 (파일·WBS 아래에는 둘 수 없음)
   private void checkParent(Document parent, Long spaceId) {
     if (!parent.getSpaceId().equals(spaceId)) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "다른 최상위 페이지 안으로는 넣을 수 없습니다.");
     }
     if (parent.isFile()) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "파일 안에는 넣을 수 없습니다.");
+    }
+    if (parent.isWbs()) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "WBS 안에는 넣을 수 없습니다.");
     }
   }
 
@@ -321,6 +338,10 @@ public class DocumentService {
   @Transactional
   public void saveContent(Long id, byte[] state, String plainText, Long updatedBy) {
     Document doc = getLiveDocument(id);
+    // 파일 항목은 공동 편집 본문이 없으므로 거부 (WBS는 표 아래 본문을 공동 편집)
+    if (doc.isFile()) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "본문을 편집할 수 없는 항목입니다.");
+    }
     // 수정자가 없거나 존재하지 않는 팀원이면 기존 수정자 유지
     boolean knownEditor = updatedBy != null
       && memberService.findNamesByIds(Set.of(updatedBy)).containsKey(updatedBy);
@@ -367,7 +388,7 @@ public class DocumentService {
       items.add(new TrashItem("space", space.getId(), space.getName(), icon,
         space.getDeletedAt().atOffset(ZoneOffset.UTC), children));
     }
-    for (Document doc : documentRepository.findTrashed()) {
+    for (Document doc : documentRepository.findTrashed().stream().filter(d -> !d.isWbs()).toList()) {
       List<TrashChild> children = new ArrayList<>();
       collectChildren(childrenOf.apply(doc.getSpaceId()), doc.getId(), null, 1, children);
       items.add(new TrashItem("document", doc.getId(), doc.getTitle(), doc.getIcon(),
@@ -384,7 +405,8 @@ public class DocumentService {
       return;
     }
     for (Document child : byParent.getOrDefault(parentKey, List.of())) {
-      if (child.getId().equals(excludedId)) {
+      // 본문 일정 블록의 WBS는 페이지와 함께 숨겨지고 복원되므로 따로 표시하지 않음
+      if (child.getId().equals(excludedId) || child.isWbs()) {
         continue;
       }
       result.add(new TrashChild(child.getId(), child.getTitle(), child.getIcon(), depth));
