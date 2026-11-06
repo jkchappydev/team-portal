@@ -134,6 +134,7 @@ export function DocumentPage() {
             <CopyLinkMenuItem path={`/documents/${doc.id}`} />
             <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
+            <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>페이지 삭제</Menu.Item>
           </>
         }

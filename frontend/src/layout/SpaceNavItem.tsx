@@ -361,6 +361,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
             <CopyLinkMenuItem path={isFile ? `/files/${page.id}` : `/documents/${page.id}`} />
             {!isFile && <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>}
             {!isFile && <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>}
+            <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>
               {isFile ? "파일 삭제" : "페이지 삭제"}
             </Menu.Item>
@@ -547,6 +548,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
             {space.homeDocumentId !== null && (
               <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             )}
+            <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>
               페이지 삭제
             </Menu.Item>

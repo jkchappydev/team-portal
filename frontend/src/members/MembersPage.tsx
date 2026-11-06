@@ -184,8 +184,8 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
       </Table.Td>
       <Table.Td><Text size="sm">{member.department || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{rankLabel(member.jobRank)}</Text></Table.Td>
-      <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
+      <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
       <Table.Td>
         <Badge variant="light" size="sm" color={member.admin ? "blue" : "gray"}>{member.admin ? "관리자" : "팀원"}</Badge>
       </Table.Td>
@@ -198,7 +198,7 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
             <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
             {admin && (
               <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
-                {member.admin ? "관리자 권한 빼기" : "관리자 권한 주기"}
+                {member.admin ? "관리자 권한 제거" : "관리자 권한 주기"}
               </Menu.Item>
             )}
             {/* 퇴사자는 삭제로 처리하고, 예전에 비활성으로 바꿔 둔 팀원만 다시 켤 수 있음 */}
@@ -273,7 +273,7 @@ export function MembersPage() {
             <Title order={5}>팀원</Title>
             <Text size="sm" c="dimmed">{members.filter((m) => m.active).length}명</Text>
           </Group>
-          {admin && <Text size="xs" c="dimmed">왼쪽 손잡이를 끌어 순서를 바꿀 수 있습니다.</Text>}
+          {admin && <Text size="xs" c="dimmed">드래그로 순서를 변경할 수 있습니다.</Text>}
         </Group>
         {error && <Alert color="red">팀원 목록을 불러오지 못했습니다.</Alert>}
         {reorder.error && <Alert color="red">팀원 순서를 저장하지 못했습니다.</Alert>}
@@ -281,13 +281,14 @@ export function MembersPage() {
           <Table verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
+                {/* 이름 열이 남는 폭을 쓰고 나머지는 내용 길이에 맞춘 고정 폭 */}
                 <Table.Th>이름</Table.Th>
-                <Table.Th>부서</Table.Th>
-                <Table.Th>직급</Table.Th>
-                <Table.Th>전화번호</Table.Th>
-                <Table.Th>내선번호</Table.Th>
-                <Table.Th>권한</Table.Th>
-                <Table.Th />
+                <Table.Th w={170}>부서</Table.Th>
+                <Table.Th w={80}>직급</Table.Th>
+                <Table.Th w={90}>내선번호</Table.Th>
+                <Table.Th w={140}>전화번호</Table.Th>
+                <Table.Th w={90}>권한</Table.Th>
+                <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
