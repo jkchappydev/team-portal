@@ -15,7 +15,8 @@ export function listSpaces(): Promise<SpaceDto[]> {
   return apiFetch<SpaceDto[]>("/api/spaces");
 }
 
-export function createSpace(name: string, description?: string): Promise<SpaceDto> {
+// 이름 없이 만들면 서버가 "제목 없음"으로 만들고, 화면에서 바로 이름을 입력
+export function createSpace(name?: string, description?: string): Promise<SpaceDto> {
   return apiFetch<SpaceDto>("/api/spaces", { method: "POST", body: JSON.stringify({ name, description }) });
 }
 

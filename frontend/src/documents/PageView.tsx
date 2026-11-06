@@ -1,11 +1,13 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ActionIcon, Alert, Box, Button, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
 import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
 import { IconPicker } from "./IconPicker";
 import { PageIcon } from "./PageIconView";
 import { formatDateTime } from "./format";
+import { shouldFocusTitle } from "./titleFocus";
 
 // 편집기 번들은 페이지 화면에서만 로드
 const CollaborativeEditor = lazy(() => import("./CollaborativeEditor"));
@@ -29,6 +31,19 @@ interface Props {
 export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, footer, onChangeIcon }: Props) {
   // 편집 중인 제목 (null이면 서버 제목 표시)
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const focusTitle = shouldFocusTitle(location.state, doc.id);
+
+  // 방금 만든 페이지면 제목 칸에 포커스를 주고 "제목 없음"을 선택해 바로 덮어쓰게 함.
+  // 새로고침·뒤로 가기 때 다시 포커스되지 않도록 화면 상태는 비움
+  useEffect(() => {
+    if (!focusTitle) return;
+    titleRef.current?.focus();
+    titleRef.current?.select();
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [focusTitle, navigate, location.pathname, location.search]);
 
   // 비어 있거나 바뀌지 않은 제목은 저장하지 않음
   const saveTitle = () => {
@@ -83,6 +98,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
           />
         )}
         <TextInput
+          ref={titleRef}
           variant="unstyled"
           maxLength={doc.home ? 100 : 200}
           value={titleDraft ?? doc.title}

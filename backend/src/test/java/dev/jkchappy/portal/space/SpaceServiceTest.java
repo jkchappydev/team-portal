@@ -66,11 +66,29 @@ class SpaceServiceTest {
         return doc;
       });
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceRequest("스쿨북스", null), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("스쿨북스", null), 1L);
 
     assertThat(result.homeDocumentId()).isEqualTo(50L);
     org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
       d -> d.getSpaceId().equals(5L) && d.getTitle().equals("스쿨북스")));
+  }
+
+  // 이름 없이 만들면 하위 페이지처럼 "제목 없음"으로 만듦
+  @Test
+  void create_withoutName_usesDefaultTitle() {
+    when(spaceRepository.save(org.mockito.ArgumentMatchers.any(Space.class))).thenAnswer(inv -> {
+      Space saved = inv.getArgument(0);
+      ReflectionTestUtils.setField(saved, "id", 5L);
+      return saved;
+    });
+    when(documentRepository.save(org.mockito.ArgumentMatchers.any(dev.jkchappy.portal.document.Document.class)))
+      .thenAnswer(inv -> inv.getArgument(0));
+
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("  ", null), 1L);
+
+    assertThat(result.name()).isEqualTo("제목 없음");
+    org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
+      d -> d.getTitle().equals("제목 없음")));
   }
 
   // 프로젝트 이름을 바꾸면 본문 페이지 제목도 같이 바뀜
@@ -172,7 +190,7 @@ class SpaceServiceTest {
       .thenAnswer(inv -> inv.getArgument(0));
     org.mockito.ArgumentCaptor<Space> saved = org.mockito.ArgumentCaptor.forClass(Space.class);
 
-    service().create(new dev.jkchappy.portal.space.dto.SpaceRequest("새 페이지", null), 1L);
+    service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("새 페이지", null), 1L);
 
     org.mockito.Mockito.verify(spaceRepository).save(saved.capture());
     assertThat(saved.getValue().getSortOrder()).isEqualTo(5);

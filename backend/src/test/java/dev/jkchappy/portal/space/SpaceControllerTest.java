@@ -45,9 +45,29 @@ class SpaceControllerTest {
   @MockitoBean
   private MemberService memberService;
 
+  // 사이드바 "+ 새 페이지"는 이름 없이 바로 만들고 화면에서 이름을 입력
   @Test
-  void createSpace_blankName_returns400() throws Exception {
+  void createSpace_withoutName_isAccepted() throws Exception {
     mockMvc.perform(post("/api/spaces")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+      .andExpect(status().isOk());
+  }
+
+  @Test
+  void createSpace_tooLongName_returns400() throws Exception {
+    mockMvc.perform(post("/api/spaces")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"name\":\"" + "가".repeat(101) + "\"}"))
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+  }
+
+  @Test
+  void updateSpace_blankName_returns400() throws Exception {
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/spaces/5")
         .with(loginAs(1L))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"name\":\"  \"}"))

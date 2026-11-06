@@ -3,6 +3,7 @@ package dev.jkchappy.portal.space;
 import dev.jkchappy.portal.common.ApiResponse;
 import dev.jkchappy.portal.member.CurrentUser;
 import dev.jkchappy.portal.space.dto.SpacePositionRequest;
+import dev.jkchappy.portal.space.dto.SpaceCreateRequest;
 import dev.jkchappy.portal.space.dto.SpaceRequest;
 import dev.jkchappy.portal.space.dto.SpaceResponse;
 import jakarta.validation.Valid;
@@ -31,7 +32,7 @@ public class SpaceController {
 
   @PostMapping
   public ApiResponse<SpaceResponse> create(
-    @Valid @RequestBody SpaceRequest request, @CurrentUser Long userId) {
+    @Valid @RequestBody SpaceCreateRequest request, @CurrentUser Long userId) {
     return ApiResponse.ok(spaceService.create(request, userId));
   }
 

@@ -3,6 +3,7 @@ import type { DragEvent, MouseEvent, ReactNode } from "react";
 import { ActionIcon, Box, Group, Menu, NavLink, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { focusTitleState } from "../documents/titleFocus";
 import { ApiError } from "../api/client";
 import { createDocument, deleteDocument, listDocuments, moveDocument, uploadFileNode } from "../api/documents";
 import type { DocumentDetailDto, DocumentSummaryDto } from "../api/documents";
@@ -30,7 +31,7 @@ function useCreatePage(spaceId: number, onCreated?: () => void) {
       queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       onCreated?.();
-      navigate(`/documents/${doc.id}`);
+      navigate(`/documents/${doc.id}`, focusTitleState(doc.id));
     },
   });
 }

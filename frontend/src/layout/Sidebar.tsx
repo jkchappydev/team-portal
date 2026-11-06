@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Group, Kbd, Modal, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Button, Group, Kbd, Stack, Text } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import type { SpaceDto } from "../api/spaces";
 import type { MemberDto } from "../api/members";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import { SearchDialog } from "../documents/SearchDialog";
+import { focusTitleState } from "../documents/titleFocus";
 import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
 import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
@@ -33,19 +34,16 @@ function TrashIcon() {
 export function Sidebar({ user }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [creating, setCreating] = useState(false);
   const [searching, setSearching] = useState(false);
   // 노션처럼 어디서든 Ctrl/Cmd+K로 검색 창 열기
   useHotkeys([["mod+K", () => setSearching(true)]], []);
-  const [name, setName] = useState("");
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
+  // 이름 입력 창 없이 "제목 없음" 페이지를 바로 만들고, 열린 페이지의 제목 칸에서 이름을 입력
   const create = useMutation({
-    mutationFn: (spaceName: string) => createSpace(spaceName),
+    mutationFn: () => createSpace(),
     onSuccess: (space) => {
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      setCreating(false);
-      setName("");
-      navigate(`/spaces/${space.id}`);
+      navigate(`/spaces/${space.id}`, space.homeDocumentId ? focusTitleState(space.homeDocumentId) : undefined);
     },
   });
 
@@ -87,8 +85,9 @@ export function Sidebar({ user }: Props) {
       </Stack>
       <Group justify="space-between" mt="sm">
         <Text size="xs" c="dimmed">페이지</Text>
-        <Button size="compact-xs" variant="subtle" onClick={() => setCreating(true)}>+ 새 페이지</Button>
+        <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 페이지</Button>
       </Group>
+      {create.error && <Alert color="red" p="xs">페이지를 만들지 못했습니다.</Alert>}
       <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
       <SidebarMenuLink to="/trash" label="휴지통" icon={<TrashIcon />} />
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
@@ -97,26 +96,6 @@ export function Sidebar({ user }: Props) {
         <Text size="sm">{user?.name ?? "-"}</Text>
         <Button size="compact-xs" variant="subtle" onClick={() => void logout()}>로그아웃</Button>
       </Group>
-      <Modal opened={creating} onClose={() => setCreating(false)} title="새 페이지" centered>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (name.trim()) create.mutate(name.trim());
-          }}
-        >
-          <Stack>
-            <TextInput
-              label="페이지 이름"
-              maxLength={100}
-              value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
-              error={create.error ? "페이지를 만들지 못했습니다." : undefined}
-              data-autofocus
-            />
-            <Button type="submit" loading={create.isPending}>만들기</Button>
-          </Stack>
-        </form>
-      </Modal>
     </Stack>
   );
 }

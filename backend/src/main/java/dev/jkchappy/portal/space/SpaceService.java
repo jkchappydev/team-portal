@@ -4,6 +4,7 @@ import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.Document;
 import dev.jkchappy.portal.document.DocumentRepository;
+import dev.jkchappy.portal.space.dto.SpaceCreateRequest;
 import dev.jkchappy.portal.space.dto.SpaceRequest;
 import dev.jkchappy.portal.space.dto.SpaceResponse;
 import java.util.ArrayList;
@@ -46,10 +47,11 @@ public class SpaceService {
       .toList();
   }
 
-  // 프로젝트와 같은 이름의 본문 페이지를 함께 생성
+  // 프로젝트와 같은 이름의 본문 페이지를 함께 생성 (이름이 없으면 하위 페이지처럼 "제목 없음")
   @Transactional
-  public SpaceResponse create(SpaceRequest request, Long userId) {
-    String name = request.name().trim();
+  public SpaceResponse create(SpaceCreateRequest request, Long userId) {
+    String name = request.name() == null || request.name().isBlank()
+      ? Document.DEFAULT_TITLE : request.name().trim();
     Space space = Space.create(name, request.description(), userId);
     // 새 최상위 페이지는 사이드바 맨 아래
     space.changeSortOrder(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc().stream()

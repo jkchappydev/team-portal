@@ -3,6 +3,7 @@ import type { DragEvent } from "react";
 import { Alert, Box, Text, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+import { focusTitleState } from "./titleFocus";
 import { ApiError } from "../api/client";
 import { createDocument, listDocuments, moveDocument } from "../api/documents";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
@@ -52,7 +53,7 @@ export function ChildPages({ spaceId, parentId }: Props) {
     onSuccess: (doc) => {
       queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      navigate(`/documents/${doc.id}`);
+      navigate(`/documents/${doc.id}`, focusTitleState(doc.id));
     },
   });
 
