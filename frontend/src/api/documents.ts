@@ -130,3 +130,9 @@ export function searchDocuments(q: string): Promise<DocumentSummaryDto[]> {
 export function getTrash(): Promise<TrashDto> {
   return apiFetch<TrashDto>("/api/trash");
 }
+
+// 휴지통 항목 영구 삭제 (하위 페이지와 첨부 파일까지 지우며 되돌릴 수 없음)
+export function purgeTrashItem(kind: TrashItemDto["kind"], id: number): Promise<void> {
+  const path = kind === "space" ? "spaces" : "documents";
+  return apiFetch<void>(`/api/trash/${path}/${id}`, { method: "DELETE" });
+}

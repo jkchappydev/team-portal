@@ -2,7 +2,7 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { restoreDocument } from "../api/documents";
+import { purgeTrashItem, restoreDocument } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { TrashPage } from "./TrashPage";
 
@@ -23,6 +23,7 @@ vi.mock("../api/documents", () => ({
     ],
   })),
   restoreDocument: vi.fn(() => Promise.resolve()),
+  purgeTrashItem: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../api/spaces", () => ({ restoreSpace: vi.fn(() => Promise.resolve()) }));
 
@@ -89,5 +90,22 @@ describe("TrashPage", () => {
     const spaceRestore = screen.getAllByRole("button", { name: "복원" }).at(-1)!;
     fireEvent.click(spaceRestore);
     await waitFor(() => expect(restoreSpace).toHaveBeenCalledWith(9));
+  });
+
+  it("영구 삭제는 확인 창에서 확정해야 종류에 맞는 영구 삭제 API를 호출한다", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("스쿨북스 영구 삭제"));
+    expect(await screen.findByText(/되돌릴 수 없습니다/)).toBeTruthy();
+    expect(purgeTrashItem).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "영구 삭제" }));
+    await waitFor(() => expect(purgeTrashItem).toHaveBeenCalledWith("space", 9));
+  });
+
+  it("영구 삭제 확인 창에서 취소하면 API를 호출하지 않는다", async () => {
+    vi.mocked(purgeTrashItem).mockClear();
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("상위 페이지 영구 삭제"));
+    fireEvent.click(await screen.findByRole("button", { name: "취소" }));
+    expect(purgeTrashItem).not.toHaveBeenCalled();
   });
 });

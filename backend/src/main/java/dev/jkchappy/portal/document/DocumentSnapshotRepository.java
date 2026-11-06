@@ -1,14 +1,21 @@
 package dev.jkchappy.portal.document;
 
 import dev.jkchappy.portal.document.dto.SnapshotMeta;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DocumentSnapshotRepository extends JpaRepository<DocumentSnapshot, Long> {
+
+  // 영구 삭제하는 페이지들의 수정 이력 일괄 삭제
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("delete from DocumentSnapshot s where s.documentId in :ids")
+  void deleteByDocumentIds(@Param("ids") Collection<Long> ids);
 
   // 문서의 가장 최근 스냅샷
   Optional<DocumentSnapshot> findFirstByDocumentIdOrderByCreatedAtDesc(Long documentId);

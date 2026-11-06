@@ -1,12 +1,18 @@
 package dev.jkchappy.portal.notification;
 
 import java.time.Instant;
+import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DocumentReadRepository extends JpaRepository<DocumentRead, DocumentReadKey> {
+
+  // 영구 삭제하는 페이지들의 확인 기록 일괄 삭제
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("delete from DocumentRead r where r.documentId in :ids")
+  void deleteByDocumentIds(@Param("ids") Collection<Long> ids);
 
   // 확인 시각 저장 (이미 있으면 덮어씀, 동시 요청에도 한 행만 유지)
   @Modifying

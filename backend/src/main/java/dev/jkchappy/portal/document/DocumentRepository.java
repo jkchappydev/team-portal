@@ -4,10 +4,24 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
+
+  // 최상위 페이지 안의 모든 페이지 (삭제 여부 무관, 영구 삭제 대상 수집용)
+  List<Document> findBySpaceId(Long spaceId);
+
+  // 영구 삭제 전 파일 항목과 첨부 사이의 상호 참조 해제
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("update Document d set d.attachmentId = null where d.id in :ids")
+  void clearAttachmentIds(@Param("ids") Collection<Long> ids);
+
+  // 페이지 일괄 삭제 (같은 문장 안의 상위·하위 참조는 문장 끝에서 검사)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("delete from Document d where d.id in :ids")
+  void deleteByIds(@Param("ids") Collection<Long> ids);
 
   // 프로젝트 안의 삭제되지 않은 페이지를 표시 순서로 조회 (같은 순서면 먼저 만든 페이지가 위)
   List<Document> findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(Long spaceId);

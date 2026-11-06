@@ -1,12 +1,16 @@
 package dev.jkchappy.portal.document;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.jkchappy.portal.common.BusinessException;
+import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.common.GlobalExceptionHandler;
 import dev.jkchappy.portal.account.AccountService;
 import dev.jkchappy.portal.support.ControllerTestSecurity;
@@ -48,6 +52,9 @@ class DocumentControllerTest {
 
   @MockitoBean
   private MemberService memberService;
+
+  @MockitoBean
+  private TrashService trashService;
 
   @Test
   void deleteDocument_withoutUser_returns401() throws Exception {
@@ -102,5 +109,37 @@ class DocumentControllerTest {
     mockMvc.perform(get("/api/documents/search").param("q", "배포"))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.success").value(true));
+  }
+
+  @Test
+  void purgeDocument_callsTrashService() throws Exception {
+    mockMvc.perform(delete("/api/trash/documents/3").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.success").value(true));
+
+    verify(trashService).purgeDocument(3L);
+  }
+
+  @Test
+  void purgeSpace_callsTrashService() throws Exception {
+    mockMvc.perform(delete("/api/trash/spaces/9").with(loginAs(1L)))
+      .andExpect(status().isOk());
+
+    verify(trashService).purgeSpace(9L);
+  }
+
+  @Test
+  void purgeDocument_notInTrash_returns400() throws Exception {
+    doThrow(new BusinessException(ErrorCode.INVALID_INPUT, "휴지통에 있는 페이지만 영구 삭제할 수 있습니다."))
+      .when(trashService).purgeDocument(3L);
+
+    mockMvc.perform(delete("/api/trash/documents/3").with(loginAs(1L)))
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void purgeDocument_withoutUser_returns401() throws Exception {
+    mockMvc.perform(delete("/api/trash/documents/3"))
+      .andExpect(status().isUnauthorized());
   }
 }
