@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { SearchDialog } from "./SearchDialog";
@@ -75,5 +76,35 @@ describe("SearchDialog", () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText("문서 검색"), { target: { value: "배" } });
     expect(screen.getByText("두 글자 이상 입력하세요.")).toBeTruthy();
+  });
+
+  it("Esc로 닫으면 여는 버튼으로 포커스를 되돌리지 않는다", async () => {
+    function Harness() {
+      const [opened, setOpened] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpened(true)}>검색 열기</button>
+          <SearchDialog opened={opened} onClose={() => setOpened(false)} />
+        </>
+      );
+    }
+    const queryClient = new QueryClient();
+    render(
+      <MantineProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <Harness />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
+    const trigger = screen.getByRole("button", { name: "검색 열기" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = await screen.findByPlaceholderText("문서 제목이나 내용으로 검색");
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByPlaceholderText("문서 제목이나 내용으로 검색")).toBeNull());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.activeElement).not.toBe(trigger);
   });
 });

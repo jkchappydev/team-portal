@@ -26,6 +26,8 @@ export function SearchDialog({ opened, onClose }: Props) {
       yOffset="12vh"
       padding={0}
       radius="md"
+      // 닫은 뒤 사이드바 검색 메뉴로 포커스가 돌아가 파란 테두리가 남지 않게 함
+      returnFocus={false}
     >
       {/* 열 때마다 검색어와 선택을 초기화 */}
       {opened && <SearchBody onClose={onClose} />}
