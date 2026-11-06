@@ -67,7 +67,7 @@ export function HistoryModal({ opened, documentId, title, onClose }: Props) {
       {listPending && opened && <Loader size="sm" />}
       {!listPending && !listError && entries.length === 0 && (
         <Text size="sm" c="dimmed" py="md">
-          아직 저장된 이력이 없습니다. 본문을 고치면 10분 간격으로 그 시점 본문이 자동 저장됩니다.
+          저장된 이력이 없습니다. 본문이 수정되면 10분 간격으로 해당 시점 본문이 자동 저장됩니다.
         </Text>
       )}
       {entries.length > 0 && (

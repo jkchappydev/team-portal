@@ -82,7 +82,7 @@ describe("HistoryModal", () => {
   it("이력이 없으면 자동 저장 안내를 보여준다", async () => {
     vi.mocked(listHistory).mockResolvedValue([]);
     renderModal();
-    expect(await screen.findByText(/아직 저장된 이력이 없습니다/)).toBeTruthy();
+    expect(await screen.findByText(/^저장된 이력이 없습니다. 본문이 수정되면 10분 간격으로 해당 시점 본문이 자동 저장됩니다.$/)).toBeTruthy();
   });
 });
 
