@@ -154,6 +154,26 @@ describe("SpaceNavItem", () => {
     await waitFor(() => expect(deleteSpace).toHaveBeenCalledWith(1));
   });
 
+  it("줄을 선택한 채 Delete 키를 누르면 확인 창이 뜨고, 삭제 버튼에 포커스가 있어 Enter로 지운다", async () => {
+    renderItem();
+    fireEvent.click(screen.getByLabelText("스쿨북스 펼치기"));
+    const pageRow = (await screen.findByText("배포 절차")).closest("a")!;
+    pageRow.focus();
+    fireEvent.keyDown(pageRow, { key: "Delete" });
+    expect(await screen.findByText(/"배포 절차" 페이지를 삭제할까요/)).toBeTruthy();
+    const confirm = screen.getByRole("button", { name: "삭제" });
+    await waitFor(() => expect(document.activeElement).toBe(confirm));
+    expect(deleteDocument).not.toHaveBeenCalledWith(11);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(deleteDocument).toHaveBeenCalledWith(11));
+  });
+
+  it("최상위 페이지 줄도 Delete 키로 삭제 확인 창을 연다", async () => {
+    renderItem();
+    fireEvent.keyDown(screen.getByText("스쿨북스").closest("a")!, { key: "Delete" });
+    expect(await screen.findByText(/"스쿨북스" 페이지를 삭제할까요/)).toBeTruthy();
+  });
+
   // 끌기·놓기 이벤트용 가짜 dataTransfer
   const dataTransfer = () => ({ setData: vi.fn(), clearData: vi.fn(), effectAllowed: "", dropEffect: "" });
   // 사이드바 줄(링크) 요소

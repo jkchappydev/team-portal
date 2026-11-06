@@ -78,6 +78,8 @@ interface TreeRowProps {
   siblingDrop?: boolean;
   // 파일 항목 줄: 누르면 이 주소로 내려받고, 펼치기·하위 추가·안쪽 놓기가 없음
   fileUrl?: string | null;
+  // 줄을 선택(포커스)한 채 Delete 키를 누르면 삭제 확인 창 열기
+  onDeleteKey?: () => void;
   // 지금 끌고 있는 페이지를 이 위치에 놓을 수 있는지
   canDrop: (position: DropPosition) => boolean;
   onDrop: (position: DropPosition) => void;
@@ -137,7 +139,7 @@ function Chevron({ opened }: { opened: boolean }) {
 // 트리 한 줄: 평소엔 아이콘, 마우스를 올리면 그 자리에 펼치기 화살표와 오른쪽 + / ⋯ 버튼
 function TreeRow({
   label, icon, to, active, opened, onToggle, addLabel, addTooltip, onAdd, adding, menuItems,
-  onDragStart, siblingDrop = false, fileUrl, canDrop, onDrop, onDropFiles, pagePositionOf, spaceRow, spaceDropLine, children,
+  onDragStart, siblingDrop = false, fileUrl, onDeleteKey, canDrop, onDrop, onDropFiles, pagePositionOf, spaceRow, spaceDropLine, children,
 }: TreeRowProps) {
   const isFile = !!fileUrl;
   const [hovered, setHovered] = useState(false);
@@ -164,6 +166,11 @@ function TreeRow({
         pl={6}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onKeyDown={(e) => {
+          if (e.key !== "Delete" || !onDeleteKey) return;
+          e.preventDefault();
+          onDeleteKey();
+        }}
         draggable={!!onDragStart}
         data-space-row={spaceRow || undefined}
         data-drop-target={dropPosition === "inside" || undefined}
@@ -344,6 +351,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
         addTooltip="하위 페이지 추가"
         onAdd={() => create.mutate(page.id)}
         adding={create.isPending}
+        onDeleteKey={() => setConfirmDelete(true)}
         menuItems={
           <>
             {isFile && page.fileUrl && (
@@ -526,6 +534,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
         addTooltip="페이지 추가"
         onAdd={() => create.mutate(null)}
         adding={create.isPending}
+        onDeleteKey={() => setConfirmDelete(true)}
         menuItems={
           <>
             <CopyLinkMenuItem path={`/spaces/${space.id}`} />

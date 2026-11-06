@@ -19,7 +19,8 @@ export function DeleteSpaceModal({ opened, name, pending, error, onClose, onConf
         {error && <Alert color="red">{error}</Alert>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>취소</Button>
-          <Button color="red" loading={pending} onClick={onConfirm}>삭제</Button>
+          {/* 창이 열리면 삭제 버튼에 포커스가 있어 Enter로 바로 삭제 */}
+          <Button color="red" loading={pending} onClick={onConfirm} data-autofocus>삭제</Button>
         </Group>
       </Stack>
     </Modal>
