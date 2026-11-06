@@ -1,9 +1,17 @@
 import { apiFetch } from "./client";
 
+// 연차를 쓴 하루 (label 예: 연차, 오전 반차)
+export interface LeaveUsageDayDto {
+  date: string;
+  label: string;
+}
+
 export interface WeeklyLeaveUsageDto {
   month: number;
   week: number;
   days: number;
+  // 그 주에 연차를 쓴 날짜 (날짜순)
+  dates?: LeaveUsageDayDto[];
 }
 
 export interface AnnualLeaveSummaryDto {

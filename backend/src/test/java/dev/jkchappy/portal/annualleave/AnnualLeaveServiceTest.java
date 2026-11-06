@@ -105,6 +105,27 @@ class AnnualLeaveServiceTest {
     assertThat(result.usedDays()).isEqualByComparingTo("2.75");
   }
 
+  // 칸 메모용으로 그 주에 연차를 쓴 날짜와 종류를 날짜순으로 내려줌 (주말 제외)
+  @Test
+  void findByYear_listsLeaveDatesOfEachWeek() {
+    Member member = member(1L, "홍길동");
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
+    when(balanceRepository.findByYear(2026)).thenReturn(List.of());
+    when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
+      LocalDate.of(2026, 12, 31))).thenReturn(List.of(
+      status(1L, WorkStatusType.HALF_DAY, LocalDate.of(2026, 11, 13), LocalDate.of(2026, 11, 13)),
+      status(1L, WorkStatusType.LEAVE, LocalDate.of(2026, 11, 6), LocalDate.of(2026, 11, 10))));
+
+    AnnualLeaveSummaryResponse result = service().findByYear(2026).getFirst();
+
+    assertThat(result.weeklyUsages().get(0).dates())
+      .containsExactly(new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 11, 6), "연차"));
+    assertThat(result.weeklyUsages().get(1).dates()).containsExactly(
+      new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 11, 9), "연차"),
+      new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 11, 10), "연차"),
+      new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 11, 13), "오전 반차"));
+  }
+
   // 연도를 걸친 연차는 해당 연도 날짜만 집계
   @Test
   void findByYear_leaveAcrossYearBoundary_countsOnlyThisYear() {

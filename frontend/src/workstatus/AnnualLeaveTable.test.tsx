@@ -16,7 +16,11 @@ vi.mock("../api/annualLeaves", () => ({
     totalDays: 16,
     usedDays: 2.75,
     remainingDays: 13.25,
-    weeklyUsages: [{ month: 11, week: 2, days: 1.75 }, { month: 3, week: 1, days: 1 }, { month: 5, week: 3, days: 0.25 }],
+    weeklyUsages: [{ month: 11, week: 2, days: 1.75, dates: [
+      { date: "2026-11-09", label: "연차" },
+      { date: "2026-11-10", label: "오후 반차" },
+      { date: "2026-11-11", label: "오전 반반차" },
+    ] },{ month: 3, week: 1, days: 1 }, { month: 5, week: 3, days: 0.25 }],
     editable: true,
   }])),
   updateAnnualLeave: vi.fn(() => Promise.resolve({})),
@@ -82,6 +86,15 @@ describe("AnnualLeaveTable", () => {
     expect(await screen.findByText("홍길동")).toBeTruthy();
     fireEvent.mouseEnter(screen.getByTestId("week-head-11-1"));
     expect(await screen.findByText("11/2(월) ~ 11/6(금)")).toBeTruthy();
+  });
+
+  it("사용 일수 칸에 마우스를 올리면 그 주에 연차를 쓴 날짜를 메모로 보여준다", async () => {
+    renderTable();
+    expect(await screen.findByText("홍길동")).toBeTruthy();
+    fireEvent.mouseEnter(screen.getByTestId("usage-1-11-2"));
+    expect(await screen.findByText("11/9 (월) 연차")).toBeTruthy();
+    expect(screen.getByText("11/10 (화) 오후 반차")).toBeTruthy();
+    expect(screen.getByText("11/11 (수) 오전 반반차")).toBeTruthy();
   });
 
   it("1 미만 사용 일수도 0.25처럼 앞자리 0을 붙여 표시한다", async () => {

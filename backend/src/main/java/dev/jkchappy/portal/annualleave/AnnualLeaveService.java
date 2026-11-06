@@ -2,6 +2,7 @@ package dev.jkchappy.portal.annualleave;
 
 import dev.jkchappy.portal.annualleave.dto.AnnualLeaveBalanceRequest;
 import dev.jkchappy.portal.annualleave.dto.AnnualLeaveSummaryResponse;
+import dev.jkchappy.portal.annualleave.dto.LeaveUsageDay;
 import dev.jkchappy.portal.annualleave.dto.WeeklyLeaveUsage;
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
@@ -14,6 +15,8 @@ import dev.jkchappy.portal.workstatus.WorkStatusRepository;
 import dev.jkchappy.portal.workstatus.WorkStatusType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +47,7 @@ public class AnnualLeaveService {
     validateYear(year);
     Map<Long, AnnualLeaveBalance> balances = balanceRepository.findByYear(year).stream()
       .collect(Collectors.toMap(AnnualLeaveBalance::getMemberId, Function.identity()));
-    Map<Long, TreeMap<Integer, BigDecimal>> usage = calculateUsage(year);
+    Map<Long, TreeMap<Integer, WeekUsage>> usage = calculateUsage(year);
 
     // 가입된 팀원은 모두, 삭제한 팀원은 삭제한 해까지만 표시
     return MemberOrder.sorted(memberRepository.findVisibleInYear(LocalDate.of(year, 1, 1))).stream()
@@ -72,24 +75,40 @@ public class AnnualLeaveService {
     return toResponse(member, saved, calculateUsage(year).getOrDefault(memberId, new TreeMap<>()));
   }
 
-  // 팀원별 (월*10+주) → 사용 일수. 연도 밖 날짜와 기간 연차의 주말은 제외
-  private Map<Long, TreeMap<Integer, BigDecimal>> calculateUsage(int year) {
+  // 한 주의 사용 일수와 연차를 쓴 날짜 목록
+  private static final class WeekUsage {
+    private BigDecimal days = BigDecimal.ZERO;
+    private final List<LeaveUsageDay> dates = new ArrayList<>();
+
+    private void add(LocalDate date, BigDecimal amount, String label) {
+      days = days.add(amount);
+      dates.add(new LeaveUsageDay(date, label));
+    }
+  }
+
+  // 팀원별 (월*10+주) → 사용 일수와 날짜. 연도 밖 날짜와 기간 연차의 주말은 제외
+  private Map<Long, TreeMap<Integer, WeekUsage>> calculateUsage(int year) {
     LocalDate from = LocalDate.of(year, 1, 1);
     LocalDate to = LocalDate.of(year, 12, 31);
-    Map<Long, TreeMap<Integer, BigDecimal>> result = new HashMap<>();
+    Map<Long, TreeMap<Integer, WeekUsage>> result = new HashMap<>();
     for (WorkStatus status : workStatusRepository.findLeaveOverlapping(from, to)) {
-      TreeMap<Integer, BigDecimal> usage = result.computeIfAbsent(status.getMemberId(),
+      TreeMap<Integer, WeekUsage> usage = result.computeIfAbsent(status.getMemberId(),
         id -> new TreeMap<>());
+      String label = status.getHalfDayPeriod() == null
+        ? status.getType().getDisplayName()
+        : status.getHalfDayPeriod().getDisplayName() + " " + status.getType().getDisplayName();
       if (status.getType() == WorkStatusType.HALF_DAY || status.getType() == WorkStatusType.QUARTER_DAY) {
         BigDecimal days = status.getType() == WorkStatusType.HALF_DAY ? HALF_DAY : QUARTER_DAY;
-        usage.merge(weekKey(status.getStartDate()), days, BigDecimal::add);
+        LocalDate date = status.getStartDate();
+        usage.computeIfAbsent(weekKey(date), key -> new WeekUsage()).add(date, days, label);
         continue;
       }
       LocalDate start = status.getStartDate().isBefore(from) ? from : status.getStartDate();
       LocalDate end = status.getEndDate().isAfter(to) ? to : status.getEndDate();
       start.datesUntil(end.plusDays(1))
         .filter(date -> !LeaveWeek.isWeekend(date))
-        .forEach(date -> usage.merge(weekKey(date), BigDecimal.ONE, BigDecimal::add));
+        .forEach(date -> usage.computeIfAbsent(weekKey(date), key -> new WeekUsage())
+          .add(date, BigDecimal.ONE, label));
     }
     return result;
   }
@@ -99,11 +118,13 @@ public class AnnualLeaveService {
   }
 
   private AnnualLeaveSummaryResponse toResponse(Member member, AnnualLeaveBalance balance,
-    TreeMap<Integer, BigDecimal> usage) {
+    TreeMap<Integer, WeekUsage> usage) {
     List<WeeklyLeaveUsage> weeklyUsages = usage.entrySet().stream()
-      .map(e -> new WeeklyLeaveUsage(e.getKey() / 10, e.getKey() % 10, e.getValue()))
+      .map(e -> new WeeklyLeaveUsage(e.getKey() / 10, e.getKey() % 10, e.getValue().days,
+        e.getValue().dates.stream().sorted(Comparator.comparing(LeaveUsageDay::date)).toList()))
       .toList();
-    BigDecimal usedDays = usage.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal usedDays = usage.values().stream().map(week -> week.days)
+      .reduce(BigDecimal.ZERO, BigDecimal::add);
     BigDecimal confirmedDays = balance == null ? BigDecimal.ZERO : balance.getConfirmedDays();
     BigDecimal carriedDays = balance == null ? BigDecimal.ZERO : balance.getCarriedDays();
     BigDecimal totalDays = confirmedDays.add(carriedDays);

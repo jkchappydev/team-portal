@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Alert, Group, NumberInput, Text, Title, Tooltip } from "@mantine/core";
+import { Alert, Group, HoverCard, NumberInput, Text, Title, Tooltip } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listAnnualLeaves, updateAnnualLeave } from "../api/annualLeaves";
-import type { AnnualLeaveSummaryDto } from "../api/annualLeaves";
+import type { AnnualLeaveSummaryDto, LeaveUsageDayDto } from "../api/annualLeaves";
 import { leaveWeekRangeLabel } from "./calendar";
 import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf } from "./highlight";
 import { useCurrentUser } from "../user/currentUser";
@@ -34,6 +34,36 @@ const compactInput = {
 
 function formatDays(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+}
+
+const MEMO_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 칸 메모 한 줄 (예: 9/28 (월) 연차)
+function memoLine({ date, label }: LeaveUsageDayDto): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const weekday = MEMO_WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${m}/${d} (${weekday}) ${label}`;
+}
+
+// 사용 일수 칸. 마우스를 올리면 구글 시트 메모처럼 그 주에 연차를 쓴 날짜를 칸 오른쪽에 보여줌
+function UsageCell({ testId, days, dates, style }: {
+  testId: string;
+  days: number | undefined;
+  dates: LeaveUsageDayDto[];
+  style: CSSProperties;
+}) {
+  const td = <td data-testid={testId} style={style}>{days !== undefined ? formatDays(days) : ""}</td>;
+  if (days === undefined || dates.length === 0) return td;
+  return (
+    <HoverCard position="right-start" offset={2} openDelay={100} closeDelay={50} shadow="md" radius={0}>
+      <HoverCard.Target>{td}</HoverCard.Target>
+      <HoverCard.Dropdown p="6px 10px" style={{ minWidth: 140 }}>
+        {dates.map((day) => (
+          <Text key={`${day.date}-${day.label}`} fz="sm" lh={1.5} style={{ whiteSpace: "nowrap" }}>{memoLine(day)}</Text>
+        ))}
+      </HoverCard.Dropdown>
+    </HoverCard>
+  );
 }
 
 // 이번 달 열은 머리글부터 사용 칸까지 같은 노란 배경, 그 외 짝수 달은 옅은 회색
@@ -95,8 +125,8 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
     />
   );
 
-  // 월-주 → 사용 일수
-  const usage = new Map(item.weeklyUsages.map((u) => [`${u.month}-${u.week}`, u.days]));
+  // 월-주 → 사용 일수와 날짜
+  const usage = new Map(item.weeklyUsages.map((u) => [`${u.month}-${u.week}`, u]));
 
   return (
     <tr data-member-drop={reorder.target?.id === item.memberId ? (reorder.target.after ? "after" : "before") : undefined}
@@ -108,16 +138,15 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
         {item.memberName}
       </td>
       {MONTHS.flatMap((month) => WEEKS.map((week) => {
-        const days = usage.get(`${month}-${week}`);
+        const weekUsage = usage.get(`${month}-${week}`);
         return (
-          <td
+          <UsageCell
             key={`${month}-${week}`}
-            data-testid={`usage-${item.memberId}-${month}-${week}`}
-            title={days !== undefined ? `${month}월 ${week}주 ${formatDays(days)}일` : undefined}
+            testId={`usage-${item.memberId}-${month}-${week}`}
+            days={weekUsage?.days}
+            dates={weekUsage?.dates ?? []}
             style={{ ...cell, background: monthBg(month, currentMonth) }}
-          >
-            {days !== undefined ? formatDays(days) : ""}
-          </td>
+          />
         );
       }))}
       <td style={{ ...cell, fontWeight: 600 }}>{formatDays(item.usedDays)}</td>
