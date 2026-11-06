@@ -1,5 +1,5 @@
 ﻿import { useEffect, type ReactNode } from "react";
-import { Button, Center, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Center, Group, Loader, Paper, Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMe, logout } from "../api/auth";
 import type { AuthMe } from "../api/auth";
@@ -7,12 +7,93 @@ import { ApiError } from "../api/client";
 import { Navigate } from "react-router-dom";
 import { ProfileSetup } from "./ProfileSetup";
 
+// Google 공식 "G" 로고 (로그인 버튼용)
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
+
+// 로그인·승인 대기 등 인증 화면 공통 카드
+function AuthCard({ children }: { children: ReactNode }) {
+  return (
+    <Center mih="100vh" p="md" bg="var(--mantine-color-default-hover)">
+      <Paper withBorder radius="lg" p={32} w="100%" maw={400} shadow="xs">
+        {children}
+      </Paper>
+    </Center>
+  );
+}
+
+const iconProps = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
+
 export function LoginPage() {
   const error = new URLSearchParams(window.location.search).get("error");
-  return <Center h="100vh"><Stack align="center"><Title order={2}>팀 포털</Title>
-    {error && <Text c="red">{error === "domain" ? "회사 계정(@example.com)으로 로그인해 주세요" : "로그인하지 못했습니다. 다시 시도해 주세요"}</Text>}
-    <Button component="a" href="/oauth2/authorization/google">Google로 로그인</Button>
-  </Stack></Center>;
+  return (
+    <AuthCard>
+      <Stack gap="lg">
+        <Stack gap={6} align="center">
+          <ThemeIcon size={48} radius="md" variant="light">
+            <svg width="26" height="26" viewBox="0 0 24 24" {...iconProps}>
+              <circle cx="9" cy="8" r="3" /><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" />
+              <circle cx="17" cy="9" r="2.5" /><path d="M16 14h1a4 4 0 0 1 4 4v1" />
+            </svg>
+          </ThemeIcon>
+          <Title order={2} mt={4}>팀 포털</Title>
+          <Text size="sm" c="dimmed" ta="center">회사 Google 계정으로 로그인해 주세요</Text>
+        </Stack>
+        {error && (
+          <Alert color="red" variant="light" radius="md">
+            {error === "domain" ? "회사 계정(@example.com)으로 로그인해 주세요" : "로그인하지 못했습니다. 다시 시도해 주세요"}
+          </Alert>
+        )}
+        <Button component="a" href="/oauth2/authorization/google" variant="default" size="md" radius="md" fullWidth leftSection={<GoogleIcon />}>
+          Google로 로그인
+        </Button>
+        <Text size="xs" c="dimmed" ta="center">@example.com 계정만 사용할 수 있습니다.<br />처음 로그인하면 관리자 승인 후 이용할 수 있습니다.</Text>
+      </Stack>
+    </AuthCard>
+  );
+}
+
+// 승인 대기·거절·비활성 상태 안내
+function AccessStatus({ me }: { me: AuthMe }) {
+  const pending = me.status === "PENDING";
+  const message = pending ? "승인 진행 중입니다" : me.status === "REJECTED" ? "가입이 거절되었습니다. 관리자에게 문의하세요" : "접근 권한이 없습니다";
+  return (
+    <AuthCard>
+      <Stack gap="lg" align="center">
+        <ThemeIcon size={56} radius="xl" variant="light" color={pending ? "blue" : "red"}>
+          <svg width="28" height="28" viewBox="0 0 24 24" {...iconProps}>
+            <circle cx="12" cy="12" r="9" />
+            {pending ? <path d="M12 7v5l3 2" /> : <path d="M5.7 5.7l12.6 12.6" />}
+          </svg>
+        </ThemeIcon>
+        <Stack gap={6} align="center">
+          <Title order={3} ta="center">{message}</Title>
+          <Text size="sm" c="dimmed" ta="center">
+            {pending ? "관리자가 가입을 승인하면 이 화면에서 바로 포털로 이동합니다." : "계정 상태는 관리자에게 문의해 주세요."}
+          </Text>
+        </Stack>
+        {pending && (
+          <Group gap={8}>
+            <Loader size="xs" type="dots" />
+            <Text size="xs" c="dimmed">승인 여부를 확인하는 중</Text>
+          </Group>
+        )}
+        <Paper withBorder radius="md" px="md" py="xs" w="100%">
+          <Text size="xs" c="dimmed">로그인한 계정</Text>
+          <Text size="sm" fw={500}>{me.email}</Text>
+        </Paper>
+        <Button variant="subtle" color="gray" onClick={() => void logout()}>다른 계정으로 로그인</Button>
+      </Stack>
+    </AuthCard>
+  );
 }
 
 export function LoginRoute() {
@@ -52,10 +133,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (error || !me) return <Center h="100vh"><Stack align="center"><Text>로그인 정보를 불러오지 못했습니다.</Text>
     <Button onClick={() => void queryClient.invalidateQueries({ queryKey: ["auth", "me"] })}>다시 시도</Button></Stack></Center>;
   const inactive = me.status === "APPROVED" && me.active === false;
-  if (inactive || me.status !== "APPROVED") return <Center h="100vh"><Stack align="center">
-    <Text>{me.status === "PENDING" ? "승인 진행 중입니다" : me.status === "REJECTED" ? "가입이 거절되었습니다. 관리자에게 문의하세요" : "접근 권한이 없습니다"}</Text>
-    <Text>{me.email}</Text><Button onClick={() => void logout()}>로그아웃</Button>
-  </Stack></Center>;
+  if (inactive || me.status !== "APPROVED") return <AccessStatus me={me} />;
   if (me.profileComplete === false) return <ProfileSetup me={me} />;
   return children;
 }
