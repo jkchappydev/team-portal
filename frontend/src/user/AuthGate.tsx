@@ -5,6 +5,7 @@ import { getMe, logout } from "../api/auth";
 import type { AuthMe } from "../api/auth";
 import { ApiError } from "../api/client";
 import { Navigate } from "react-router-dom";
+import { ProfileSetup } from "./ProfileSetup";
 
 export function LoginPage() {
   const error = new URLSearchParams(window.location.search).get("error");
@@ -55,5 +56,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     <Text>{me.status === "PENDING" ? "승인 진행 중입니다" : me.status === "REJECTED" ? "가입이 거절되었습니다. 관리자에게 문의하세요" : "접근 권한이 없습니다"}</Text>
     <Text>{me.email}</Text><Button onClick={() => void logout()}>로그아웃</Button>
   </Stack></Center>;
+  if (me.profileComplete === false) return <ProfileSetup me={me} />;
   return children;
 }

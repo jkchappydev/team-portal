@@ -16,7 +16,7 @@ export interface SignupRequestDto {
 }
 export const listSignupRequests = () => apiFetch<SignupRequestDto[]>("/api/admin/signup-requests");
 export const countPendingSignups = async () => (await apiFetch<{ pending: number }>("/api/admin/signup-requests/count")).pending;
-export const approveSignup = (id: number, data: ({ memberId: number } | { newMemberName: string }) & { department: string; jobRank: JobRank }) =>
+export const approveSignup = (id: number, data: { memberId: number } | { newMemberName: string }) =>
   apiFetch<void>(`/api/admin/signup-requests/${id}/approve`, { method: "POST", body: JSON.stringify(data) });
 export const rejectSignup = (id: number) => apiFetch<void>(`/api/admin/signup-requests/${id}/reject`, { method: "POST" });
 export const reopenSignup = (id: number) => apiFetch<void>(`/api/admin/signup-requests/${id}/reopen`, { method: "POST" });

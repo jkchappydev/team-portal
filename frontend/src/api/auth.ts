@@ -7,6 +7,8 @@ export interface AuthMe {
   admin: boolean;
   // 승인됐지만 비활성으로 바뀐 팀원이면 false
   active?: boolean;
+  // 부서·직급을 아직 입력하지 않았으면 false (내 정보 입력 화면 표시)
+  profileComplete?: boolean;
 }
 export const getMe = () => apiFetch<AuthMe>("/api/auth/me");
 export async function logout() {

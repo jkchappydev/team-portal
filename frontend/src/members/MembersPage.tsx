@@ -11,6 +11,7 @@ import { deleteMember, JOB_RANKS, listMembers, updateMember } from "../api/membe
 import type { JobRank, MemberDto } from "../api/members";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "./useMemberReorder";
+import { MemberInfoForm } from "./MemberInfoForm";
 
 const rankLabel = (rank: JobRank | null | undefined) => JOB_RANKS.find((r) => r.value === rank)?.label ?? "-";
 
@@ -41,22 +42,20 @@ function ConfirmModal({ opened, title, message, confirmLabel, pending, onClose, 
 
 type ApproveMode = "rejoin" | "new" | "link";
 
-// 가입 요청 한 건: 부서·직급을 정하고 새 팀원으로 만들거나 기존 팀원 기록과 연결해 승인
+// 가입 요청 한 건: 새 팀원으로 만들거나 기존 팀원 기록과 연결해 승인
+// 부서·직급 등은 승인된 본인이 처음 들어올 때 직접 입력
 // 삭제했던 팀원의 재가입이면 기본으로 이전 기록에 다시 연결
 function RequestCard({ request, members, refresh }: { request: SignupRequestDto; members: MemberDto[]; refresh: () => void }) {
   const rejoin = request.previousMemberId != null;
   const [mode, setMode] = useState<ApproveMode>(rejoin ? "rejoin" : "new");
   const [name, setName] = useState(request.googleName);
   const [memberId, setMemberId] = useState<string | null>(null);
-  const [department, setDepartment] = useState(request.previousDepartment ?? "");
-  const [jobRank, setJobRank] = useState<JobRank | null>(request.previousJobRank ?? null);
   const [confirming, setConfirming] = useState(false);
   const action = useMutation({ mutationFn: (run: () => Promise<unknown>) => run(), onSuccess: refresh });
   const pending = request.status === "PENDING";
   // 구글 계정이 아직 없는 활성 팀원만 연결 대상
   const linkable = members.filter((m) => m.active && !m.email).map((m) => ({ value: String(m.id), label: m.name }));
-  const ready = !!department.trim() && !!jobRank
-    && (mode === "rejoin" || (mode === "new" ? !!name.trim() : !!memberId));
+  const ready = mode === "rejoin" || (mode === "new" ? !!name.trim() : !!memberId);
   const modes = [
     ...(rejoin ? [{ value: "rejoin", label: "이전 기록과 다시 연결" }] : []),
     { value: "new", label: "새 팀원으로 등록" },
@@ -64,11 +63,9 @@ function RequestCard({ request, members, refresh }: { request: SignupRequestDto;
   ];
 
   const approve = () => {
-    if (!jobRank) return;
-    const organization = { department: department.trim(), jobRank };
     const target = mode === "new"
-      ? { newMemberName: name.trim(), ...organization }
-      : { memberId: mode === "rejoin" ? request.previousMemberId! : Number(memberId), ...organization };
+      ? { newMemberName: name.trim() }
+      : { memberId: mode === "rejoin" ? request.previousMemberId! : Number(memberId) };
     action.mutate(() => approveSignup(request.id, target));
   };
 
@@ -111,10 +108,10 @@ function RequestCard({ request, members, refresh }: { request: SignupRequestDto;
               <Select label="연결할 팀원" placeholder={linkable.length ? "팀원 선택" : "연결할 팀원이 없습니다"}
                 data={linkable} value={memberId} onChange={setMemberId} disabled={!linkable.length} />
             )}
-            <TextInput label="부서" value={department} maxLength={100} onChange={(e) => setDepartment(e.currentTarget.value)} />
-            <Select label="직급" placeholder="직급 선택" data={JOB_RANKS} value={jobRank}
-              onChange={(value) => setJobRank(value as JobRank | null)} />
           </Group>
+          {mode !== "rejoin" && (
+            <Text size="xs" c="dimmed">부서·직급·연락처는 승인된 팀원이 처음 들어올 때 직접 입력합니다.</Text>
+          )}
           {action.error && <Alert color="red">{errorMessage(action.error, "처리하지 못했습니다.")}</Alert>}
           <Group justify="flex-end" gap="xs">
             <Button variant="subtle" color="red" onClick={() => setConfirming(true)}>거절</Button>
@@ -139,43 +136,14 @@ function RequestCard({ request, members, refresh }: { request: SignupRequestDto;
   );
 }
 
-// 팀원 이름·부서·직급 수정 창
+// 팀원 정보 수정 창
 function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onClose: () => void; refresh: () => void }) {
-  const [name, setName] = useState(member.name);
-  const [department, setDepartment] = useState(member.department ?? "");
-  const [jobRank, setJobRank] = useState<JobRank | null>(member.jobRank ?? null);
-  const [phone, setPhone] = useState(member.phone ?? "");
-  const [extension, setExtension] = useState(member.extension ?? "");
-  const save = useMutation({
-    mutationFn: () => updateMember(member.id, {
-      name: name.trim(), department: department.trim(), jobRank: jobRank!, phone: phone.trim(), extension: extension.trim(),
-    }),
-    onSuccess: () => {
-      refresh();
-      onClose();
-    },
-  });
   return (
     <Modal opened onClose={onClose} title="팀원 정보 수정" centered>
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        save.mutate();
-      }}>
-        <Stack>
-          <TextInput label="이름" value={name} maxLength={50} onChange={(e) => setName(e.currentTarget.value)} data-autofocus />
-          <TextInput label="부서" value={department} maxLength={100} onChange={(e) => setDepartment(e.currentTarget.value)} />
-          <Select label="직급" placeholder="직급 선택" data={JOB_RANKS} value={jobRank} onChange={(v) => setJobRank(v as JobRank | null)} />
-          <TextInput label="전화번호" placeholder="010-0000-0000" value={phone} maxLength={20} inputMode="tel"
-            onChange={(e) => setPhone(e.currentTarget.value)} />
-          <TextInput label="내선번호" placeholder="1234" value={extension} maxLength={10} inputMode="numeric"
-            onChange={(e) => setExtension(e.currentTarget.value)} />
-          {save.error && <Alert color="red">{errorMessage(save.error, "저장하지 못했습니다.")}</Alert>}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>취소</Button>
-            <Button type="submit" loading={save.isPending} disabled={!name.trim() || !department.trim() || !jobRank}>저장</Button>
-          </Group>
-        </Stack>
-      </form>
+      <MemberInfoForm member={member} submitLabel="저장" onCancel={onClose} onSaved={() => {
+        refresh();
+        onClose();
+      }} />
     </Modal>
   );
 }

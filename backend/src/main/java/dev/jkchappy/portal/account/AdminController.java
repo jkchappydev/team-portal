@@ -40,7 +40,6 @@ public class AdminController {
   public void approve(@CurrentUser Long userId, @PathVariable Long id, @RequestBody ApproveRequest request) {
     accounts.requireAdmin(userId);
     if ((request.memberId() == null) == (request.newMemberName() == null)) throw new BusinessException(ErrorCode.INVALID_INPUT);
-    if (request.department() == null || request.department().isBlank() || request.jobRank() == null) throw new BusinessException(ErrorCode.INVALID_INPUT);
     if (request.memberId() != null) accounts.approveWithMember(id, request.memberId(), userId, request.department(), request.jobRank());
     else accounts.approveAsNewMember(id, request.newMemberName(), userId, request.department(), request.jobRank());
   }

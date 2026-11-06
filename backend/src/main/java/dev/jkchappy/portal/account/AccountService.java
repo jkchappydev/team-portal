@@ -76,7 +76,8 @@ public class AccountService {
     Member member = account.getMember();
     return new AuthMeResponse(account.getEmail(), account.getStatus(), member == null ? null : member.getId(),
       member == null ? null : member.getName(), member != null && member.isActive() && member.isAdmin(),
-      member != null && member.isActive());
+      member != null && member.isActive(),
+      member != null && member.getDepartment() != null && member.getJobRank() != null);
   }
 
   @Transactional(readOnly = true)

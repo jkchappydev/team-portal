@@ -41,18 +41,18 @@ describe("팀원 관리", () => {
     fireEvent.click(option!);
   }
 
-  it("구글 이름을 기본값으로 새 팀원 승인", async () => {
+  it("관리자는 부서·직급 없이 구글 이름을 기본값으로 새 팀원 승인만 한다", async () => {
     renderPage();
     expect(await screen.findByDisplayValue("홍길동")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("부서"), { target: { value: "개발팀" } });
-    pickOption("선임");
+    expect(screen.queryByLabelText("부서")).toBeNull();
+    expect(screen.queryByLabelText("직급")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "승인" }));
-    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(5, { newMemberName: "홍길동", department: "개발팀", jobRank: "SENIOR" }));
+    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(5, { newMemberName: "홍길동" }));
   });
 
-  it("부서·직급을 정하지 않으면 승인할 수 없다", async () => {
+  it("이름을 비우면 새 팀원으로 승인할 수 없다", async () => {
     renderPage();
-    await screen.findByDisplayValue("홍길동");
+    fireEvent.change(await screen.findByDisplayValue("홍길동"), { target: { value: " " } });
     expect(screen.getByRole("button", { name: "승인" }).hasAttribute("disabled")).toBe(true);
   });
 
@@ -65,14 +65,12 @@ describe("팀원 관리", () => {
     renderPage();
     await screen.findByText("연결 가능");
     fireEvent.click(screen.getByText("기존 팀원과 연결"));
-    fireEvent.change(screen.getByLabelText("부서"), { target: { value: "개발팀" } });
-    pickOption("선임");
     const labels = Array.from(document.querySelectorAll("[data-combobox-option]")).map((o) => o.textContent);
     expect(labels).not.toContain("이미 연결됨");
     expect(labels).not.toContain("비활성");
     pickOption("연결 가능");
     fireEvent.click(screen.getByRole("button", { name: "승인" }));
-    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(5, { memberId: 1, department: "개발팀", jobRank: "SENIOR" }));
+    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(5, { memberId: 1 }));
   });
 
   it("거절은 확인한 후 처리한다", async () => {
@@ -114,9 +112,8 @@ describe("팀원 관리", () => {
     }]);
     renderPage();
     expect(await screen.findByText("재가입")).toBeTruthy();
-    expect(screen.getByDisplayValue("개발팀")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "승인" }));
-    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(7, { memberId: 3, department: "개발팀", jobRank: "RESPONSIBLE" }));
+    await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(7, { memberId: 3 }));
   });
 
   it("⋯ 메뉴의 정보 수정 창에서 이름·부서·직급을 저장한다", async () => {

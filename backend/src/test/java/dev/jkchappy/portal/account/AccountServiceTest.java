@@ -151,6 +151,30 @@ class AccountServiceTest {
   }
 
   @Test
+  void meReportsProfileIncompleteUntilDepartmentAndJobRankAreSet() {
+    Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
+    when(accounts.findByGoogleSubject("sub")).thenReturn(Optional.of(account));
+
+    assertThat(service.me("sub").profileComplete()).isFalse();
+
+    account.getMember().setOrganization("개발팀", JobRank.SENIOR);
+    assertThat(service.me("sub").profileComplete()).isTrue();
+  }
+
+  @Test
+  void approveAsNewMemberWithoutOrganizationLeavesProfileToMember() {
+    Account account = Account.createPending("sub", "a@example.com", "홍길동", Instant.now());
+    when(accounts.findForUpdateById(5L)).thenReturn(Optional.of(account));
+    when(members.save(any(Member.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    service.approveAsNewMember(5L, "홍길동", 1L);
+
+    assertThat(account.getStatus()).isEqualTo(AccountStatus.APPROVED);
+    assertThat(account.getMember().getDepartment()).isNull();
+    assertThat(account.getMember().getJobRank()).isNull();
+  }
+
+  @Test
   void meAfterDeletionShowsPending() {
     Account account = approvedAccount("sub", "a@example.com", 2L, "이재구");
     account.getMember().markDeleted(java.time.LocalDate.of(2026, 10, 1));
