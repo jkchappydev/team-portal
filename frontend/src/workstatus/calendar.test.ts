@@ -10,13 +10,18 @@ function item(id: number, startDate: string, endDate: string): WorkStatusDto {
 }
 
 describe("buildMonthGrid", () => {
-  it("2026-11은 월요일 시작, 첫 칸 2026-10-26(inMonth=false), 11/7은 weekend", () => {
+  it("2026-11은 일요일 시작, 1일(일)이 첫 칸이고 토요일 11/7은 weekend", () => {
     const grid = buildMonthGrid(2026, 11);
-    expect(grid[0][0]).toEqual({ date: "2026-10-26", inMonth: false, weekend: false });
+    expect(grid[0][0]).toEqual({ date: "2026-11-01", inMonth: true, weekend: true });
+    expect(grid[0][6]).toEqual({ date: "2026-11-07", inMonth: true, weekend: true });
     expect(grid.every((week) => week.length === 7)).toBe(true);
-    const nov7 = grid.flat().find((d) => d.date === "2026-11-07");
-    expect(nov7).toEqual({ date: "2026-11-07", inMonth: true, weekend: true });
-    expect(grid.at(-1)!.at(-1)!.date).toBe("2026-12-06");
+    expect(grid.at(-1)!.at(-1)!.date).toBe("2026-12-05");
+  });
+
+  it("2026-10은 앞 달 9/27(일)부터 시작한다", () => {
+    const grid = buildMonthGrid(2026, 10);
+    expect(grid[0][0]).toEqual({ date: "2026-09-27", inMonth: false, weekend: true });
+    expect(grid[0][4].date).toBe("2026-10-01");
   });
 });
 

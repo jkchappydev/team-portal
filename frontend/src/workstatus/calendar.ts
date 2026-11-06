@@ -23,11 +23,11 @@ function isWeekend(ms: number): boolean {
   return dow === 0 || dow === 6;
 }
 
-// 월요일 시작 주 단위 달력 격자 생성 (앞뒤 달 날짜는 inMonth=false)
+// 일요일 시작 주 단위 달력 격자 생성 (앞뒤 달 날짜는 inMonth=false)
 export function buildMonthGrid(year: number, month: number): CalendarDay[][] {
   const first = Date.UTC(year, month - 1, 1);
   const last = Date.UTC(year, month, 0);
-  const offset = (new Date(first).getUTCDay() + 6) % 7;
+  const offset = new Date(first).getUTCDay();
   const start = first - offset * DAY_MS;
   const weekCount = Math.ceil((offset + (last - first) / DAY_MS + 1) / 7);
 

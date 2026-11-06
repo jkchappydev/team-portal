@@ -15,9 +15,9 @@ import { WorkStatusForm } from "./WorkStatusForm";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "./highlight";
 import { MonthPicker } from "./MonthPicker";
 
-const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
-// 월~금 넓게, 토·일 좁게
-const GRID_COLUMNS = "repeat(5, 1fr) 0.5fr 0.5fr";
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+// 월~금 넓게, 일·토 좁게
+const GRID_COLUMNS = "0.5fr repeat(5, 1fr) 0.5fr";
 const CALENDAR_OUTER_BORDER = "light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3))";
 const CALENDAR_CELL_BORDER = "light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4))";
 const OUTSIDE_MONTH_BACKGROUND = "light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-8))";
@@ -137,7 +137,7 @@ export function WorkStatusPage() {
               ta="center"
               py={6}
               fz="sm"
-              c={i === 5 ? "blue" : i === 6 ? "red" : undefined}
+              c={i === 0 ? "red" : i === 6 ? "blue" : undefined}
               style={{ borderBottom: `1px solid ${CALENDAR_OUTER_BORDER}` }}
             >
               {name}
