@@ -7,6 +7,7 @@ import java.time.YearMonth;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -33,7 +34,9 @@ public class HolidayCacheService {
       .orElse(false);
   }
 
-  @Transactional
+  // 읽기 전용 조회(WBS 일정표 등) 중에 불려도 캐시를 저장할 수 있게 별도 트랜잭션으로 커밋
+  // 저장이 실패해도 호출한 쪽 트랜잭션은 롤백 대상으로 표시되지 않음
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void replace(YearMonth yearMonth, List<HolidayData> data) {
     Instant now = clock.instant();
     holidayRepository.deleteByHolidayDateBetween(yearMonth.atDay(1), yearMonth.atEndOfMonth());
