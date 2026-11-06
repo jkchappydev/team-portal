@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { searchDocuments } from "../api/documents";
 import type { DocumentSummaryDto } from "../api/documents";
 import { formatDateTime } from "./format";
-import { pageIcon } from "./pageIcon";
+import { PageIcon } from "./PageIconView";
 
 // 서버 검색은 두 글자 이상부터 동작
 const MIN_QUERY_LENGTH = 2;
@@ -107,7 +107,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
               background: i === selected ? "var(--mantine-color-default-hover)" : undefined,
             }}
           >
-            <Text fz="sm" fw={500} truncate><span aria-hidden>{pageIcon(doc.icon)} </span><span>{doc.title}</span></Text>
+            <Text fz="sm" fw={500} truncate><PageIcon icon={doc.icon} />{" "}<span>{doc.title}</span></Text>
             <Text fz="xs" c="dimmed" truncate>
               {doc.spaceName ?? "-"} · {formatDateTime(doc.updatedAt)}
             </Text>

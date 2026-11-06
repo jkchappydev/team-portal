@@ -77,8 +77,8 @@ public class Document {
   @Column(nullable = false, length = 200)
   private String title;
 
-  // 제목 앞 이모지 아이콘 (null이면 없음)
-  @Column(length = 32)
+  // 제목 앞 아이콘: 이모지, att:{첨부 ID}, https 이미지 주소 (null이면 없음)
+  @Column(length = 512)
   private String icon;
 
   @Column(name = "content_state")

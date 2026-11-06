@@ -4,6 +4,7 @@ import { ActionIcon, Alert, Box, Button, Group, Loader, Menu, Text, TextInput, U
 import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
 import { IconPicker } from "./IconPicker";
+import { PageIcon } from "./PageIconView";
 import { formatDateTime } from "./format";
 
 // 편집기 번들은 페이지 화면에서만 로드
@@ -57,6 +58,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
         {onChangeIcon && (
           <IconPicker
             hasIcon={!!doc.icon}
+            documentId={doc.id}
             onSelect={onChangeIcon}
             target={(toggle) => doc.icon ? (
               <UnstyledButton
@@ -65,7 +67,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
                 className="page-row"
                 style={{ fontSize: 56, lineHeight: 1.2, borderRadius: 8, padding: "0 4px" }}
               >
-                {doc.icon}
+                <PageIcon icon={doc.icon} />
               </UnstyledButton>
             ) : (
               <Button

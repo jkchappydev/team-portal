@@ -5,14 +5,10 @@ import { getTrash, restoreDocument } from "../api/documents";
 import type { TrashItemDto } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { formatDateTime } from "./format";
-import { pageIcon } from "./pageIcon";
+import { PageIcon } from "./PageIconView";
 
 // 하위 페이지 한 단계당 들여쓰기 폭
 const INDENT = 20;
-
-function iconOf(item: TrashItemDto): string {
-  return pageIcon(item.icon);
-}
 
 // 복원 대상 (하위 페이지는 페이지 복원 API로 위치만 옮김)
 interface RestoreTarget {
@@ -37,7 +33,7 @@ function TrashRow({ item, pending, onRestore }: TrashRowProps) {
       <Group justify="space-between" wrap="nowrap">
         <Stack gap={0} style={{ minWidth: 0 }}>
           <Text size="sm" truncate>
-            <span aria-hidden style={{ marginRight: 6 }}>{iconOf(item)}</span>
+            <span style={{ marginRight: 6 }}><PageIcon icon={item.icon} /></span>
             <span>{item.name}</span>
           </Text>
           <Text size="xs" c="dimmed">삭제 {formatDateTime(item.deletedAt)}</Text>
@@ -62,7 +58,7 @@ function TrashRow({ item, pending, onRestore }: TrashRowProps) {
           data-depth={child.depth}
         >
           <Text size="sm" c="dimmed" truncate>
-            <span aria-hidden style={{ marginRight: 6 }}>{pageIcon(child.icon)}</span>
+            <span style={{ marginRight: 6 }}><PageIcon icon={child.icon} /></span>
             <span>{child.title}</span>
           </Text>
           <Tooltip

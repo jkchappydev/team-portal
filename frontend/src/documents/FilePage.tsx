@@ -5,7 +5,7 @@ import { ApiError } from "../api/client";
 import { getDocument } from "../api/documents";
 import { listSpaces } from "../api/spaces";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
-import { pageIcon } from "./pageIcon";
+import { PageIcon } from "./PageIconView";
 import { FilePreview } from "./preview/FilePreview";
 
 // 사이드바에서 파일 항목을 누르면 여는 미리보기 화면 (위에 경로와 다운로드 버튼)
@@ -28,26 +28,26 @@ export function FilePage() {
   // 페이지 주소로 들어오면 페이지 화면으로
   if (doc.kind !== "FILE") return <Navigate to={`/documents/${doc.id}`} replace />;
 
-  const spaceIcon = pageIcon(spaces?.find((space) => space.id === doc.spaceId)?.icon);
+  const spaceIcon = spaces?.find((space) => space.id === doc.spaceId)?.icon;
 
   return (
     <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
       <Group gap={8} wrap="nowrap" mb="lg">
         <Anchor component={Link} to={`/spaces/${doc.spaceId}`} size="sm" c="dimmed" truncate>
-          <span aria-hidden style={{ marginRight: 6 }}>{spaceIcon}</span>{doc.spaceName ?? "페이지"}
+          <span style={{ marginRight: 6 }}><PageIcon icon={spaceIcon} /></span>{doc.spaceName ?? "페이지"}
         </Anchor>
         {doc.path.map((ancestor) => (
           <Group key={ancestor.id} gap={8} wrap="nowrap">
             <Text size="sm" c="dimmed">/</Text>
             <Anchor component={Link} to={`/documents/${ancestor.id}`} size="sm" c="dimmed" truncate>
-              <span aria-hidden style={{ marginRight: 6 }}>{pageIcon(ancestor.icon)}</span>{ancestor.title}
+              <span style={{ marginRight: 6 }}><PageIcon icon={ancestor.icon} /></span>{ancestor.title}
             </Anchor>
           </Group>
         ))}
       </Group>
       <Group justify="space-between" align="flex-start" mb="md" wrap="nowrap">
         <Title order={2} style={{ minWidth: 0, wordBreak: "break-all" }}>
-          <span aria-hidden style={{ marginRight: 8 }}>{pageIcon(doc.icon)}</span>{doc.title}
+          <span style={{ marginRight: 8 }}><PageIcon icon={doc.icon} /></span>{doc.title}
         </Title>
         {doc.fileUrl && (
           <Button component="a" href={doc.fileUrl} download={doc.title} variant="light" style={{ flexShrink: 0 }}>

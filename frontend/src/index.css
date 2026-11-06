@@ -386,3 +386,89 @@ tr[data-member-drop="after"]::after { bottom: -1px; }
 tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
 .member-drag-handle:active { cursor: grabbing; }
 .annual-leave-scroll { box-sizing: border-box; width: calc(100% + 10px); margin-left: -10px; padding-left: 10px; overflow-x: auto; }
+
+/* 페이지 아이콘 이모지 선택 창: 본문 이모지 선택 창(BlockNote .bn-frimousse-picker)과 같은 모양 */
+.icon-emoji-picker {
+  --icon-emoji-hover: var(--mantine-color-gray-1);
+  --icon-emoji-text: var(--mantine-color-dimmed);
+  width: 100%;
+  height: min(352px, 100dvh - 120px);
+  background-color: var(--mantine-color-body);
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.icon-emoji-picker [frimousse-search] {
+  position: relative;
+  z-index: 10;
+  appearance: none;
+  margin: 8px 8px 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  outline: none;
+  background-color: var(--icon-emoji-hover);
+  color: var(--mantine-color-text);
+  font-size: 14px;
+}
+.icon-emoji-picker [frimousse-search]:focus-visible { outline: 2px solid var(--mantine-color-blue-5); outline-offset: -2px; }
+.icon-emoji-picker [frimousse-viewport] { position: relative; flex: 1; outline: none; }
+.icon-emoji-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-emoji-text);
+  font-size: 14px;
+}
+.icon-emoji-picker [frimousse-list] { padding-bottom: 12px; user-select: none; }
+.icon-emoji-picker [frimousse-category-header] {
+  box-sizing: border-box;
+  padding: 12px 12px 6px;
+  background-color: var(--mantine-color-body);
+  color: var(--icon-emoji-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+.icon-emoji-picker [frimousse-row] { padding-inline: 6px; scroll-margin-block: 6px; }
+.icon-emoji-picker [frimousse-emoji] {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  font-size: 22px;
+  cursor: pointer;
+}
+.icon-emoji-picker [frimousse-emoji]:hover,
+.icon-emoji-picker [frimousse-emoji][data-active] { background-color: var(--icon-emoji-hover); }
+.icon-emoji-picker [frimousse-emoji]:focus-visible,
+.icon-emoji-skin-tone:focus-visible { outline: 2px solid var(--mantine-color-text); outline-offset: -2px; }
+.icon-emoji-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+.icon-emoji-active { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.icon-emoji-active-glyph { flex-shrink: 0; font-size: 18px; line-height: 1; }
+.icon-emoji-active-label { overflow: hidden; color: var(--icon-emoji-text); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.icon-emoji-skin-tone {
+  all: unset;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.icon-emoji-skin-tone:hover { background-color: var(--icon-emoji-hover); }

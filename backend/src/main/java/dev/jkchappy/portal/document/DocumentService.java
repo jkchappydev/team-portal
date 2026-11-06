@@ -1,5 +1,7 @@
 package dev.jkchappy.portal.document;
 
+import dev.jkchappy.portal.attachment.Attachment;
+import dev.jkchappy.portal.attachment.AttachmentRepository;
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.dto.DocumentDetail;
@@ -41,6 +43,7 @@ public class DocumentService {
   private final SpaceRepository spaceRepository;
   private final MemberService memberService;
   private final DocumentSnapshotRepository snapshotRepository;
+  private final AttachmentRepository attachmentRepository;
   private final Clock clock;
 
   // 하위 페이지 최대 깊이 (순환 데이터 방어)
@@ -226,8 +229,42 @@ public class DocumentService {
   public DocumentDetail changeIcon(Long id, String icon, Long userId) {
     Document doc = getLiveDocument(id);
     String resolved = icon == null || icon.isBlank() ? null : icon.trim();
+    if (resolved != null) validateIcon(doc, resolved);
     doc.changeIcon(resolved, userId);
     return getDetail(id);
+  }
+
+  private static final long MAX_ICON_IMAGE_BYTES = 5L * 1024 * 1024;
+  private static final java.util.regex.Pattern UPLOADED_ICON = java.util.regex.Pattern.compile("att:(\\d{1,18})");
+
+  // 업로드 이미지는 같은 페이지의 5MB 이하 이미지(SVG 제외)만, 주소는 https만, 그 외는 짧은 이모지 글자만 허용
+  private void validateIcon(Document doc, String icon) {
+    var uploaded = UPLOADED_ICON.matcher(icon);
+    if (uploaded.matches()) {
+      boolean usable = attachmentRepository.findById(Long.parseLong(uploaded.group(1)))
+        .filter(a -> a.getDocumentId().equals(doc.getId()))
+        .filter(a -> isIconImage(a))
+        .isPresent();
+      if (!usable) throw new BusinessException(ErrorCode.INVALID_INPUT, "아이콘으로 쓸 수 없는 이미지입니다.");
+      return;
+    }
+    if (icon.startsWith("https://")) {
+      try {
+        var uri = new java.net.URI(icon);
+        if (uri.getHost() != null && !uri.getHost().isBlank()) return;
+      } catch (java.net.URISyntaxException ignored) {
+        // 아래에서 잘못된 주소로 처리
+      }
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "이미지 주소가 올바르지 않습니다.");
+    }
+    if (icon.length() > 32 || icon.contains(":")) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "이모지나 이미지만 아이콘으로 쓸 수 있습니다.");
+    }
+  }
+
+  private static boolean isIconImage(Attachment attachment) {
+    String type = attachment.getContentType();
+    return type.startsWith("image/") && !type.startsWith("image/svg") && attachment.getSize() <= MAX_ICON_IMAGE_BYTES;
   }
 
   // 프로젝트 본문 페이지는 프로젝트 삭제로만 지울 수 있음

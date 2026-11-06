@@ -101,7 +101,7 @@ describe("SpaceNavItem", () => {
 
     fireEvent.mouseEnter(screen.getByText("배포 절차"));
     expect(chevron.hasAttribute("data-visible")).toBe(true);
-    expect(screen.getByText("🚀").hasAttribute("data-hidden")).toBe(true);
+    expect(screen.getByText("🚀").closest(".tree-slot-icon")!.hasAttribute("data-hidden")).toBe(true);
   });
 
   it("아이콘이 없는 페이지는 기본 아이콘을 보인다", async () => {
@@ -128,7 +128,7 @@ describe("SpaceNavItem", () => {
 
   it("최상위 페이지 줄도 본문 아이콘을 보이고, 마우스를 올리면 화살표로 바뀐다", () => {
     renderItem();
-    const icon = screen.getByText("🏫");
+    const icon = screen.getByText("🏫").closest(".tree-slot-icon")!;
     expect(icon.hasAttribute("data-hidden")).toBe(false);
     fireEvent.mouseEnter(screen.getByText("스쿨북스"));
     expect(icon.hasAttribute("data-hidden")).toBe(true);
@@ -137,7 +137,7 @@ describe("SpaceNavItem", () => {
 
   it("아이콘이 없는 최상위 페이지는 기본 아이콘을 보이고, 마우스를 올리면 화살표로 바뀐다", () => {
     renderItem({ ...space, icon: null });
-    const icon = screen.getByText("📄");
+    const icon = screen.getByText("📄").closest(".tree-slot-icon")!;
     expect(icon.hasAttribute("data-hidden")).toBe(false);
     fireEvent.mouseEnter(screen.getByText("스쿨북스"));
     expect(icon.hasAttribute("data-hidden")).toBe(true);

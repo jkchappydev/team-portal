@@ -42,9 +42,12 @@ class DocumentServiceTest {
   @Mock
   private DocumentSnapshotRepository snapshotRepository;
 
+  @Mock
+  private dev.jkchappy.portal.attachment.AttachmentRepository attachmentRepository;
+
   private DocumentService service() {
     return new DocumentService(documentRepository, spaceRepository, memberService,
-      snapshotRepository, Clock.systemUTC());
+      snapshotRepository, attachmentRepository, Clock.systemUTC());
   }
 
   private Space space(Long id) {
@@ -415,6 +418,57 @@ class DocumentServiceTest {
   }
 
   @Test
+  void changeIcon_uploadedImageOfSameDocument_isSaved() {
+    Document doc = document(1L, 10L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of());
+    when(attachmentRepository.findById(7L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(1L, "logo.png", "stored", "image/png", 1024, true, 1L)));
+
+    service().changeIcon(1L, "att:7", 1L);
+
+    assertThat(doc.getIcon()).isEqualTo("att:7");
+  }
+
+  @Test
+  void changeIcon_uploadedImageOfOtherDocumentOrNonImage_isRejected() {
+    Document doc = document(1L, 10L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
+    when(attachmentRepository.findById(7L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(2L, "logo.png", "stored", "image/png", 1024, true, 1L)));
+    when(attachmentRepository.findById(8L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(1L, "icon.svg", "stored", "image/svg+xml", 1024, true, 1L)));
+    when(attachmentRepository.findById(9L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(1L, "big.png", "stored", "image/png", 6L * 1024 * 1024, true, 1L)));
+
+    for (String icon : List.of("att:7", "att:8", "att:9", "att:404")) {
+      assertThatThrownBy(() -> service().changeIcon(1L, icon, 1L))
+        .as(icon)
+        .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+    assertThat(doc.getIcon()).isNull();
+  }
+
+  @Test
+  void changeIcon_httpsImageLink_isSavedAndOtherLinksAreRejected() {
+    Document doc = document(1L, 10L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of());
+
+    service().changeIcon(1L, "https://example.com/logo.png", 1L);
+    assertThat(doc.getIcon()).isEqualTo("https://example.com/logo.png");
+
+    for (String icon : List.of("http://example.com/logo.png", "javascript:alert(1)", "https://exa mple.com/a.png")) {
+      assertThatThrownBy(() -> service().changeIcon(1L, icon, 1L))
+        .as(icon)
+        .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+  }
+
+  @Test
   void changeIcon_blank_removesIcon() {
     Document doc = document(1L, 10L);
     doc.changeIcon("🚀", 1L);
@@ -504,7 +558,7 @@ class DocumentServiceTest {
 
   private DocumentService serviceAt(Instant now) {
     return new DocumentService(documentRepository, spaceRepository, memberService,
-      snapshotRepository, Clock.fixed(now, ZoneOffset.UTC));
+      snapshotRepository, attachmentRepository, Clock.fixed(now, ZoneOffset.UTC));
   }
 
   @Test

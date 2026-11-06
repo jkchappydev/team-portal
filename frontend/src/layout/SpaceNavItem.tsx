@@ -13,7 +13,7 @@ import { DeletePageModal } from "../documents/DeletePageModal";
 import { DeleteSpaceModal } from "../documents/DeleteSpaceModal";
 import { ExportModal } from "../documents/export/ExportModal";
 import { HistoryModal } from "../documents/history/HistoryModal";
-import { pageIcon } from "../documents/pageIcon";
+import { PageIcon } from "../documents/PageIconView";
 import { childrenOf, descendantIds, groupByParent } from "../documents/pageTree";
 import { dropPositionAt } from "./dropPosition";
 import type { DropPosition } from "./dropPosition";
@@ -59,7 +59,7 @@ function useDeletePage(page: DocumentSummaryDto, onDeleted: () => void) {
 interface TreeRowProps {
   label: string;
   // 제목 앞 아이콘 (없으면 화살표만 표시)
-  icon?: string;
+  icon?: ReactNode;
   to: string;
   active?: boolean;
   opened: boolean;
@@ -332,7 +332,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
     <>
       <TreeRow
         label={page.title}
-        icon={pageIcon(page.icon)}
+        icon={<PageIcon icon={page.icon} />}
         // 파일 항목은 미리보기 화면, 페이지는 편집 화면
         to={isFile ? `/files/${page.id}` : `/documents/${page.id}`}
         fileUrl={isFile ? page.fileUrl : undefined}
@@ -517,7 +517,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
     <>
       <TreeRow
         label={space.name}
-        icon={pageIcon(space.icon)}
+        icon={<PageIcon icon={space.icon} />}
         to={`/spaces/${space.id}`}
         opened={opened}
         onToggle={() => setOpened((v) => !v)}

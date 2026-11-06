@@ -12,14 +12,14 @@ import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { DeletePageModal } from "./DeletePageModal";
 import { ExportModal } from "./export/ExportModal";
 import { HistoryModal } from "./history/HistoryModal";
-import { pageIcon } from "./pageIcon";
+import { PageIcon } from "./PageIconView";
 import { PageView } from "./PageView";
 
 // 경로의 아이콘과 제목 사이 간격을 띄워 표시 (아이콘이 없으면 기본 아이콘)
 function IconLabel({ icon, title }: { icon: string | null | undefined; title: string }) {
   return (
     <>
-      <span aria-hidden style={{ marginRight: 6 }}>{pageIcon(icon)}</span>
+      <span style={{ marginRight: 6 }}><PageIcon icon={icon} /></span>
       {title}
     </>
   );

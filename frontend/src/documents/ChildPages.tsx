@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { createDocument, listDocuments, moveDocument } from "../api/documents";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
-import { pageIcon } from "./pageIcon";
+import { PageIcon } from "./PageIconView";
 import { childrenOf, groupByParent } from "./pageTree";
 
 const rowStyle = { display: "block", width: "100%", padding: "6px 8px", borderRadius: 6 };
@@ -152,7 +152,7 @@ export function ChildPages({ spaceId, parentId }: Props) {
             style={rowStyle}
             draggable={false}
           >
-            <Text size="sm"><span aria-hidden>{pageIcon(page.icon)} </span><span>{page.title}</span></Text>
+            <Text size="sm"><PageIcon icon={page.icon} />{" "}<span>{page.title}</span></Text>
           </UnstyledButton>
         </Box>
       ))}

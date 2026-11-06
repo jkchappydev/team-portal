@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { listDocumentUpdates, markAllDocumentUpdatesRead } from "../api/notifications";
 import { listSpaces } from "../api/spaces";
-import { pageIcon } from "../documents/pageIcon";
+import { PageIcon } from "../documents/PageIconView";
 import { formatRelative, updatePath } from "./updateFormat";
 import { DOCUMENT_UPDATES_KEY } from "./useMarkDocumentRead";
 import { countPendingSignups } from "../api/admin";
@@ -80,7 +80,7 @@ export function DocumentUpdatesBell() {
                     navigate(updatePath(doc, spaces));
                   }}
                 >
-                  <Text size="sm" truncate>{pageIcon(doc.icon)} {doc.title}</Text>
+                  <Text size="sm" truncate><PageIcon icon={doc.icon} /> {doc.title}</Text>
                   <Text size="xs" c="dimmed" truncate>
                     {doc.spaceName} · {doc.updatedByName || "알 수 없음"} · {formatRelative(doc.updatedAt)}
                   </Text>

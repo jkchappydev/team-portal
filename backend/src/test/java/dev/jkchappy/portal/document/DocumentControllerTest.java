@@ -70,7 +70,7 @@ class DocumentControllerTest {
     mockMvc.perform(patch("/api/documents/1/icon")
         .with(loginAs(1L))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"icon\":\"" + "a".repeat(33) + "\"}"))
+        .content("{\"icon\":\"" + "a".repeat(513) + "\"}"))
       .andExpect(status().isBadRequest());
   }
 
