@@ -38,13 +38,9 @@ export function LoginPage() {
     <AuthCard>
       <Stack gap="lg">
         <Stack gap={6} align="center">
-          <ThemeIcon size={48} radius="md" variant="light">
-            <svg width="26" height="26" viewBox="0 0 24 24" {...iconProps}>
-              <circle cx="9" cy="8" r="3" /><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" />
-              <circle cx="17" cy="9" r="2.5" /><path d="M16 14h1a4 4 0 0 1 4 4v1" />
-            </svg>
-          </ThemeIcon>
-          <Title order={2} mt={4}>팀 포털</Title>
+          {/* 로고 (흰 배경을 투명하게 바꾼 이미지라 다크 모드에서도 그대로 사용) */}
+          <img src="/logo.png" alt="logo" height={44} style={{ display: "block" }} />
+          <Title order={2} mt={8}>개발팀</Title>
           <Text size="sm" c="dimmed" ta="center">회사 Google 계정으로 로그인해 주세요</Text>
         </Stack>
         {error && (

@@ -68,7 +68,7 @@ export function Sidebar({ user }: Props) {
       {/* 포털 이름을 누르면 첫 화면(근무 상황표)으로 이동 */}
       <Group justify="space-between" wrap="nowrap">
         <Text fw={700} size="lg" component={RouterLink} to="/" style={{ color: "inherit", textDecoration: "none" }}>
-          팀 포털
+          개발팀
         </Text>
         {/* 다른 팀원이 수정한 페이지 알림 */}
         {user && <DocumentUpdatesBell />}
