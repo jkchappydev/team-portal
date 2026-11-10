@@ -11,6 +11,7 @@ import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
+import { ProfileSetupPreview } from "./user/ProfileSetup";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -21,6 +22,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
+            {/* 개발자용 최초 가입 정보 입력 화면 미리보기 (포털 틀 없이 실제 화면 그대로) */}
+            <Route path="/preview/profile-setup" element={<AuthGate><ProfileSetupPreview /></AuthGate>} />
             <Route element={<AuthGate><AppLayout /></AuthGate>}>
               <Route path="/" element={<Navigate to="/work-status" replace />} />
               {/* 없는 주소는 첫 화면(근무 상황표)으로 */}

@@ -108,7 +108,8 @@ describe("AuthGate", () => {
     expect(screen.queryByText("포털 본문")).toBeNull();
     const start = screen.getByRole("button", { name: "시작하기" });
     expect(start.hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByLabelText("부서"), { target: { value: " 개발팀 " } });
+    // 부서는 목록에서 고름 (우선 개발팀만)
+    fireEvent.click(Array.from(document.querySelectorAll("[data-combobox-option]")).find((o) => o.textContent === "개발팀")!);
     const option = Array.from(document.querySelectorAll("[data-combobox-option]")).find((o) => o.textContent === "선임");
     fireEvent.click(option!);
     // 처음 가입한 사람도 숫자만 넣으면 하이픈이 붙고 내선번호는 3자리까지

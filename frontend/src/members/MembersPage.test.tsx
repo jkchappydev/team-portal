@@ -134,9 +134,9 @@ describe("팀원 관리", () => {
     fireEvent.click(await screen.findByLabelText("기존 팀원 메뉴"));
     fireEvent.click(await screen.findByText("정보 수정"));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("부서"), { target: { value: "기획팀" } });
+    pickOption("개발팀");
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "기획팀", jobRank: "SENIOR", phone: "", extension: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "" }));
   });
 
   it("⋯ 메뉴의 팀원 삭제는 확인 후 처리하고, 본인 줄에는 삭제 메뉴가 없다", async () => {
@@ -196,9 +196,9 @@ describe("팀원 관리", () => {
     expect(screen.queryByText("관리자 권한 주기")).toBeNull();
     expect(screen.queryByText("팀원 삭제")).toBeNull();
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("부서"), { target: { value: "기획팀" } });
+    pickOption("개발팀");
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "기획팀", jobRank: "SENIOR", phone: "", extension: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "" }));
   });
 
   it("관리자도 팀원 목록에서는 끌기·가입 요청 없이 본인 줄만 고친다", async () => {
