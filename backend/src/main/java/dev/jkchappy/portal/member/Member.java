@@ -50,6 +50,17 @@ public class Member {
   @Column(name = "sort_order")
   private Long sortOrder;
 
+  // 본인이 고른 프로필 색 (없으면 화면에서 팀원 번호로 정한 자동 색)
+  @Column(name = "profile_color", length = 7)
+  private String profileColor;
+
+  // 프로필 이미지 저장 파일 이름과 형식 (없으면 이름 두 글자 동그라미)
+  @Column(name = "profile_image", length = 36)
+  private String profileImage;
+
+  @Column(name = "profile_image_type", length = 50)
+  private String profileImageType;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -100,6 +111,18 @@ public class Member {
 
   public void changeSortOrder(Long sortOrder) {
     this.sortOrder = sortOrder;
+  }
+
+  public void changeProfileColor(String profileColor) {
+    this.profileColor = profileColor;
+  }
+
+  // 새 이미지로 바꾸거나(null이면 제거) 이전 저장 파일 이름 반환
+  public String replaceProfileImage(String storedName, String contentType) {
+    String previous = this.profileImage;
+    this.profileImage = storedName;
+    this.profileImageType = storedName == null ? null : contentType;
+    return previous;
   }
 
   // 삭제하면 로그인과 관리자 권한도 함께 막음

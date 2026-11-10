@@ -13,6 +13,7 @@ import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
 import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
 import { logout } from "../api/auth";
+import { ProfileSettingsModal } from "../user/ProfileSettingsModal";
 
 interface Props {
   user: MemberDto | null;
@@ -35,6 +36,7 @@ export function Sidebar({ user }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searching, setSearching] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // 노션처럼 어디서든 Ctrl/Cmd+K로 검색 창 열기
   useHotkeys([["mod+K", () => setSearching(true)]], []);
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
@@ -93,9 +95,18 @@ export function Sidebar({ user }: Props) {
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
       <ColorSchemeToggle />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-        <Text size="sm">{user?.name ?? "-"}</Text>
+        {/* 이름을 누르면 내 설정(프로필 색·이미지) */}
+        {user ? (
+          <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="내 설정"
+            onClick={() => setSettingsOpen(true)} styles={{ label: { fontWeight: 400 } }}>
+            {user.name}
+          </Button>
+        ) : (
+          <Text size="sm">-</Text>
+        )}
         <Button size="compact-xs" variant="subtle" onClick={() => void logout()}>로그아웃</Button>
       </Group>
+      {user && <ProfileSettingsModal user={user} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
     </Stack>
   );
 }

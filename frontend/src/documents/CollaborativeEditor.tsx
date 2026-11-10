@@ -27,6 +27,8 @@ import { collabUrl, FRAGMENT_NAME } from "./collab";
 import { createCursorActivity, editingClientIds, renderCursor } from "./cursorActivity";
 import type { CursorUser } from "./cursorActivity";
 import { NotionDragHandleMenu } from "./editor/NotionDragHandleMenu";
+import { sameViewers, viewersOf } from "./presence";
+import type { PresenceUser, Viewer } from "./presence";
 import { dropTargetAt, insertDroppedFiles } from "./fileDrop";
 import type { DropEditor } from "./fileDrop";
 import { userColor } from "./userColor";
@@ -37,6 +39,8 @@ interface Props {
   user: MemberDto;
   // 슬래시 메뉴 "/일정"으로 이 페이지 아래에 WBS를 만들 최상위 페이지 (없으면 메뉴에서 제외)
   scheduleSpaceId?: number;
+  // 지금 이 페이지를 보고 있는 사람(나 포함) 목록이 바뀔 때 알림
+  onViewersChange?: (viewers: Viewer[]) => void;
 }
 
 interface Session {
@@ -46,11 +50,15 @@ interface Session {
 
 
 // 문서가 바뀌면 상위에서 key로 다시 마운트하므로 상태 초기화는 마운트 단위로 처리
-export default function CollaborativeEditor({ documentId, user, scheduleSpaceId }: Props) {
+export default function CollaborativeEditor({ documentId, user, scheduleSpaceId, onViewersChange }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [connected, setConnected] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
   const [unsynced, setUnsynced] = useState(false);
+  const onViewersChangeRef = useRef(onViewersChange);
+  useEffect(() => {
+    onViewersChangeRef.current = onViewersChange;
+  }, [onViewersChange]);
 
   // 문서·사용자 단위로 연결 생성, 정리 시 provider와 doc 해제 (StrictMode 재마운트에도 살아 있는 연결은 하나)
   useEffect(() => {
@@ -75,7 +83,21 @@ export default function CollaborativeEditor({ documentId, user, scheduleSpaceId 
     provider.on("authenticationFailed", onAuthFailed);
     provider.on("unsyncedChanges", onUnsyncedChanges);
 
+    // 접속 상태(awareness)가 바뀔 때마다 나를 포함한 보는 사람 목록 전달, 목록이 같으면 알리지 않음
+    const awareness = provider.awareness;
+    const last: { viewers: Viewer[] } = { viewers: [] };
+    const onAwarenessChange = () => {
+      if (!awareness) return;
+      const next = viewersOf(awareness.getStates() as Map<number, Record<string, unknown>>, user.id);
+      if (sameViewers(last.viewers, next)) return;
+      last.viewers = next;
+      onViewersChangeRef.current?.(next);
+    };
+    awareness?.on("change", onAwarenessChange);
+
     return () => {
+      awareness?.off("change", onAwarenessChange);
+      onViewersChangeRef.current?.([]);
       provider.off("status", onStatus);
       provider.off("synced", onSynced);
       provider.off("authenticationFailed", onAuthFailed);
@@ -143,6 +165,17 @@ export default function CollaborativeEditor({ documentId, user, scheduleSpaceId 
   );
 }
 
+// 접속 상태에 싣는 내 정보 (커서 색은 팀원 번호로 고정, 동그라미는 고른 색·이미지 우선)
+function presenceUser(user: Pick<MemberDto, "id" | "name" | "profileColor" | "profileImageUrl">) {
+  return {
+    name: user.name,
+    color: userColor(user.id),
+    memberId: user.id,
+    profileColor: user.profileColor ?? null,
+    imageUrl: user.profileImageUrl ?? null,
+  } satisfies PresenceUser;
+}
+
 // 표 칸을 누르면 모서리에 뜨는 칸 메뉴 버튼을 그리지 않음 (행·열 색칠은 행·열 손잡이 메뉴로)
 function HiddenCellButton() {
   return null;
@@ -172,8 +205,8 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       collaboration: {
         provider: { awareness: session.provider.awareness ?? undefined },
         fragment: session.doc.getXmlFragment(FRAGMENT_NAME),
-        // memberId로 커서와 실제 편집자를 맞춤
-        user: { name: user.name, color: userColor(user.id), memberId: user.id },
+        // memberId로 커서와 실제 편집자를 맞춤, 프로필 색·이미지는 보는 사람 표시용
+        user: presenceUser(user),
         // 이름표 표시는 아래 문서 변경 감시로 직접 처리 (기본 방식은 커서 위치만 바뀌어도 이름을 띄워 엉뚱한 사람이 표시됨)
         showCursorLabels: "always",
         renderCursor: (cursorUser) => renderCursor(cursorUser as CursorUser),
@@ -192,6 +225,13 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
   useEffect(() => {
     setEditorEditable(editor, editable);
   }, [editor, editable]);
+
+  // 내 설정에서 색·이미지를 바꾸면 편집기를 새로 만들지 않고 다른 사람에게 보이는 내 정보만 갱신
+  const { profileColor, profileImageUrl } = user;
+  useEffect(() => {
+    session.provider.awareness?.setLocalStateField("user",
+      presenceUser({ id: user.id, name: user.name, profileColor, profileImageUrl }));
+  }, [session, user.id, user.name, profileColor, profileImageUrl]);
 
   // 다른 사람이 실제로 글을 고친 경우에만 그 사람 커서에 이름표 표시
   const editorBoxRef = useRef<HTMLDivElement>(null);

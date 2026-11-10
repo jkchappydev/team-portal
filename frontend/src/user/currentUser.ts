@@ -6,6 +6,9 @@ import type { MemberDto } from "../api/members";
 export function useCurrentUser(): { user: MemberDto | null; me: AuthMe | null } {
   const { data: me } = useQuery({ queryKey: ["auth", "me"], queryFn: getMe, retry: false });
   const user = me?.status === "APPROVED" && me.memberId != null && me.memberName != null
-    ? { id: me.memberId, name: me.memberName, active: true, admin: me.admin, email: me.email } : null;
+    ? {
+      id: me.memberId, name: me.memberName, active: true, admin: me.admin, email: me.email,
+      profileColor: me.profileColor ?? null, profileImageUrl: me.profileImageUrl ?? null,
+    } : null;
   return { user, me: me ?? null };
 }

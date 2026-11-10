@@ -5,7 +5,20 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { DocumentDetailDto } from "../api/documents";
 import { PageView } from "./PageView";
 
-vi.mock("./CollaborativeEditor", () => ({ default: () => <div>편집기</div> }));
+// 편집기가 접속 상태에서 받은 "보는 사람"을 위로 알리는 것만 흉내 냄
+vi.mock("./CollaborativeEditor", async () => {
+  const { useEffect } = await import("react");
+  function FakeEditor({ onViewersChange }: { onViewersChange?: (viewers: unknown[]) => void }) {
+    useEffect(() => {
+      onViewersChange?.([
+        { memberId: 1, name: "홍길동", color: "#000" },
+        { memberId: 9, name: "이영희", color: "#f80" },
+      ]);
+    }, [onViewersChange]);
+    return <div>편집기</div>;
+  }
+  return { default: FakeEditor };
+});
 
 const doc: DocumentDetailDto = {
   id: 7, spaceId: 1, spaceName: "개발", title: "제목 없음", icon: null, createdByName: null,
@@ -44,5 +57,11 @@ describe("PageView", () => {
     renderPage(null);
     expect(await screen.findByText("편집기")).toBeTruthy();
     expect(document.activeElement).not.toBe(screen.getByLabelText("페이지 제목"));
+  });
+
+  it("지금 보고 있는 사람을 나를 포함해 제목 위 오른쪽에 동그라미로 보여 준다", async () => {
+    renderPage(null);
+    expect((await screen.findByLabelText("홍길동")).textContent).toBe("길동");
+    expect(screen.getByLabelText("이영희").textContent).toBe("영희");
   });
 });

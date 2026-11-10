@@ -16,6 +16,9 @@ export interface MemberDto {
   jobRank?: JobRank | null;
   phone?: string | null;
   extension?: string | null;
+  // 로그인한 본인 정보에만 채워짐 (보는 사람 표시에 실어 보냄)
+  profileColor?: string | null;
+  profileImageUrl?: string | null;
 }
 
 export function listMembers(includeInactive: boolean): Promise<MemberDto[]> {

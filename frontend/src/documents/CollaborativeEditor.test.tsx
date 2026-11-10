@@ -7,12 +7,19 @@ import CollaborativeEditor from "./CollaborativeEditor";
 
 type Handler = (payload: unknown) => void;
 
+interface FakeAwareness {
+  states: Map<number, Record<string, unknown>>;
+  emitChange: () => void;
+  listenerCount: () => number;
+}
+
 // 모킹된 provider·doc 인스턴스 기록용 저장소
 const registry = vi.hoisted(() => ({
   providers: [] as Array<{
     configuration: { name: string; token: string; document: unknown; url: string };
     destroyed: boolean;
     hasUnsyncedChanges: boolean;
+    awareness: FakeAwareness;
     emit: (event: string, payload?: unknown) => void;
     listenerCount: () => number;
   }>,
@@ -25,7 +32,20 @@ vi.mock("@hocuspocus/provider", () => {
     configuration: { name: string; token: string; document: unknown; url: string };
     destroyed = false;
     hasUnsyncedChanges = false;
-    awareness = {};
+    // 보는 사람 표시용 접속 상태(awareness)
+    awareness = (() => {
+      const listeners = new Set<() => void>();
+      const states = new Map<number, Record<string, unknown>>();
+      return {
+        states,
+        getStates: () => states,
+        on: (_event: string, fn: () => void) => listeners.add(fn),
+        off: (_event: string, fn: () => void) => listeners.delete(fn),
+        setLocalStateField: () => {},
+        emitChange: () => listeners.forEach((fn) => fn()),
+        listenerCount: () => listeners.size,
+      };
+    })();
     private handlers = new Map<string, Set<Handler>>();
 
     constructor(configuration: { name: string; token: string; document: unknown; url: string }) {
@@ -107,12 +127,12 @@ vi.mock("@blocknote/mantine", () => ({
 
 const user = { id: 3, name: "홍길동", active: true };
 
-function renderEditor() {
+function renderEditor(onViewersChange?: (viewers: unknown[]) => void) {
   return render(
     <StrictMode>
       <MantineProvider>
         <QueryClientProvider client={new QueryClient()}>
-          <CollaborativeEditor documentId={42} user={user} />
+          <CollaborativeEditor documentId={42} user={user} onViewersChange={onViewersChange} />
         </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,
@@ -245,5 +265,30 @@ describe("CollaborativeEditor 연결 수명주기", () => {
     expect(registry.providers.every((p) => p.destroyed)).toBe(true);
     expect(registry.docs.every((d) => d.destroyed)).toBe(true);
     expect(provider.listenerCount()).toBe(0);
+    expect(provider.awareness.listenerCount()).toBe(0);
+  });
+
+  it("접속 상태가 바뀌면 나를 포함한 보는 사람 목록을 알리고, 나가면 비운다", () => {
+    const onViewersChange = vi.fn();
+    const { unmount } = renderEditor(onViewersChange);
+    const provider = aliveProvider();
+
+    act(() => {
+      provider.awareness.states.set(1, { user: { name: "홍길동", color: "#000", memberId: 3 } });
+      provider.awareness.states.set(2, { user: { name: "이영희", color: "#f80", memberId: 9 } });
+      provider.awareness.emitChange();
+    });
+    expect(onViewersChange).toHaveBeenLastCalledWith([
+      { memberId: 3, name: "홍길동", color: "#000", imageUrl: null },
+      { memberId: 9, name: "이영희", color: "#f80", imageUrl: null },
+    ]);
+
+    // 목록이 그대로면 다시 알리지 않음
+    const calls = onViewersChange.mock.calls.length;
+    act(() => provider.awareness.emitChange());
+    expect(onViewersChange.mock.calls.length).toBe(calls);
+
+    unmount();
+    expect(onViewersChange).toHaveBeenLastCalledWith([]);
   });
 });

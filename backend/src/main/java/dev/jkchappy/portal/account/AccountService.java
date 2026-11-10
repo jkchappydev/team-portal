@@ -11,6 +11,7 @@ import dev.jkchappy.portal.member.MemberService;
 import dev.jkchappy.portal.member.MemberOrder;
 import dev.jkchappy.portal.member.JobRank;
 import dev.jkchappy.portal.member.dto.MemberResponse;
+import dev.jkchappy.portal.profile.dto.ProfileResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -77,7 +78,9 @@ public class AccountService {
     return new AuthMeResponse(account.getEmail(), account.getStatus(), member == null ? null : member.getId(),
       member == null ? null : member.getName(), member != null && member.isActive() && member.isAdmin(),
       member != null && member.isActive(),
-      member != null && member.getDepartment() != null && member.getJobRank() != null);
+      member != null && member.getDepartment() != null && member.getJobRank() != null,
+      member == null ? null : member.getProfileColor(),
+      member == null ? null : ProfileResponse.imageUrl(member));
   }
 
   @Transactional(readOnly = true)

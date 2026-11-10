@@ -6,6 +6,8 @@ import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
 import { IconPicker } from "./IconPicker";
 import { PageIcon } from "./PageIconView";
+import { PresenceAvatars } from "./PresenceAvatars";
+import type { Viewer } from "./presence";
 import { formatDateTime } from "./format";
 import { shouldFocusTitle } from "./titleFocus";
 
@@ -32,6 +34,8 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
   // 편집 중인 제목 (null이면 서버 제목 표시)
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  // 지금 이 페이지를 보고 있는 사람, 나 포함 (편집기 접속 상태에서 받아옴)
+  const [viewers, setViewers] = useState<Viewer[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const focusTitle = shouldFocusTitle(location.state, doc.id);
@@ -61,14 +65,17 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
       {/* 노션처럼 위 경로 줄과 페이지 아이콘·제목 사이에 여백을 둠 */}
       <Group justify="space-between" mb={28} wrap="nowrap" mih={28}>
         <Box style={{ minWidth: 0 }}>{breadcrumb}</Box>
-        {menuItems && (
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon variant="subtle" color="gray" aria-label="페이지 메뉴">⋯</ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-          </Menu>
-        )}
+        <Group gap="xs" wrap="nowrap">
+          <PresenceAvatars viewers={viewers} selfMemberId={user.id} />
+          {menuItems && (
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <ActionIcon variant="subtle" color="gray" aria-label="페이지 메뉴">⋯</ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+            </Menu>
+          )}
+        </Group>
       </Group>
       <Box className="page-title">
         {/* 노션처럼 아이콘이 있으면 제목 위에 크게, 없으면 마우스를 올렸을 때 추가 버튼 */}
@@ -126,7 +133,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
       <Box className="page-editor">
         <Suspense fallback={<Loader size="sm" />}>
           <CollaborativeEditor key={`${doc.id}-${user.id}`} documentId={doc.id} user={user}
-            scheduleSpaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} />
+            scheduleSpaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} onViewersChange={setViewers} />
         </Suspense>
       </Box>
       {footer}
