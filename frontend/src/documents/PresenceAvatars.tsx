@@ -17,13 +17,17 @@ export function PresenceAvatars({ viewers, selfMemberId }: { viewers: Viewer[]; 
         {visible.map((viewer) => (
           <Tooltip key={viewer.memberId} label={viewer.memberId === selfMemberId ? `${viewer.name} (나)` : `${viewer.name} 님이 보고 있음`} withArrow>
             <Avatar
-              size={28}
+              size={32}
               radius="xl"
               src={viewer.imageUrl}
               aria-label={viewer.name}
               styles={{
                 root: { border: "2px solid var(--mantine-color-body)" },
-                placeholder: { background: viewer.color, color: "white", fontSize: 11, fontWeight: 600 },
+                // 구글 계정 동그라미처럼 보통 굵기의 작은 글자로 테두리와 여백을 둠
+                placeholder: {
+                  background: viewer.color, color: "white", fontSize: 11, fontWeight: 400,
+                  letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
+                },
               }}
             >
               {shortName(viewer.name)}
@@ -32,7 +36,7 @@ export function PresenceAvatars({ viewers, selfMemberId }: { viewers: Viewer[]; 
         ))}
         {hidden.length > 0 && (
           <Tooltip label={hidden.map((viewer) => viewer.name).join(", ")} withArrow>
-            <Avatar size={28} radius="xl" styles={{ placeholder: { fontSize: 11 } }}>+{hidden.length}</Avatar>
+            <Avatar size={32} radius="xl" styles={{ placeholder: { fontSize: 11 } }}>+{hidden.length}</Avatar>
           </Tooltip>
         )}
       </Avatar.Group>

@@ -12,7 +12,9 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("../api/profile", () => api);
 
-const user = { id: 3, name: "홍길동", active: true, profileColor: null, profileImageUrl: null };
+const user = {
+  id: 3, name: "홍길동", active: true, email: "hong@example.com", profileColor: null, profileImageUrl: null,
+};
 
 function renderModal(client = new QueryClient()) {
   client.setQueryData(["auth", "me"], { memberId: 3, memberName: "홍길동", profileColor: null, profileImageUrl: null });
@@ -36,6 +38,11 @@ describe("ProfileSettingsModal", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it("이름 아래에 내 이메일 주소를 보여 준다", () => {
+    renderModal();
+    expect(screen.getByText("hong@example.com")).toBeTruthy();
   });
 
   it("색을 고르면 저장하고 로그인 정보에 바로 반영한다", async () => {

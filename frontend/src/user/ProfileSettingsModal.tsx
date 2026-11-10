@@ -59,13 +59,16 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
             radius="xl"
             src={user.profileImageUrl}
             aria-label="내 프로필 미리 보기"
-            styles={{ placeholder: { background: color, color: "white", fontSize: 20, fontWeight: 600 } }}
+            styles={{ placeholder: {
+              background: color, color: "white", fontSize: 20, fontWeight: 400,
+              letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
+            } }}
           >
             {shortName(user.name)}
           </Avatar>
           <Stack gap={4}>
             <Text fw={600}>{user.name}</Text>
-            <Text size="xs" c="dimmed">페이지를 볼 때 다른 사람에게 이렇게 보입니다.</Text>
+            {user.email && <Text size="xs" c="dimmed">{user.email}</Text>}
           </Stack>
         </Group>
 
