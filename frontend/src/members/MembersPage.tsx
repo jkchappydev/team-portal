@@ -5,7 +5,7 @@ import {
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin } from "../api/admin";
+import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin, setMemberDeveloper } from "../api/admin";
 import type { SignupRequestDto } from "../api/admin";
 import { Navigate } from "react-router-dom";
 import { deleteMember, JOB_RANKS, listMembers, updateMember } from "../api/members";
@@ -159,12 +159,14 @@ type MemberAction = "edit" | "delete" | null;
 
 // 팀원 한 줄: 정보는 읽기 전용으로 보여주고 변경은 ⋯ 메뉴에서
 // 관리자는 모든 줄을 바꾸고, 일반 팀원은 본인 줄의 정보 수정만 가능
-function MemberRow({ member, me, admin, refresh, reorder }: {
+function MemberRow({ member, me, admin, developer, refresh, reorder }: {
   member: MemberDto;
   // 로그인한 본인 (자기 자신은 삭제 불가)
   me: boolean;
   // 로그인한 사람이 관리자인지
   admin: boolean;
+  // 로그인한 사람이 개발자인지 (개발자 권한 변경 가능)
+  developer: boolean;
   refresh: () => void;
   reorder: ReturnType<typeof useMemberReorder>;
 }) {
@@ -203,10 +205,16 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
-            {/* 개발자 권한은 DB에서만 정하므로 권한 변경·비활성화·삭제 메뉴를 두지 않음 */}
+            {/* 관리자 권한은 관리자·개발자가 바꾸되, 개발자 줄은 개발자 권한을 먼저 빼야 함 */}
             {admin && !member.developer && (
               <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
                 {member.admin ? "관리자 권한 제거" : "관리자 권한 주기"}
+              </Menu.Item>
+            )}
+            {/* 개발자 권한(루트 성격)은 개발자만 주거나 뺌 */}
+            {admin && developer && member.active && (
+              <Menu.Item onClick={() => action.mutate(() => setMemberDeveloper(member.id, !member.developer))}>
+                {member.developer ? "개발자 권한 제거" : "개발자 권한 주기"}
               </Menu.Item>
             )}
             {/* 퇴사자는 삭제로 처리하고, 예전에 비활성으로 바꿔 둔 팀원만 다시 켤 수 있음 */}
@@ -300,7 +308,7 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
             </Table.Thead>
             <Table.Tbody>
               {members.map((member) => (
-                <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin}
+                <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin} developer={admin && !!user?.developer}
                   refresh={refresh} reorder={reorder} />
               ))}
             </Table.Tbody>

@@ -64,4 +64,14 @@ public class AdminController {
     accounts.requireAdmin(userId);
     return ApiResponse.ok(accounts.setAdmin(id, request.admin()));
   }
+
+  public record DeveloperFlagRequest(@NotNull Boolean developer) {}
+
+  // 개발자 권한(루트 성격)은 개발자만 주거나 뺌
+  @PatchMapping("/members/{id}/developer")
+  public ApiResponse<MemberResponse> setDeveloper(@CurrentUser Long userId, @PathVariable Long id,
+    @Valid @RequestBody DeveloperFlagRequest request) {
+    accounts.requireDeveloper(userId);
+    return ApiResponse.ok(accounts.setDeveloper(id, request.developer()));
+  }
 }

@@ -64,6 +64,32 @@ public class AccountService {
     if (!isAdmin(memberId)) throw new BusinessException(ErrorCode.ADMIN_REQUIRED);
   }
 
+  // 개발자 권한을 주거나 빼는 것은 개발자만
+  @Transactional(readOnly = true)
+  public void requireDeveloper(Long memberId) {
+    boolean developer = members.findById(memberId).map(m -> m.isActive() && m.isDeveloper()).orElse(false);
+    if (!developer) throw new BusinessException(ErrorCode.FORBIDDEN, "개발자만 개발자 권한을 바꿀 수 있습니다.");
+  }
+
+  // 마지막 개발자는 권한을 뺄 수 없음
+  @Transactional
+  public MemberResponse setDeveloper(Long id, boolean developer) {
+    List<Member> activeAdmins = members.lockActiveAdmins();
+    Member member = members.findForUpdateById(id).filter(m -> !m.isDeleted())
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    if (developer) {
+      if (!member.isActive()) throw new BusinessException(ErrorCode.INVALID_INPUT, "활성 팀원에게만 개발자 권한을 줄 수 있습니다.");
+      member.grantDeveloper();
+    } else {
+      long developers = activeAdmins.stream().filter(Member::isDeveloper).count();
+      if (member.isDeveloper() && developers <= 1) {
+        throw new BusinessException(ErrorCode.FORBIDDEN, "마지막 개발자는 개발자 권한을 뺄 수 없습니다.");
+      }
+      member.revokeDeveloper();
+    }
+    return MemberResponse.from(member, accounts.findByMemberId(id).map(Account::getEmail).orElse(null));
+  }
+
   @Transactional(readOnly = true)
   public boolean isAdmin(Long memberId) {
     return members.findById(memberId).map(m -> m.isActive() && m.isAdmin()).orElse(false);
@@ -80,7 +106,8 @@ public class AccountService {
       member != null && member.isActive(),
       member != null && member.getDepartment() != null && member.getJobRank() != null,
       member == null ? null : member.getProfileColor(),
-      member == null ? null : ProfileResponse.imageUrl(member));
+      member == null ? null : ProfileResponse.imageUrl(member),
+      member != null && member.isActive() && member.isDeveloper());
   }
 
   @Transactional(readOnly = true)

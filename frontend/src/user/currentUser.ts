@@ -8,7 +8,7 @@ export function useCurrentUser(): { user: MemberDto | null; me: AuthMe | null } 
   const user = me?.status === "APPROVED" && me.memberId != null && me.memberName != null
     ? {
       id: me.memberId, name: me.memberName, active: true, admin: me.admin, email: me.email,
-      profileColor: me.profileColor ?? null, profileImageUrl: me.profileImageUrl ?? null,
+      profileColor: me.profileColor ?? null, profileImageUrl: me.profileImageUrl ?? null, developer: !!me.developer,
     } : null;
   return { user, me: me ?? null };
 }

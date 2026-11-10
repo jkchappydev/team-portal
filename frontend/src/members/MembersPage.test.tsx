@@ -2,13 +2,13 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { approveSignup, listSignupRequests, rejectSignup } from "../api/admin";
+import { approveSignup, listSignupRequests, rejectSignup, setMemberDeveloper } from "../api/admin";
 import { deleteMember, listMembers, moveMember, updateMember } from "../api/members";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useCurrentUser } from "../user/currentUser";
 import { MembersPage } from "./MembersPage";
 
-vi.mock("../api/admin", () => ({ listSignupRequests: vi.fn(), approveSignup: vi.fn(), rejectSignup: vi.fn(), reopenSignup: vi.fn(), setMemberAdmin: vi.fn() }));
+vi.mock("../api/admin", () => ({ listSignupRequests: vi.fn(), approveSignup: vi.fn(), rejectSignup: vi.fn(), reopenSignup: vi.fn(), setMemberAdmin: vi.fn(), setMemberDeveloper: vi.fn() }));
 vi.mock("../api/members", async (importOriginal) => ({ ...(await importOriginal<typeof import("../api/members")>()), listMembers: vi.fn(), updateMember: vi.fn(), moveMember: vi.fn(), deleteMember: vi.fn() }));
 vi.mock("../user/currentUser", () => ({ useCurrentUser: vi.fn() }));
 
@@ -237,6 +237,23 @@ describe("팀원 관리", () => {
     expect(await screen.findByText("정보 수정")).toBeTruthy();
     expect(screen.queryByText("관리자 권한 제거")).toBeNull();
     expect(screen.queryByText("팀원 삭제")).toBeNull();
+    // 관리자여도 개발자가 아니면 개발자 권한 메뉴가 없음
+    expect(screen.queryByText("개발자 권한 제거")).toBeNull();
+  });
+
+  it("개발자는 다른 팀원에게 개발자 권한을 주거나 뺄 수 있다", async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: { id: 1, name: "개발자", active: true, admin: true, developer: true }, me: null,
+    });
+    vi.mocked(listMembers).mockResolvedValue([
+      { id: 1, name: "개발자", active: true, email: null, admin: true, developer: true },
+      { id: 2, name: "팀원", active: true, email: null },
+    ]);
+    vi.mocked(setMemberDeveloper).mockResolvedValue({ id: 2, name: "팀원", active: true });
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("팀원 메뉴"));
+    fireEvent.click(await screen.findByText("개발자 권한 주기"));
+    await waitFor(() => expect(setMemberDeveloper).toHaveBeenCalledWith(2, true));
   });
 
   it("전화번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {

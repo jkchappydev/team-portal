@@ -96,6 +96,17 @@ public class Member {
     this.admin = true;
   }
 
+  // 개발자 권한은 관리자 권한을 포함
+  public void grantDeveloper() {
+    this.developer = true;
+    this.admin = true;
+  }
+
+  // 개발자 권한만 빼고 관리자 권한은 그대로 둠
+  public void revokeDeveloper() {
+    this.developer = false;
+  }
+
   public void revokeAdmin() {
     this.admin = false;
   }

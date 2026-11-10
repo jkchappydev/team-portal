@@ -12,6 +12,8 @@ export interface AuthMe {
   // 본인이 고른 프로필 색·이미지 (없으면 null)
   profileColor?: string | null;
   profileImageUrl?: string | null;
+  // 개발자 권한 (다른 사람의 개발자 권한을 주거나 뺄 수 있음)
+  developer?: boolean;
 }
 export const getMe = () => apiFetch<AuthMe>("/api/auth/me");
 export async function logout() {

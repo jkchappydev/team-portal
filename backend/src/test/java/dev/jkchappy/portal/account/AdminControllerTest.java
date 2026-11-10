@@ -65,4 +65,23 @@ class AdminControllerTest {
       .andExpect(status().isNoContent());
     verify(accounts).approveAsNewMember(5L, "홍길동", 1L, null, null);
   }
+
+  // 관리자여도 개발자가 아니면 개발자 권한을 바꿀 수 없음
+  @Test
+  void nonDeveloperCannotChangeDeveloperRole() throws Exception {
+    doThrow(new BusinessException(ErrorCode.FORBIDDEN, "개발자만 개발자 권한을 바꿀 수 있습니다."))
+      .when(accounts).requireDeveloper(1L);
+    mvc.perform(patch("/api/admin/members/2/developer").with(loginAs(1))
+      .contentType(MediaType.APPLICATION_JSON).content("{\"developer\":true}"))
+      .andExpect(status().isForbidden());
+    verify(accounts, never()).setDeveloper(anyLong(), anyBoolean());
+  }
+
+  @Test
+  void developerCanChangeDeveloperRole() throws Exception {
+    mvc.perform(patch("/api/admin/members/2/developer").with(loginAs(1))
+      .contentType(MediaType.APPLICATION_JSON).content("{\"developer\":true}"))
+      .andExpect(status().isOk());
+    verify(accounts).setDeveloper(2L, true);
+  }
 }

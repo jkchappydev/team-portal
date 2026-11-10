@@ -130,6 +130,41 @@ class AccountServiceTest {
     assertThat(developer.isAdmin()).isTrue();
   }
 
+  @Test
+  void onlyDeveloperCanChangeDeveloperRole() {
+    Member admin = Member.create("관리자");
+    admin.grantAdmin();
+    when(members.findById(1L)).thenReturn(Optional.of(admin));
+    assertThatThrownBy(() -> service.requireDeveloper(1L))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+    Member developer = Member.create("개발자");
+    developer.grantDeveloper();
+    when(members.findById(2L)).thenReturn(Optional.of(developer));
+    service.requireDeveloper(2L);
+  }
+
+  @Test
+  void grantingDeveloperAlsoGrantsAdmin_andLastDeveloperCannotBeRemoved() {
+    Member developer = Member.create("개발자");
+    developer.grantDeveloper();
+    Member member = Member.create("팀원");
+    when(members.lockActiveAdmins()).thenReturn(List.of(developer));
+    when(members.findForUpdateById(2L)).thenReturn(Optional.of(member));
+    when(members.findForUpdateById(1L)).thenReturn(Optional.of(developer));
+
+    assertThat(service.setDeveloper(2L, true).developer()).isTrue();
+    assertThat(member.isAdmin()).isTrue();
+
+    assertThatThrownBy(() -> service.setDeveloper(1L, false))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+    // 다른 개발자가 있으면 뺄 수 있고 관리자 권한은 남음
+    when(members.lockActiveAdmins()).thenReturn(List.of(developer, member));
+    assertThat(service.setDeveloper(2L, false).developer()).isFalse();
+    assertThat(member.isAdmin()).isTrue();
+  }
+
   private Account approvedAccount(String sub, String email, long memberId, String name) {
     Member member = Member.create(name);
     ReflectionTestUtils.setField(member, "id", memberId);
