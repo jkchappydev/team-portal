@@ -76,12 +76,18 @@ public class AnnualLeaveService {
   }
 
   // 한 주의 사용 일수와 연차를 쓴 날짜 목록
+  // 팀자율연차는 날짜 목록에는 넣되 연차 사용 일수가 아닌 팀자율 일수로 따로 셈
   private static final class WeekUsage {
     private BigDecimal days = BigDecimal.ZERO;
+    private BigDecimal teamDays = BigDecimal.ZERO;
     private final List<LeaveUsageDay> dates = new ArrayList<>();
 
-    private void add(LocalDate date, BigDecimal amount, String label) {
-      days = days.add(amount);
+    private void add(LocalDate date, BigDecimal amount, String label, boolean team) {
+      if (team) {
+        teamDays = teamDays.add(amount);
+      } else {
+        days = days.add(amount);
+      }
       dates.add(new LeaveUsageDay(date, label));
     }
   }
@@ -97,10 +103,16 @@ public class AnnualLeaveService {
       String label = status.getHalfDayPeriod() == null
         ? status.getType().getDisplayName()
         : status.getHalfDayPeriod().getDisplayName() + " " + status.getType().getDisplayName();
-      if (status.getType() == WorkStatusType.HALF_DAY || status.getType() == WorkStatusType.QUARTER_DAY) {
-        BigDecimal days = status.getType() == WorkStatusType.HALF_DAY ? HALF_DAY : QUARTER_DAY;
+      boolean team = status.getType() == WorkStatusType.TEAM_LEAVE;
+      // 반차·반반차와 오전/오후 팀자율연차는 하루짜리
+      boolean partDay = status.getType() == WorkStatusType.HALF_DAY || status.getType() == WorkStatusType.QUARTER_DAY
+        || (team && status.getHalfDayPeriod() != null);
+      if (partDay) {
+        BigDecimal days = status.getType() == WorkStatusType.QUARTER_DAY ? QUARTER_DAY : HALF_DAY;
         LocalDate date = status.getStartDate();
-        usage.computeIfAbsent(weekKey(date), key -> new WeekUsage()).add(date, days, label);
+        if (date.getYear() == year) {
+          usage.computeIfAbsent(weekKey(date), key -> new WeekUsage()).add(date, days, label, team);
+        }
         continue;
       }
       LocalDate start = status.getStartDate().isBefore(from) ? from : status.getStartDate();
@@ -108,7 +120,7 @@ public class AnnualLeaveService {
       start.datesUntil(end.plusDays(1))
         .filter(date -> !LeaveWeek.isWeekend(date))
         .forEach(date -> usage.computeIfAbsent(weekKey(date), key -> new WeekUsage())
-          .add(date, BigDecimal.ONE, label));
+          .add(date, BigDecimal.ONE, label, team));
     }
     return result;
   }
@@ -125,11 +137,13 @@ public class AnnualLeaveService {
       .toList();
     BigDecimal usedDays = usage.values().stream().map(week -> week.days)
       .reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal teamLeaveDays = usage.values().stream().map(week -> week.teamDays)
+      .reduce(BigDecimal.ZERO, BigDecimal::add);
     BigDecimal confirmedDays = balance == null ? BigDecimal.ZERO : balance.getConfirmedDays();
     BigDecimal carriedDays = balance == null ? BigDecimal.ZERO : balance.getCarriedDays();
     BigDecimal totalDays = confirmedDays.add(carriedDays);
     return new AnnualLeaveSummaryResponse(member.getId(), member.getName(), confirmedDays,
-      carriedDays, totalDays, usedDays, totalDays.subtract(usedDays), weeklyUsages, member.isActive());
+      carriedDays, totalDays, usedDays, teamLeaveDays, totalDays.subtract(usedDays), weeklyUsages, member.isActive());
   }
 
   private void validateYear(int year) {

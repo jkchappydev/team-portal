@@ -15,7 +15,8 @@ public interface WorkStatusRepository extends JpaRepository<WorkStatus, Long> {
   @Query("select w from WorkStatus w where w.type in "
     + "(dev.jkchappy.portal.workstatus.WorkStatusType.LEAVE, "
     + "dev.jkchappy.portal.workstatus.WorkStatusType.HALF_DAY, "
-    + "dev.jkchappy.portal.workstatus.WorkStatusType.QUARTER_DAY) "
+    + "dev.jkchappy.portal.workstatus.WorkStatusType.QUARTER_DAY, "
+    + "dev.jkchappy.portal.workstatus.WorkStatusType.TEAM_LEAVE) "
     + "and w.startDate <= :to and w.endDate >= :from")
   List<WorkStatus> findLeaveOverlapping(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

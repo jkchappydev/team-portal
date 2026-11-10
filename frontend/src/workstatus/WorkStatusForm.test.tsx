@@ -1,7 +1,8 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { createWorkStatus } from "../api/workStatuses";
 import { WorkStatusForm } from "./WorkStatusForm";
 
 vi.mock("../api/members", () => ({
@@ -43,6 +44,8 @@ describe("WorkStatusForm", () => {
       removeEventListener: () => {},
       dispatchEvent: () => false,
     })) as unknown as typeof window.matchMedia;
+    // Mantine 선택 목록이 고른 항목으로 스크롤할 때 쓰는 함수 (jsdom에 없음)
+    Element.prototype.scrollIntoView ??= () => {};
     globalThis.ResizeObserver ??= class {
       observe() {}
       unobserve() {}
@@ -59,5 +62,22 @@ describe("WorkStatusForm", () => {
     expect(screen.getByText("오전/오후")).toBeTruthy();
     expect(screen.queryByText("시작 시간")).toBeNull();
     expect(screen.queryByText("종료 시간")).toBeNull();
+  });
+
+  it("팀자율연차는 기본이 기간이고, 오전/오후를 고르면 하루짜리로 바뀐다", async () => {
+    vi.mocked(createWorkStatus).mockResolvedValue({} as Awaited<ReturnType<typeof createWorkStatus>>);
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "팀자율연차" }));
+    expect(screen.getByLabelText("종료일")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("구분", { selector: "input" }));
+    fireEvent.click(await screen.findByRole("option", { name: "오전 반차" }));
+    expect(screen.queryByLabelText("종료일")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
+    await waitFor(() => expect(createWorkStatus).toHaveBeenCalled());
+    expect(vi.mocked(createWorkStatus).mock.calls[0][0]).toMatchObject({
+      type: "TEAM_LEAVE", startDate: "2026-11-04", endDate: "2026-11-04", halfDayPeriod: "AM",
+    });
   });
 });

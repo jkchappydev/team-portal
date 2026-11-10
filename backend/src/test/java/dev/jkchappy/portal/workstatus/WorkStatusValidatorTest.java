@@ -52,6 +52,18 @@ class WorkStatusValidatorTest {
   }
 
   @Test
+  void teamLeave_rangeWithoutPeriod_accepted() {
+    assertThatCode(() -> validator.validate(req(WorkStatusType.TEAM_LEAVE, "2026-11-02",
+      "2026-11-03", null, null, null, null, null))).doesNotThrowAnyException();
+  }
+
+  @Test
+  void teamLeave_halfDayRange_rejected() {
+    assertInvalid(req(WorkStatusType.TEAM_LEAVE, "2026-11-02", "2026-11-03", HalfDayPeriod.AM, null, null,
+      null, null));
+  }
+
+  @Test
   void outsideWork_withoutPlace_rejected() {
     assertInvalid(req(WorkStatusType.OUTSIDE_WORK, "2026-11-02", "2026-11-02", null,
       LocalTime.of(9, 0), LocalTime.of(10, 0), null, null));

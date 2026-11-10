@@ -80,6 +80,35 @@ class AnnualLeaveServiceTest {
     assertThat(result.remainingDays()).isEqualByComparingTo("13.25");
   }
 
+  // 팀자율연차는 날짜 메모에는 나오지만 합계·잔여에서 빼지 않고 따로 셈 (오전/오후면 0.5일)
+  @Test
+  void findByYear_teamLeave_isCountedSeparately() {
+    Member member = member(1L, "홍길동");
+    AnnualLeaveBalance balance = AnnualLeaveBalance.create(1L, 2026, new BigDecimal("15"), BigDecimal.ZERO);
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
+    when(balanceRepository.findByYear(2026)).thenReturn(List.of(balance));
+    WorkStatus halfTeam = WorkStatus.create(1L, WorkStatusType.TEAM_LEAVE, LocalDate.of(2026, 10, 30),
+      LocalDate.of(2026, 10, 30), HalfDayPeriod.AM, null, null, null, null, 1L);
+    when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
+      LocalDate.of(2026, 12, 31))).thenReturn(List.of(
+      status(1L, WorkStatusType.TEAM_LEAVE, LocalDate.of(2026, 1, 16), LocalDate.of(2026, 1, 16)),
+      halfTeam,
+      status(1L, WorkStatusType.HALF_DAY, LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 30))));
+
+    AnnualLeaveSummaryResponse result = service().findByYear(2026).getFirst();
+
+    assertThat(result.usedDays()).isEqualByComparingTo("0.5");
+    assertThat(result.teamLeaveDays()).isEqualByComparingTo("1.5");
+    assertThat(result.remainingDays()).isEqualByComparingTo("14.5");
+    // 팀자율연차만 쓴 주는 사용 0일로 보이고 메모에 날짜가 남음
+    WeeklyLeaveUsage january = result.weeklyUsages().getFirst();
+    assertThat(january.days()).isEqualByComparingTo("0");
+    assertThat(january.dates()).containsExactly(
+      new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 1, 16), "팀자율연차"));
+    assertThat(result.weeklyUsages().getLast().dates()).extracting(d -> d.label())
+      .containsExactlyInAnyOrder("오전 팀자율연차", "오전 반차");
+  }
+
   // 11/6(금)~11/9(월) 연차는 주가 갈려 1주 1일, 2주 1일로 나뉨 (주말 제외)
   @Test
   void findByYear_splitsUsageByCalendarWeek() {
