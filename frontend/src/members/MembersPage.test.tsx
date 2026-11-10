@@ -260,7 +260,8 @@ describe("팀원 관리", () => {
     fireEvent.click(await screen.findByText("정보 수정"));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("내선번호"), { target: { value: " 5678 " } });
+    expect((within(dialog).getByLabelText("내선번호") as HTMLInputElement).value).toBe("567");
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "5678" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "567" }));
   });
 });

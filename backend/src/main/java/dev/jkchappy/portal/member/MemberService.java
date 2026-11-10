@@ -157,15 +157,32 @@ public class MemberService {
     if (!value.matches("[0-9+() -]{7,20}")) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "전화번호는 숫자와 하이픈(-)으로 7~20자 입력해 주세요.");
     }
-    return value;
+    // 숫자와 하이픈만 쓴 국내 번호는 하이픈 위치를 맞춰 저장 (01012345678 → 010-1234-5678)
+    String digits = value.replace("-", "").replace(" ", "");
+    return digits.matches("[0-9]+") ? hyphenatePhone(digits) : value;
   }
 
-  // 빈 값은 지움, 숫자 2~10자리만 허용
+  // 서울(02)·휴대폰·지역번호·대표번호(8자리) 자리 규칙, 규칙에 없는 길이는 숫자 그대로
+  static String hyphenatePhone(String digits) {
+    int length = digits.length();
+    if (digits.startsWith("02") && (length == 9 || length == 10)) {
+      return "02-" + digits.substring(2, length - 4) + "-" + digits.substring(length - 4);
+    }
+    if (length == 10 || length == 11) {
+      return digits.substring(0, 3) + "-" + digits.substring(3, length - 4) + "-" + digits.substring(length - 4);
+    }
+    if (length == 8 && !digits.startsWith("0")) {
+      return digits.substring(0, 4) + "-" + digits.substring(4);
+    }
+    return digits;
+  }
+
+  // 빈 값은 지움, 숫자 3자리까지만 허용
   static String normalizeExtension(String extension) {
     String value = extension.trim();
     if (value.isEmpty()) return null;
-    if (!value.matches("[0-9]{2,10}")) {
-      throw new BusinessException(ErrorCode.INVALID_INPUT, "내선번호는 숫자 2~10자리로 입력해 주세요.");
+    if (!value.matches("[0-9]{1,3}")) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "내선번호는 숫자 3자리까지 입력해 주세요.");
     }
     return value;
   }

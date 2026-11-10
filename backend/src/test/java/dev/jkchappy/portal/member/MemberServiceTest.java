@@ -267,8 +267,8 @@ class MemberServiceTest {
     Member member = saved(3L, "팀원");
     when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
 
-    MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, " 1234 "));
-    assertThat(saved.extension()).isEqualTo("1234");
+    MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, " 386 "));
+    assertThat(saved.extension()).isEqualTo("386");
 
     memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, ""));
     assertThat(member.getExtension()).isNull();
@@ -280,8 +280,24 @@ class MemberServiceTest {
 
     assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "12-34")))
       .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
-    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "1")))
+    // 내선번호는 3자리까지
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "1234")))
       .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
+  void update_phone_digitsOnly_isHyphenated() {
+    Member member = saved(3L, "팀원");
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
+
+    assertThat(memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "01000000000")).phone())
+      .isEqualTo("010-0000-0000");
+    assertThat(memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "0212345678")).phone())
+      .isEqualTo("02-1234-5678");
+    assertThat(memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "0311234567")).phone())
+      .isEqualTo("031-123-4567");
+    assertThat(memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "010 0000-0000")).phone())
+      .isEqualTo("010-0000-0000");
   }
 
   @Test
