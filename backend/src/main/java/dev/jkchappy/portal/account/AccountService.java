@@ -111,8 +111,6 @@ public class AccountService {
         throw new BusinessException(ErrorCode.MEMBER_ALREADY_LINKED);
       }
     }
-    // 개발자 직급은 승인으로도 줄 수 없음
-    if (jobRank != null && !jobRank.isAssignable()) throw new BusinessException(ErrorCode.INVALID_INPUT, "개발자 직급은 지정할 수 없습니다.");
     if (department != null && jobRank != null) member.setOrganization(MemberService.normalizeDepartment(department), jobRank);
     account.approve(member, adminId, Instant.now(clock));
     try {
@@ -133,8 +131,6 @@ public class AccountService {
     String trimmed = name == null ? "" : name.trim();
     if (trimmed.isEmpty() || trimmed.length() > 50) throw new BusinessException(ErrorCode.INVALID_INPUT);
     Member member = Member.create(trimmed);
-    // 개발자 직급은 승인으로도 줄 수 없음
-    if (jobRank != null && !jobRank.isAssignable()) throw new BusinessException(ErrorCode.INVALID_INPUT, "개발자 직급은 지정할 수 없습니다.");
     if (department != null && jobRank != null) member.setOrganization(MemberService.normalizeDepartment(department), jobRank);
     MemberOrder.placeNew(member, members.lockAllForOrder());
     account.approve(members.save(member), adminId, Instant.now(clock));
@@ -156,6 +152,8 @@ public class AccountService {
     Member member = members.findForUpdateById(id).filter(m -> !m.isDeleted())
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     if (!admin && member.isAdmin() && member.isActive() && activeAdmins.size() <= 1) throw new BusinessException(ErrorCode.LAST_ADMIN);
+    // 개발자 권한은 관리자 권한을 뺄 수 없음
+    if (!admin && member.isDeveloper()) throw new BusinessException(ErrorCode.FORBIDDEN, "개발자 권한은 바꿀 수 없습니다.");
     if (admin) member.grantAdmin(); else member.revokeAdmin();
     return MemberResponse.from(member, accounts.findByMemberId(id).map(Account::getEmail).orElse(null));
   }

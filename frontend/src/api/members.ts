@@ -1,21 +1,18 @@
 import { apiFetch } from "./client";
 
-export type JobRank = "HEAD" | "TEAM_LEAD" | "RESPONSIBLE" | "SENIOR" | "DEVELOPER";
-// 화면에서 고를 수 있는 직급 (개발자는 루트 관리자 성격이라 DB에서만 지정)
+export type JobRank = "HEAD" | "TEAM_LEAD" | "RESPONSIBLE" | "SENIOR";
 export const JOB_RANKS: { value: JobRank; label: string }[] = [
   { value: "HEAD", label: "본부장" }, { value: "TEAM_LEAD", label: "팀장" },
   { value: "RESPONSIBLE", label: "책임" }, { value: "SENIOR", label: "선임" },
 ];
-// 표시용 직급 이름 (고를 수 없는 개발자 포함)
-export const JOB_RANK_LABELS: Record<JobRank, string> = {
-  HEAD: "본부장", TEAM_LEAD: "팀장", RESPONSIBLE: "책임", SENIOR: "선임", DEVELOPER: "개발자",
-};
 
 export interface MemberDto {
   id: number;
   name: string;
   active: boolean;
   admin?: boolean;
+  // 개발자 권한 (DB에서만 지정, 화면에서 권한을 바꾸거나 삭제할 수 없음)
+  developer?: boolean;
   email?: string | null;
   department?: string | null;
   jobRank?: JobRank | null;

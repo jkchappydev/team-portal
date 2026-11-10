@@ -225,17 +225,18 @@ describe("팀원 관리", () => {
     expect(await screen.findByRole("heading", { name: "팀원 목록" })).toBeTruthy();
   });
 
-  it("개발자 직급은 목록에 보이지만 정보 수정 창에서 바꿀 수 없다", async () => {
+  it("개발자 권한은 권한 칸에 개발자로 보이고 권한 변경·삭제 메뉴가 없다", async () => {
     vi.mocked(listMembers).mockResolvedValue([
-      { id: 1, name: "관리자", active: true, email: null, department: "개발부", jobRank: "DEVELOPER" },
+      { id: 1, name: "관리자", active: true, email: null, admin: true },
+      { id: 2, name: "개발팀원", active: true, email: null, admin: true, developer: true, jobRank: "RESPONSIBLE" },
     ]);
     renderPage();
     expect(await screen.findByText("개발자")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("관리자 메뉴"));
-    fireEvent.click(await screen.findByText("정보 수정"));
-    const dialog = await screen.findByRole("dialog");
-    expect((within(dialog).getByLabelText("직급", { selector: "input" }) as HTMLInputElement).disabled).toBe(true);
-    expect(within(dialog).getByText("개발자 직급은 바꿀 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("책임")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("개발팀원 메뉴"));
+    expect(await screen.findByText("정보 수정")).toBeTruthy();
+    expect(screen.queryByText("관리자 권한 제거")).toBeNull();
+    expect(screen.queryByText("팀원 삭제")).toBeNull();
   });
 
   it("전화번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {

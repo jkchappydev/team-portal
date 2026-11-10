@@ -34,6 +34,10 @@ public class Member {
   @Column(nullable = false)
   private boolean admin;
 
+  // 개발자 권한 (루트 관리자 성격): DB에서만 지정, 관리자 권한을 빼거나 삭제할 수 없음
+  @Column(nullable = false)
+  private boolean developer;
+
   @Column(length = 100)
   private String department;
 

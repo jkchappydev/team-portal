@@ -88,35 +88,6 @@ class MemberServiceTest {
   }
 
   @Test
-  void update_cannotAssignDeveloperRank() {
-    Member member = Member.create("홍길동");
-    member.setOrganization("개발부", JobRank.SENIOR);
-    when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-
-    assertThatThrownBy(() -> memberService.update(1L,
-      new MemberUpdateRequest(null, null, null, JobRank.DEVELOPER)))
-      .isInstanceOfSatisfying(BusinessException.class,
-        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
-    assertThat(member.getJobRank()).isEqualTo(JobRank.SENIOR);
-  }
-
-  @Test
-  void update_developerRank_cannotBeChangedButCanBeKept() {
-    Member developer = Member.create("홍길동");
-    developer.setOrganization("개발부", JobRank.DEVELOPER);
-    when(memberRepository.findById(1L)).thenReturn(Optional.of(developer));
-
-    assertThatThrownBy(() -> memberService.update(1L,
-      new MemberUpdateRequest(null, null, null, JobRank.HEAD)))
-      .isInstanceOf(BusinessException.class);
-
-    // 본인 정보 저장 시 같은 직급을 그대로 보내는 것은 허용
-    MemberResponse kept = memberService.update(1L,
-      new MemberUpdateRequest(null, null, "콘텐츠개발부", JobRank.DEVELOPER));
-    assertThat(kept.jobRank()).isEqualTo(JobRank.DEVELOPER);
-  }
-
-  @Test
   void updateCannotDeactivateLastActiveAdmin() {
     Member admin = Member.create("관리자");
     admin.grantAdmin();
@@ -217,6 +188,20 @@ class MemberServiceTest {
       .isInstanceOfSatisfying(BusinessException.class,
         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.LAST_ADMIN));
     assertThat(lastAdmin.isDeleted()).isFalse();
+  }
+
+  @Test
+  void delete_developer_isForbidden() {
+    Member developer = saved(2L, "개발자");
+    developer.grantAdmin();
+    ReflectionTestUtils.setField(developer, "developer", true);
+    when(memberRepository.lockActiveAdmins()).thenReturn(List.of(developer, saved(1L, "관리자")));
+    when(memberRepository.findForUpdateById(2L)).thenReturn(Optional.of(developer));
+
+    assertThatThrownBy(() -> serviceAt("2026-11-05T00:00:00Z").delete(2L, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+    assertThat(developer.isDeleted()).isFalse();
   }
 
   @Test

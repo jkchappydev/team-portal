@@ -8,13 +8,19 @@ import { ApiError } from "../api/client";
 import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin } from "../api/admin";
 import type { SignupRequestDto } from "../api/admin";
 import { Navigate } from "react-router-dom";
-import { deleteMember, JOB_RANK_LABELS, listMembers, updateMember } from "../api/members";
+import { deleteMember, JOB_RANKS, listMembers, updateMember } from "../api/members";
 import type { JobRank, MemberDto } from "../api/members";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "./useMemberReorder";
 import { MemberInfoForm } from "./MemberInfoForm";
 
-const rankLabel = (rank: JobRank | null | undefined) => (rank ? JOB_RANK_LABELS[rank] : "-");
+const rankLabel = (rank: JobRank | null | undefined) => JOB_RANKS.find((r) => r.value === rank)?.label ?? "-";
+
+// 권한 표시: 개발자(연두) > 관리자(파랑) > 팀원(회색)
+function roleBadge(member: MemberDto) {
+  if (member.developer) return { label: "개발자", color: "lime" };
+  return member.admin ? { label: "관리자", color: "blue" } : { label: "팀원", color: "gray" };
+}
 
 const errorMessage = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
@@ -188,7 +194,7 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
       <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
       <Table.Td>
-        <Badge variant="light" size="sm" color={member.admin ? "blue" : "gray"}>{member.admin ? "관리자" : "팀원"}</Badge>
+        <Badge variant="light" size="sm" color={roleBadge(member).color}>{roleBadge(member).label}</Badge>
       </Table.Td>
       <Table.Td w={40}>
         {(admin || me) && <Menu position="bottom-end" withinPortal>
@@ -197,7 +203,8 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
-            {admin && (
+            {/* 개발자 권한은 DB에서만 정하므로 권한 변경·비활성화·삭제 메뉴를 두지 않음 */}
+            {admin && !member.developer && (
               <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
                 {member.admin ? "관리자 권한 제거" : "관리자 권한 주기"}
               </Menu.Item>
@@ -206,7 +213,7 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
             {admin && !member.active && (
               <Menu.Item onClick={() => action.mutate(() => updateMember(member.id, { active: true }))}>다시 활성화</Menu.Item>
             )}
-            {admin && !me && (
+            {admin && !me && !member.developer && (
               <>
                 <Menu.Divider />
                 <Menu.Item color="red" onClick={() => setOpen("delete")}>팀원 삭제</Menu.Item>
@@ -253,12 +260,7 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
 
   return (
     <Stack maw={960} gap="xl">
-      <div>
-        <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
-        <Text size="sm" c="dimmed">
-          {admin ? "가입 요청을 승인하고 팀원 정보와 권한을 관리합니다." : "팀원 목록입니다. 본인 정보는 ⋯ 메뉴에서 고칠 수 있습니다."}
-        </Text>
-      </div>
+      <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
 
       {admin && <Stack gap="sm">
         <Group gap="xs">

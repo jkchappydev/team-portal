@@ -90,15 +90,6 @@ class AccountServiceTest {
   }
 
   @Test
-  void approvalCannotAssignDeveloperRank() {
-    Account account = Account.createPending("sub", "a@example.com", "이름", Instant.now());
-    when(accounts.findForUpdateById(1L)).thenReturn(Optional.of(account));
-    assertThatThrownBy(() -> service.approveAsNewMember(1L, "홍길동", 2L, "개발팀", JobRank.DEVELOPER))
-      .isInstanceOf(BusinessException.class);
-    assertThat(account.getMember()).isNull();
-  }
-
-  @Test
   void concurrentUniqueConstraintIsReportedAsAlreadyLinked() {
     Account account = Account.createPending("sub", "a@example.com", "이름", Instant.now());
     when(accounts.findForUpdateById(1L)).thenReturn(Optional.of(account));
@@ -125,6 +116,18 @@ class AccountServiceTest {
     when(members.findForUpdateById(1L)).thenReturn(Optional.of(member));
     assertThatThrownBy(() -> service.setAdmin(1L, false))
       .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.LAST_ADMIN));
+  }
+
+  @Test
+  void developerCannotLoseAdminRole() {
+    Member developer = Member.create("개발자");
+    developer.grantAdmin();
+    ReflectionTestUtils.setField(developer, "developer", true);
+    when(members.lockActiveAdmins()).thenReturn(List.of(developer, Member.create("관리자")));
+    when(members.findForUpdateById(1L)).thenReturn(Optional.of(developer));
+    assertThatThrownBy(() -> service.setAdmin(1L, false))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+    assertThat(developer.isAdmin()).isTrue();
   }
 
   private Account approvedAccount(String sub, String email, long memberId, String name) {
