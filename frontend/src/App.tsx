@@ -32,6 +32,7 @@ export default function App() {
               <Route path="/wbs/:documentId" element={<DocumentPage />} />
               <Route path="/files/:documentId" element={<FilePage />} />
               <Route path="/trash" element={<TrashPage />} />
+              <Route path="/team" element={<MembersPage mode="list" />} />
               <Route path="/members" element={<MembersPage />} />
             </Route>
           </Routes>

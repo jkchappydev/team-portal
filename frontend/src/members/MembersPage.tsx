@@ -7,13 +7,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin } from "../api/admin";
 import type { SignupRequestDto } from "../api/admin";
-import { deleteMember, JOB_RANKS, listMembers, updateMember } from "../api/members";
+import { Navigate } from "react-router-dom";
+import { deleteMember, JOB_RANK_LABELS, listMembers, updateMember } from "../api/members";
 import type { JobRank, MemberDto } from "../api/members";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "./useMemberReorder";
 import { MemberInfoForm } from "./MemberInfoForm";
 
-const rankLabel = (rank: JobRank | null | undefined) => JOB_RANKS.find((r) => r.value === rank)?.label ?? "-";
+const rankLabel = (rank: JobRank | null | undefined) => (rank ? JOB_RANK_LABELS[rank] : "-");
 
 const errorMessage = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
@@ -231,11 +232,12 @@ function MemberRow({ member, me, admin, refresh, reorder }: {
   );
 }
 
-// 팀원 관리: 목록은 누구나 보고, 가입 승인과 팀원 정보·권한·순서 변경은 관리자만 (본인 정보는 본인도 수정)
-export function MembersPage() {
+// manage: 관리자 전용 팀원 관리 (가입 승인, 팀원 정보·권한·순서 변경)
+// list: 누구나 보는 팀원 목록 (순서 변경 없이 본인 정보만 수정)
+export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
   const client = useQueryClient();
-  const { user } = useCurrentUser();
-  const admin = !!user?.admin;
+  const { user, me } = useCurrentUser();
+  const admin = mode === "manage" && !!user?.admin;
   const { data: members = [], error } = useQuery({ queryKey: ["members", true], queryFn: () => listMembers(true) });
   const { data: requests = [] } = useQuery({ queryKey: ["admin", "signup-requests"], queryFn: listSignupRequests, enabled: admin });
   const reorder = useMemberReorder(members.map((m) => m.id), admin);
@@ -246,10 +248,13 @@ export function MembersPage() {
   };
   const pendingCount = requests.filter((r) => r.status === "PENDING").length;
 
+  // 관리자가 아니면 팀원 관리 대신 팀원 목록으로 보냄 (로그인 정보를 받은 뒤 판단)
+  if (mode === "manage" && me && !user?.admin) return <Navigate to="/team" replace />;
+
   return (
     <Stack maw={960} gap="xl">
       <div>
-        <Title order={3}>팀원 관리</Title>
+        <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
         <Text size="sm" c="dimmed">
           {admin ? "가입 요청을 승인하고 팀원 정보와 권한을 관리합니다." : "팀원 목록입니다. 본인 정보는 ⋯ 메뉴에서 고칠 수 있습니다."}
         </Text>

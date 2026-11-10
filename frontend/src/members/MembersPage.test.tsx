@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { approveSignup, listSignupRequests, rejectSignup } from "../api/admin";
 import { deleteMember, listMembers, moveMember, updateMember } from "../api/members";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useCurrentUser } from "../user/currentUser";
 import { MembersPage } from "./MembersPage";
 
@@ -29,9 +30,20 @@ describe("팀원 관리", () => {
   });
   afterEach(cleanup);
 
-  function renderPage() {
+  function renderPage(mode: "manage" | "list" = "manage") {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<MantineProvider><QueryClientProvider client={client}><MembersPage /></QueryClientProvider></MantineProvider>);
+    render(
+      <MantineProvider>
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={[mode === "list" ? "/team" : "/members"]}>
+            <Routes>
+              <Route path="/members" element={<MembersPage />} />
+              <Route path="/team" element={<MembersPage mode="list" />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
   }
 
   // 열린 선택 목록에서 항목 고르기 (Mantine Select는 목록을 미리 그려 둠)
@@ -170,9 +182,10 @@ describe("팀원 관리", () => {
       { id: 2, name: "팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR" },
     ]);
     vi.mocked(updateMember).mockResolvedValue({ id: 2, name: "팀원", active: true });
-    renderPage();
+    renderPage("list");
 
     expect(await screen.findByText("김관리")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "팀원 목록" })).toBeTruthy();
     expect(screen.queryByText("가입 요청")).toBeNull();
     expect(listSignupRequests).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("팀원 순서 변경")).toBeNull();
@@ -186,6 +199,43 @@ describe("팀원 관리", () => {
     fireEvent.change(within(dialog).getByLabelText("부서"), { target: { value: "기획팀" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
     await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "기획팀", jobRank: "SENIOR", phone: "", extension: "" }));
+  });
+
+  it("관리자도 팀원 목록에서는 끌기·가입 요청 없이 본인 줄만 고친다", async () => {
+    vi.mocked(listMembers).mockResolvedValue([
+      { id: 1, name: "관리자", active: true, email: null, admin: true },
+      { id: 2, name: "팀원", active: true, email: null },
+    ]);
+    renderPage("list");
+
+    expect(await screen.findByLabelText("관리자 메뉴")).toBeTruthy();
+    expect(screen.queryByText("가입 요청")).toBeNull();
+    expect(screen.queryByLabelText("관리자 순서 변경")).toBeNull();
+    expect(screen.queryByText("드래그로 순서를 변경할 수 있습니다.")).toBeNull();
+    expect(screen.getByLabelText("관리자 메뉴")).toBeTruthy();
+    expect(screen.queryByLabelText("팀원 메뉴")).toBeNull();
+  });
+
+  it("관리자가 아니면 팀원 관리 주소로 와도 팀원 목록으로 보낸다", async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      user: { id: 2, name: "팀원", active: true, admin: false },
+      me: { email: "b@example.com", status: "APPROVED", memberId: 2, memberName: "팀원", admin: false },
+    });
+    renderPage("manage");
+    expect(await screen.findByRole("heading", { name: "팀원 목록" })).toBeTruthy();
+  });
+
+  it("개발자 직급은 목록에 보이지만 정보 수정 창에서 바꿀 수 없다", async () => {
+    vi.mocked(listMembers).mockResolvedValue([
+      { id: 1, name: "관리자", active: true, email: null, department: "개발부", jobRank: "DEVELOPER" },
+    ]);
+    renderPage();
+    expect(await screen.findByText("개발자")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("관리자 메뉴"));
+    fireEvent.click(await screen.findByText("정보 수정"));
+    const dialog = await screen.findByRole("dialog");
+    expect((within(dialog).getByLabelText("직급", { selector: "input" }) as HTMLInputElement).disabled).toBe(true);
+    expect(within(dialog).getByText("개발자 직급은 바꿀 수 없습니다.")).toBeTruthy();
   });
 
   it("전화번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {

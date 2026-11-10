@@ -60,6 +60,11 @@ public class MemberService {
     if (request.name() != null) {
       member.rename(normalizeName(request.name()));
     }
+    // 개발자 직급은 새로 줄 수도, 다른 직급으로 바꿀 수도 없음 (그대로 보내는 것은 허용)
+    if (request.jobRank() != null && request.jobRank() != member.getJobRank()
+      && (!request.jobRank().isAssignable() || member.getJobRank() == JobRank.DEVELOPER)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "개발자 직급은 지정하거나 바꿀 수 없습니다.");
+    }
     if (request.department() != null || request.jobRank() != null) {
       member.setOrganization(request.department() == null ? member.getDepartment() : normalizeDepartment(request.department()),
         request.jobRank() == null ? member.getJobRank() : request.jobRank());

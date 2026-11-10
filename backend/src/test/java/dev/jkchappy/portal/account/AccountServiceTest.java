@@ -90,6 +90,15 @@ class AccountServiceTest {
   }
 
   @Test
+  void approvalCannotAssignDeveloperRank() {
+    Account account = Account.createPending("sub", "a@example.com", "이름", Instant.now());
+    when(accounts.findForUpdateById(1L)).thenReturn(Optional.of(account));
+    assertThatThrownBy(() -> service.approveAsNewMember(1L, "홍길동", 2L, "개발팀", JobRank.DEVELOPER))
+      .isInstanceOf(BusinessException.class);
+    assertThat(account.getMember()).isNull();
+  }
+
+  @Test
   void concurrentUniqueConstraintIsReportedAsAlreadyLinked() {
     Account account = Account.createPending("sub", "a@example.com", "이름", Instant.now());
     when(accounts.findForUpdateById(1L)).thenReturn(Optional.of(account));
