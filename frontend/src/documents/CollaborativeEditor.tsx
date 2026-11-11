@@ -1,7 +1,7 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { useEffect, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import type { DragEvent, MouseEvent } from "react";
 import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme } from "@mantine/core";
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
@@ -31,6 +31,8 @@ import { sameViewers, viewersOf } from "./presence";
 import type { PresenceUser, Viewer } from "./presence";
 import { dropTargetAt, insertDroppedFiles } from "./fileDrop";
 import type { DropEditor } from "./fileDrop";
+import { focusEditorEnd, isBelowLastBlock, releaseBlockSelection } from "./editorEnd";
+import type { EndEditor, SelectionEditor } from "./editorEnd";
 import { userColor } from "./userColor";
 
 
@@ -302,8 +304,23 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       });
   };
 
+  // 마지막 블록보다 아래를 누르면 편집기보다 먼저 받아 마지막 빈 줄로 커서 이동, 그 위는 이미지 선택만 풀고 편집기에 넘김
+  // (이미지가 마지막 블록이면 편집기·브라우저가 이미지를 다시 선택해 여러 번 눌러야 입력되던 문제)
+  // 메뉴처럼 포털로 띄운 요소는 React 이벤트만 거쳐 오므로 실제 본문 영역 안을 누른 경우만 처리
+  const onMouseDownCapture = (e: MouseEvent<HTMLDivElement>) => {
+    if (!editable || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return;
+    if (!isBelowLastBlock(e.currentTarget, e.clientY)) {
+      releaseBlockSelection(editor as unknown as SelectionEditor, e.target as Element);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    focusEditorEnd(editor as unknown as EndEditor);
+  };
+
   return (
-    <Box ref={editorBoxRef} className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}>
+    <Box ref={editorBoxRef} className="editor-drop-zone" onDragOver={onDragOver} onDropCapture={onDropCapture}
+      onMouseDownCapture={onMouseDownCapture}>
       {dropError && <Alert color="red" mb="xs" withCloseButton onClose={() => setDropError(null)}>{dropError}</Alert>}
       {/* 블록 손잡이(⠿) 메뉴는 노션식 메뉴로 교체, 표는 행·열 손잡이만 두고 칸 모서리 메뉴 버튼은 숨김 */}
       {scheduleError && (
@@ -321,6 +338,8 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
           )}
         />
       </BlockNoteView>
+      {/* 본문 아래 빈 곳 (누르면 위 onMouseDownCapture가 마지막 빈 줄로 커서 이동) */}
+      {editable && <div className="editor-end-filler" aria-hidden />}
     </Box>
   );
 }

@@ -120,6 +120,12 @@ body {
   min-height: 160px;
 }
 
+/* 본문 아래 빈 곳: 노션처럼 눌러서 마지막 줄에 이어 쓰기 */
+.editor-end-filler {
+  height: 120px;
+  cursor: text;
+}
+
 /* 사이드바에서 끌고 있는 페이지를 넣을 줄 강조 */
 .mantine-NavLink-root[data-drop-target] {
   background: var(--mantine-primary-color-light);
