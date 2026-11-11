@@ -7,6 +7,7 @@ import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
 import { filterSuggestionItems } from "@blocknote/core";
+import { syntaxHighlighter } from "@blocknote/code-block";
 import {
   getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
@@ -215,6 +216,8 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       },
       // 본문에 넣는 파일은 inline 첨부로 업로드 후 다운로드 URL 사용
       uploadFile: (file: File) => uploadAttachment(documentId, file, true).then((a) => a.url),
+      // 코드 블록 문법 색칠 (언어별 문법은 필요할 때 불러옴)
+      extensions: [syntaxHighlighter],
       // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 2px로 축소)
       dropCursor: { width: 2, color: "var(--mantine-primary-color-filled)" },
       // 노션처럼 표의 행·열 색칠(배경·글자), 첫 행·첫 열 머리글, 셀 병합·분할 허용

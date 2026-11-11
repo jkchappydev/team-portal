@@ -1,4 +1,5 @@
 import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core";
+import { codeBlockSpec } from "./codeBlock";
 import { createReactBlockSpec } from "@blocknote/react";
 import { ScheduleBlockView } from "./ScheduleBlockView";
 
@@ -19,5 +20,6 @@ export const createScheduleBlock = createReactBlockSpec(
 
 // 편집기와 내보내기가 함께 쓰는 본문 스키마 (기본 블록 + 일정 블록)
 export const editorSchema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, schedule: createScheduleBlock() },
+  // 코드 블록은 문법 색칠 언어 목록 + 노션식 언어·복사 도구 막대 (색칠 자체는 편집기의 syntaxHighlighter 확장이 담당)
+  blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec, schedule: createScheduleBlock() },
 });
