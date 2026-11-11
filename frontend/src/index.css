@@ -444,6 +444,32 @@ a:not([draggable="true"]) {
   --level: 1em;
 }
 
+/* 제목 단계를 바꿀 때 이전 크기에서 새 크기로 줄어드는 효과의 시작 크기도 같은 기준으로
+   (BlockNote 기본값이 남아 있으면 제목1→제목2 변경 시 48px로 커졌다가 줄어듦) */
+:root .bn-root [data-prev-level="1"] {
+  --prev-level: 2.25em;
+}
+
+:root .bn-root [data-prev-level="2"] {
+  --prev-level: 1.75em;
+}
+
+:root .bn-root [data-prev-level="3"] {
+  --prev-level: 1.5em;
+}
+
+:root .bn-root [data-prev-level="4"] {
+  --prev-level: 1.25em;
+}
+
+:root .bn-root [data-prev-level="5"] {
+  --prev-level: 1.125em;
+}
+
+:root .bn-root [data-prev-level="6"] {
+  --prev-level: 1em;
+}
+
 /* 코드 블록: BlockNote 기본은 모드와 상관없이 검은 배경이라 노션처럼 라이트는 옅은 회색, 다크는 어두운 회색으로 */
 :root .bn-root .bn-block-content[data-content-type="codeBlock"] {
   background-color: #f7f6f3;
