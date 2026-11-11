@@ -77,7 +77,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
     // 넓은 화면에서는 본문 왼쪽 바깥에 줄 드래그 핸들이 들어갈 여백 확보
     <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
       {/* 노션처럼 위 경로 줄과 페이지 아이콘·제목 사이에 여백을 둠 */}
-      <Group justify="space-between" mb={28} wrap="nowrap" mih={28}>
+      <Group className="print-hide" justify="space-between" mb={28} wrap="nowrap" mih={28}>
         <Box style={{ minWidth: 0 }}>{breadcrumb}</Box>
         <Group gap="xs" wrap="nowrap">
           <PresenceAvatars viewers={viewers} selfMemberId={user.id} />
@@ -137,7 +137,7 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
           styles={{ input: { fontSize: 36, fontWeight: 700, height: "auto", lineHeight: 1.25, paddingBlock: 4 } }}
         />
       </Box>
-      <Text size="xs" c="dimmed" mb="md">
+      <Text className="print-hide" size="xs" c="dimmed" mb="md">
         마지막 수정 {doc.updatedByName ?? "-"} · {formatDateTime(doc.updatedAt)}
       </Text>
       {renameError && <Alert color="red" mb="sm">{renameError}</Alert>}
@@ -149,7 +149,8 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
             scheduleSpaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} onViewersChange={setViewers} />
         </Suspense>
       </Box>
-      {footer}
+      {/* 하위 페이지 목록은 인쇄하지 않음 */}
+      <Box className="print-hide">{footer}</Box>
     </Box>
   );
 }

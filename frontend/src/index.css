@@ -120,6 +120,45 @@ body {
   min-height: 160px;
 }
 
+/* 페이지 인쇄: 사이드바·페이지 머리 메뉴·편집 도구는 숨기고 제목과 본문만 출력 */
+@media print {
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-header,
+  .print-hide,
+  .icon-add,
+  .bn-side-menu,
+  .bn-formatting-toolbar,
+  .bn-trailing-block,
+  .editor-end-filler,
+  .bn-collaboration-cursor__base,
+  .mantine-Menu-dropdown {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main {
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* 선택된 블록의 파란 강조 표시는 인쇄하지 않음 */
+  .bn-editor .ProseMirror-selectednode::after,
+  .bn-editor .ProseMirror-selectednode > *::after {
+    display: none !important;
+  }
+
+  /* 표 칸·글자 배경색을 그대로 출력 */
+  .bn-editor {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 이미지와 표 한 줄이 페이지 경계에서 잘리지 않게 함 */
+  .bn-editor img,
+  .bn-editor tr {
+    break-inside: avoid;
+  }
+}
+
 /* 본문 아래 빈 곳: 노션처럼 눌러서 마지막 줄에 이어 쓰기 */
 .editor-end-filler {
   height: 120px;

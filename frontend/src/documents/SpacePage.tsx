@@ -11,6 +11,7 @@ import { useCurrentUser } from "../user/currentUser";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
 import { ChildPages } from "./ChildPages";
 import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
+import { PrintMenuItem } from "./PrintMenuItem";
 import { DeleteSpaceModal } from "./DeleteSpaceModal";
 import { ExportModal } from "./export/ExportModal";
 import { HistoryModal } from "./history/HistoryModal";
@@ -96,6 +97,7 @@ export function SpacePage() {
           <>
             <CopyLinkMenuItem path={`/spaces/${spaceId}`} />
             <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
+            <PrintMenuItem />
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
             <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>페이지 삭제</Menu.Item>
