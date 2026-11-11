@@ -81,6 +81,7 @@ export function Sidebar({ user }: Props) {
           rightSection={<Kbd size="xs">Ctrl + K</Kbd>}
           onClick={() => setSearching(true)}
         />
+        <SidebarMenuLink to="/favorites" label="즐겨찾기" icon={<span aria-hidden>⭐</span>} />
         <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
         {/* 팀원 목록은 누구나 보고 본인 정보만 수정, 팀원 관리는 관리자만 */}
         <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />

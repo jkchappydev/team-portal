@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ActionIcon, Alert, Box, Button, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
 import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
+import { FavoriteButton } from "./FavoriteButton";
 import { IconPicker } from "./IconPicker";
 import { PageIcon } from "./PageIconView";
 import { PresenceAvatars } from "./PresenceAvatars";
@@ -67,6 +68,8 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
         <Box style={{ minWidth: 0 }}>{breadcrumb}</Box>
         <Group gap="xs" wrap="nowrap">
           <PresenceAvatars viewers={viewers} selfMemberId={user.id} />
+          {/* 즐겨찾기 별: 노란 별이면 사이드바 즐겨찾기 목록에 들어 있음 */}
+          <FavoriteButton documentId={doc.id} />
           {menuItems && (
             <Menu position="bottom-end" withinPortal>
               <Menu.Target>

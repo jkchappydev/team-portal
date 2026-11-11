@@ -16,7 +16,7 @@ const rowStyle = { display: "block", width: "100%", padding: "6px 8px", borderRa
 const DRAG_TYPE = "application/x-portal-child-page";
 
 // 편집기 블록 손잡이와 같은 모양의 6점 끌기 아이콘
-function DragHandleIcon() {
+export function DragHandleIcon() {
   return (
     <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden fill="currentColor">
       <circle cx="2.5" cy="2.5" r="1.2" />

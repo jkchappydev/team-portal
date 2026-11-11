@@ -7,6 +7,7 @@ import { DocumentPage } from "./documents/DocumentPage";
 import { FilePage } from "./documents/FilePage";
 import { SpacePage } from "./documents/SpacePage";
 import { TrashPage } from "./documents/TrashPage";
+import { FavoritesPage } from "./documents/FavoritesPage";
 import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/wbs/:documentId" element={<DocumentPage />} />
               <Route path="/files/:documentId" element={<FilePage />} />
               <Route path="/trash" element={<TrashPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/team" element={<MembersPage mode="list" />} />
               <Route path="/members" element={<MembersPage />} />
             </Route>
