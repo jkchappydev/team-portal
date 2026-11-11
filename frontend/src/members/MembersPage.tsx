@@ -16,6 +16,11 @@ import { MemberInfoForm } from "./MemberInfoForm";
 
 const rankLabel = (rank: JobRank | null | undefined) => JOB_RANKS.find((r) => r.value === rank)?.label ?? "-";
 
+// 직급 표시 색: 권한 배지(연두·파랑·회색)와 겹치지 않게 직급마다 구분
+const RANK_COLORS: Record<JobRank, string> = {
+  HEAD: "grape", TEAM_LEAD: "violet", RESPONSIBLE: "cyan", SENIOR: "orange",
+};
+
 // 권한 표시: 개발자(연두) > 관리자(파랑) > 팀원(회색)
 function roleBadge(member: MemberDto) {
   if (member.developer) return { label: "개발자", color: "lime" };
@@ -192,7 +197,11 @@ function MemberRow({ member, me, admin, developer, refresh, reorder }: {
         {action.error && <Text size="xs" c="red">{errorMessage(action.error, "변경하지 못했습니다.")}</Text>}
       </Table.Td>
       <Table.Td><Text size="sm">{member.department || "-"}</Text></Table.Td>
-      <Table.Td><Text size="sm">{rankLabel(member.jobRank)}</Text></Table.Td>
+      <Table.Td>
+        {member.jobRank
+          ? <Badge variant="light" size="sm" color={RANK_COLORS[member.jobRank]}>{rankLabel(member.jobRank)}</Badge>
+          : <Text size="sm">-</Text>}
+      </Table.Td>
       <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
       <Table.Td>

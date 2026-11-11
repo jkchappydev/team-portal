@@ -47,6 +47,8 @@ describe("최초 가입 정보 입력 미리보기", () => {
 
     fireEvent.click(Array.from(document.querySelectorAll("[data-combobox-option]")).find((o) => o.textContent === "개발팀")!);
     fireEvent.click(Array.from(document.querySelectorAll("[data-combobox-option]")).find((o) => o.textContent === "선임")!);
+    fireEvent.change(screen.getByLabelText(/^전화번호/), { target: { value: "01012345678" } });
+    fireEvent.change(screen.getByLabelText(/^내선번호/), { target: { value: "123" } });
     fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
 
     expect(await screen.findByText("팀원 목록 화면")).toBeTruthy();

@@ -150,10 +150,10 @@ public class MemberService {
     return value;
   }
 
-  // 빈 값은 지움, 숫자·하이픈·괄호·+·공백만 허용
+  // 필수 값, 숫자·하이픈·괄호·+·공백만 허용
   static String normalizePhone(String phone) {
     String value = phone.trim();
-    if (value.isEmpty()) return null;
+    if (value.isEmpty()) throw new BusinessException(ErrorCode.INVALID_INPUT, "전화번호를 입력해 주세요.");
     if (!value.matches("[0-9+() -]{7,20}")) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "전화번호는 숫자와 하이픈(-)으로 7~20자 입력해 주세요.");
     }
@@ -177,10 +177,10 @@ public class MemberService {
     return digits;
   }
 
-  // 빈 값은 지움, 숫자 3자리까지만 허용
+  // 필수 값, 숫자 3자리까지만 허용
   static String normalizeExtension(String extension) {
     String value = extension.trim();
-    if (value.isEmpty()) return null;
+    if (value.isEmpty()) throw new BusinessException(ErrorCode.INVALID_INPUT, "내선번호를 입력해 주세요.");
     if (!value.matches("[0-9]{1,3}")) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "내선번호는 숫자 3자리까지 입력해 주세요.");
     }

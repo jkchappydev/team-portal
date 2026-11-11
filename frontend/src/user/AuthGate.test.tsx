@@ -113,10 +113,10 @@ describe("AuthGate", () => {
     const option = Array.from(document.querySelectorAll("[data-combobox-option]")).find((o) => o.textContent === "선임");
     fireEvent.click(option!);
     // 처음 가입한 사람도 숫자만 넣으면 하이픈이 붙고 내선번호는 3자리까지
-    fireEvent.change(screen.getByLabelText("전화번호"), { target: { value: "01000000000" } });
-    fireEvent.change(screen.getByLabelText("내선번호"), { target: { value: "3861" } });
+    fireEvent.change(screen.getByLabelText(/^전화번호/), { target: { value: "01000000000" } });
+    fireEvent.change(screen.getByLabelText(/^내선번호/), { target: { value: "3861" } });
     fireEvent.click(start);
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(4, { name: "홍길동", department: "개발팀", jobRank: "SENIOR", phone: "010-0000-0000", extension: "386" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(4, { department: "개발팀", jobRank: "SENIOR", phone: "010-0000-0000", extension: "386" }));
     expect(await screen.findByText("포털 본문")).toBeTruthy();
   });
 });

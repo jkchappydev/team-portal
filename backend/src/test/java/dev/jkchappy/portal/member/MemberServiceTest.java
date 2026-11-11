@@ -243,15 +243,17 @@ class MemberServiceTest {
   }
 
   @Test
-  void update_phone_savesTrimmedAndClearsWhenEmpty() {
+  void update_phone_savesTrimmedAndRejectsEmpty() {
     Member member = saved(3L, "팀원");
     when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
 
     MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, " 010-1234-5678 "));
     assertThat(saved.phone()).isEqualTo("010-1234-5678");
 
-    memberService.update(3L, new MemberUpdateRequest(null, null, null, null, ""));
-    assertThat(member.getPhone()).isNull();
+    // 전화번호는 필수라 비울 수 없음
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, "")))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    assertThat(member.getPhone()).isEqualTo("010-1234-5678");
   }
 
   @Test
@@ -263,15 +265,17 @@ class MemberServiceTest {
   }
 
   @Test
-  void update_extension_savesTrimmedAndClearsWhenEmpty() {
+  void update_extension_savesTrimmedAndRejectsEmpty() {
     Member member = saved(3L, "팀원");
     when(memberRepository.findById(3L)).thenReturn(Optional.of(member));
 
     MemberResponse saved = memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, " 386 "));
     assertThat(saved.extension()).isEqualTo("386");
 
-    memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, ""));
-    assertThat(member.getExtension()).isNull();
+    // 내선번호는 필수라 비울 수 없음
+    assertThatThrownBy(() -> memberService.update(3L, new MemberUpdateRequest(null, null, null, null, null, "")))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    assertThat(member.getExtension()).isEqualTo("386");
   }
 
   @Test

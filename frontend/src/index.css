@@ -496,3 +496,4 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
   cursor: pointer;
 }
 .icon-emoji-skin-tone:hover { background-color: var(--icon-emoji-hover); }
+

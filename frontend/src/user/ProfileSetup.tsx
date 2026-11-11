@@ -17,10 +17,7 @@ export function ProfileSetup({ me, onPreviewDone }: { me: AuthMe; onPreviewDone?
       <Paper withBorder radius="md" p="xl" w="100%" maw={420}>
         <Stack>
           {preview && <Alert color="yellow" variant="light" p="xs">미리보기 화면입니다. 입력해도 저장되지 않습니다.</Alert>}
-          <div>
-            <Title order={3}>내 정보 입력</Title>
-            <Text size="sm" c="dimmed" mt={4}>가입이 승인되었습니다. 팀원 목록에 보일 정보를 입력해 주세요. 이름·부서·직급은 꼭 입력하고, 전화번호·내선번호는 나중에 넣어도 됩니다.</Text>
-          </div>
+          <Title order={3}>내 정보 입력</Title>
           <MemberInfoForm
             member={{ id: me.memberId!, name: me.memberName ?? "" }}
             submitLabel="시작하기"

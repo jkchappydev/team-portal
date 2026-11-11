@@ -128,15 +128,20 @@ describe("팀원 관리", () => {
     await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(7, { memberId: 3 }));
   });
 
-  it("⋯ 메뉴의 정보 수정 창에서 이름·부서·직급을 저장한다", async () => {
+  it("⋯ 메뉴의 정보 수정 창에서 이름은 보여주기만 하고 부서·직급·연락처를 저장한다", async () => {
     vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR" }]);
     renderPage();
     fireEvent.click(await screen.findByLabelText("기존 팀원 메뉴"));
     fireEvent.click(await screen.findByText("정보 수정"));
     const dialog = await screen.findByRole("dialog");
+    expect((within(dialog).getByLabelText("이름") as HTMLInputElement).readOnly).toBe(true);
     pickOption("개발팀");
+    // 전화번호·내선번호는 필수라 비어 있으면 저장할 수 없음
+    expect(within(dialog).getByRole("button", { name: "저장" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText(/^전화번호/), { target: { value: "01012345678" } });
+    fireEvent.change(within(dialog).getByLabelText(/^내선번호/), { target: { value: "123" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { department: "개발팀", jobRank: "SENIOR", phone: "010-1234-5678", extension: "123" }));
   });
 
   it("⋯ 메뉴의 팀원 삭제는 확인 후 처리하고, 본인 줄에는 삭제 메뉴가 없다", async () => {
@@ -179,7 +184,7 @@ describe("팀원 관리", () => {
     vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 2, name: "팀원", active: true, admin: false }, me: null });
     vi.mocked(listMembers).mockResolvedValue([
       { id: 1, name: "김관리", active: true, email: null, admin: true },
-      { id: 2, name: "팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR" },
+      { id: 2, name: "팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "12" },
     ]);
     vi.mocked(updateMember).mockResolvedValue({ id: 2, name: "팀원", active: true });
     renderPage("list");
@@ -198,7 +203,7 @@ describe("팀원 관리", () => {
     const dialog = await screen.findByRole("dialog");
     pickOption("개발팀");
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { name: "팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(2, { department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "12" }));
   });
 
   it("관리자도 팀원 목록에서는 끌기·가입 요청 없이 본인 줄만 고친다", async () => {
@@ -257,28 +262,28 @@ describe("팀원 관리", () => {
   });
 
   it("전화번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {
-    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222" }]);
+    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "12" }]);
     renderPage();
     expect(await screen.findByText("010-1111-2222")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("기존 팀원 메뉴"));
     fireEvent.click(await screen.findByText("정보 수정"));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("전화번호"), { target: { value: " 010-3333-4444 " } });
+    fireEvent.change(within(dialog).getByLabelText(/^전화번호/), { target: { value: " 010-3333-4444 " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "010-3333-4444", extension: "" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { department: "개발팀", jobRank: "SENIOR", phone: "010-3333-4444", extension: "12" }));
   });
 
   it("내선번호를 목록에 보여주고 정보 수정 창에서 고친다", async () => {
-    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", extension: "1234" }]);
+    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "1234" }]);
     renderPage();
     expect(await screen.findByText("1234")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "내선번호" })).toBeTruthy();
     fireEvent.click(screen.getByLabelText("기존 팀원 메뉴"));
     fireEvent.click(await screen.findByText("정보 수정"));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("내선번호"), { target: { value: " 5678 " } });
-    expect((within(dialog).getByLabelText("내선번호") as HTMLInputElement).value).toBe("567");
+    fireEvent.change(within(dialog).getByLabelText(/^내선번호/), { target: { value: " 5678 " } });
+    expect((within(dialog).getByLabelText(/^내선번호/) as HTMLInputElement).value).toBe("567");
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { name: "기존 팀원", department: "개발팀", jobRank: "SENIOR", phone: "", extension: "567" }));
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "567" }));
   });
 });
