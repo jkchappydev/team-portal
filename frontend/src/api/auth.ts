@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { JobRank } from "./members";
 export interface AuthMe {
   email: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
@@ -14,6 +15,8 @@ export interface AuthMe {
   profileImageUrl?: string | null;
   // 개발자 권한 (다른 사람의 개발자 권한을 주거나 뺄 수 있음)
   developer?: boolean;
+  // 직급 (사이드바 이름 옆에 표시, 아직 입력 전이면 null)
+  jobRank?: JobRank | null;
 }
 export const getMe = () => apiFetch<AuthMe>("/api/auth/me");
 export async function logout() {

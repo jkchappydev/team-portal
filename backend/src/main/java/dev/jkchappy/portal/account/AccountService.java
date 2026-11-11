@@ -107,7 +107,8 @@ public class AccountService {
       member != null && member.getDepartment() != null && member.getJobRank() != null,
       member == null ? null : member.getProfileColor(),
       member == null ? null : ProfileResponse.imageUrl(member),
-      member != null && member.isActive() && member.isDeveloper());
+      member != null && member.isActive() && member.isDeveloper(),
+      member == null ? null : member.getJobRank());
   }
 
   @Transactional(readOnly = true)

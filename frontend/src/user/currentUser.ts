@@ -9,6 +9,7 @@ export function useCurrentUser(): { user: MemberDto | null; me: AuthMe | null } 
     ? {
       id: me.memberId, name: me.memberName, active: true, admin: me.admin, email: me.email,
       profileColor: me.profileColor ?? null, profileImageUrl: me.profileImageUrl ?? null, developer: !!me.developer,
+      jobRank: me.jobRank ?? null,
     } : null;
   return { user, me: me ?? null };
 }

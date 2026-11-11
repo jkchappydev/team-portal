@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Group, Kbd, Stack, Text } from "@mantine/core";
+import { Alert, Box, Button, Group, Kbd, Stack, Text } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useNavigate } from "react-router-dom";
@@ -14,22 +14,10 @@ import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
 import { logout } from "../api/auth";
 import { ProfileSettingsModal } from "../user/ProfileSettingsModal";
+import { RankBadge } from "../members/RankBadge";
 
 interface Props {
   user: MemberDto | null;
-}
-
-// 노션처럼 얇은 선으로 그린 휴지통 아이콘 (글자색을 따라감)
-function TrashIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
-      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.5 4h11" />
-      <path d="M6 4V2.75h4V4" />
-      <path d="M3.75 4l.7 9.25h7.1l.7-9.25" />
-      <path d="M6.5 6.5v4.5M9.5 6.5v4.5" />
-    </svg>
-  );
 }
 
 export function Sidebar({ user }: Props) {
@@ -93,15 +81,17 @@ export function Sidebar({ user }: Props) {
       </Group>
       {create.error && <Alert color="red" p="xs">페이지를 만들지 못했습니다.</Alert>}
       <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
-      <SidebarMenuLink to="/trash" label="휴지통" icon={<TrashIcon />} />
+      {/* 다른 고정 메뉴와 같은 컬러 이모지 아이콘 */}
+      <SidebarMenuLink to="/trash" label="휴지통" icon={<span aria-hidden>🗑️</span>} />
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
       <ColorSchemeToggle />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-        {/* 이름을 누르면 내 설정(프로필 색·이미지) */}
+        {/* 이름(옆에 직급)을 누르면 내 설정 */}
         {user ? (
           <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="내 설정"
-            onClick={() => setSettingsOpen(true)} styles={{ label: { fontWeight: 400 } }}>
+            onClick={() => setSettingsOpen(true)} styles={{ root: { cursor: "pointer" }, label: { fontWeight: 400, cursor: "pointer" } }}>
             {user.name}
+            {user.jobRank && <Box component="span" ml={6}><RankBadge rank={user.jobRank} style={{ cursor: "pointer" }} /></Box>}
           </Button>
         ) : (
           <Text size="sm">-</Text>

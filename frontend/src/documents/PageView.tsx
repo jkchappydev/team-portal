@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ActionIcon, Alert, Box, Button, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Box, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
 import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
 import { FavoriteButton } from "./FavoriteButton";
@@ -28,6 +28,19 @@ interface Props {
   footer?: ReactNode;
   // 아이콘 변경 (없으면 아이콘 영역을 표시하지 않음, null이면 제거)
   onChangeIcon?: (icon: string | null) => void;
+}
+
+// "아이콘 추가"에 쓰는 회색 선 웃는 얼굴
+function SmileIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
+      strokeWidth="1.3" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.4" />
+      <circle cx="5.9" cy="6.6" r="0.55" fill="currentColor" stroke="none" />
+      <circle cx="10.1" cy="6.6" r="0.55" fill="currentColor" stroke="none" />
+      <path d="M5.4 9.6c.6.9 1.5 1.4 2.6 1.4s2-.5 2.6-1.4" />
+    </svg>
+  );
 }
 
 // 노션처럼 큰 제목 + 바로 쓰는 편집기로 구성한 페이지 화면
@@ -92,20 +105,17 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
                 onClick={toggle}
                 aria-label="아이콘 변경"
                 className="page-row"
-                style={{ fontSize: 56, lineHeight: 1.2, borderRadius: 8, padding: "0 4px" }}
+                // 노션처럼 큰 아이콘과 제목 사이를 띄움
+                style={{ fontSize: 56, lineHeight: 1.2, borderRadius: 8, padding: "0 4px", marginBottom: 20 }}
               >
                 <PageIcon icon={doc.icon} />
               </UnstyledButton>
             ) : (
-              <Button
-                variant="subtle"
-                color="gray"
-                size="compact-xs"
-                onClick={toggle}
-                className="icon-add"
-              >
-                😀 아이콘 추가
-              </Button>
+              // 노션처럼 회색 선 아이콘 + 보통 굵기 회색 글자, 마우스를 올리면 옅은 배경
+              <UnstyledButton onClick={toggle} className="icon-add">
+                <SmileIcon />
+                아이콘 추가
+              </UnstyledButton>
             )}
           />
         )}

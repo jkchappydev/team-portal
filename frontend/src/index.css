@@ -19,7 +19,19 @@ body {
 /* 제목 위 "아이콘 추가": 제목 영역에 마우스를 올리거나 포커스·선택 창이 열렸을 때만 표시 */
 .page-title .icon-add {
   opacity: 0;
-  transition: opacity 120ms;
+  transition: opacity 120ms, background-color 120ms;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mantine-color-dimmed);
+}
+
+.page-title .icon-add:hover {
+  background: var(--mantine-color-default-hover);
 }
 
 .page-title:hover .icon-add,

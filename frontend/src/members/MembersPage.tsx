@@ -8,18 +8,13 @@ import { ApiError } from "../api/client";
 import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin, setMemberDeveloper } from "../api/admin";
 import type { SignupRequestDto } from "../api/admin";
 import { Navigate } from "react-router-dom";
-import { deleteMember, JOB_RANKS, listMembers, updateMember } from "../api/members";
-import type { JobRank, MemberDto } from "../api/members";
+import { deleteMember, listMembers, updateMember } from "../api/members";
+import type { MemberDto } from "../api/members";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "./useMemberReorder";
 import { MemberInfoForm } from "./MemberInfoForm";
+import { RankBadge } from "./RankBadge";
 
-const rankLabel = (rank: JobRank | null | undefined) => JOB_RANKS.find((r) => r.value === rank)?.label ?? "-";
-
-// 직급 표시 색: 권한 배지(연두·파랑·회색)와 겹치지 않게 직급마다 구분
-const RANK_COLORS: Record<JobRank, string> = {
-  HEAD: "grape", TEAM_LEAD: "violet", RESPONSIBLE: "cyan", SENIOR: "orange",
-};
 
 // 권한 표시: 개발자(연두) > 관리자(파랑) > 팀원(회색)
 function roleBadge(member: MemberDto) {
@@ -199,7 +194,7 @@ function MemberRow({ member, me, admin, developer, refresh, reorder }: {
       <Table.Td><Text size="sm">{member.department || "-"}</Text></Table.Td>
       <Table.Td>
         {member.jobRank
-          ? <Badge variant="light" size="sm" color={RANK_COLORS[member.jobRank]}>{rankLabel(member.jobRank)}</Badge>
+          ? <RankBadge rank={member.jobRank} />
           : <Text size="sm">-</Text>}
       </Table.Td>
       <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
@@ -207,7 +202,7 @@ function MemberRow({ member, me, admin, developer, refresh, reorder }: {
       <Table.Td>
         <Badge variant="light" size="sm" color={roleBadge(member).color}>{roleBadge(member).label}</Badge>
       </Table.Td>
-      <Table.Td w={40}>
+      <Table.Td ta="right">
         {(admin || me) && <Menu position="bottom-end" withinPortal>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray" aria-label={`${member.name} 메뉴`}>⋯</ActionIcon>
@@ -276,7 +271,8 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
   if (mode === "manage" && me && !user?.admin) return <Navigate to="/team" replace />;
 
   return (
-    <Stack maw={960} gap="xl">
+    // 가입 요청 상자도 같은 폭 (표 열 폭 합 + 상자 안쪽 여백)
+    <Stack maw={860} gap="xl">
       <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
 
       {admin && <Stack gap="sm">
@@ -305,8 +301,8 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
           <Table verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
-                {/* 이름 열이 남는 폭을 쓰고 나머지는 내용 길이에 맞춘 고정 폭 */}
-                <Table.Th>이름</Table.Th>
+                {/* 모든 열은 내용 길이에 맞춘 고정 폭, 화면 폭(maw)도 열 합에 맞춰 열 사이가 벌어지지 않게 함 */}
+                <Table.Th w={200}>이름</Table.Th>
                 <Table.Th w={170}>부서</Table.Th>
                 <Table.Th w={80}>직급</Table.Th>
                 <Table.Th w={90}>내선번호</Table.Th>

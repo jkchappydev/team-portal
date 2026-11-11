@@ -75,6 +75,8 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
                 onSaved={() => {
                   setInfoSaved(true);
                   void queryClient.invalidateQueries({ queryKey: ["members"] });
+                  // 사이드바 이름 옆 직급도 바로 바뀌도록 로그인 정보 다시 조회
+                  void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
                 }}
               />
             ) : (
