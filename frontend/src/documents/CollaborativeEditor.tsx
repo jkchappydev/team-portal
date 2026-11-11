@@ -8,6 +8,7 @@ import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
 import { filterSuggestionItems } from "@blocknote/core";
 import { syntaxHighlighter } from "@blocknote/code-block";
+import { pasteOptions } from "./editor/paste";
 import {
   getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
@@ -216,6 +217,9 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       },
       // 본문에 넣는 파일은 inline 첨부로 업로드 후 다운로드 URL 사용
       uploadFile: (file: File) => uploadAttachment(documentId, file, true).then((a) => a.url),
+      // 서식(HTML)이 함께 오면 항상 HTML로 붙여넣음 (노션 표가 마크다운 오인으로 글 한 덩어리가 되는 문제)
+      pasteHandler: ({ event, defaultPasteHandler }) =>
+        defaultPasteHandler(pasteOptions(Array.from(event.clipboardData?.types ?? []))),
       // 코드 블록 문법 색칠 (언어별 문법은 필요할 때 불러옴)
       extensions: [syntaxHighlighter],
       // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 2px로 축소)
