@@ -282,8 +282,9 @@ export function WbsBoard({ documentId }: Props) {
           ))}
         </Box>
         {/* 스크롤바가 마지막 줄을 덮지 않도록 기본 가로 스크롤(얇게) 사용, 내용은 테두리 안에서 잘림 */}
-        <Box className="wbs-scroll" style={{ flex: "0 1 auto", maxWidth: "62%", borderTopLeftRadius: 7, borderBottomLeftRadius: 7 }}>
-          <Box w={TABLE_W}>
+        <Box className="wbs-scroll" style={{ flex: "0 1 auto", maxWidth: "62%", borderTopLeftRadius: 7, borderBottomLeftRadius: 7, display: "flex", flexDirection: "column" }}>
+          {/* 오른쪽 일정 칸에 가로 스크롤바가 생겨 더 높아져도 왼쪽 표가 같은 높이까지 이어지도록 세로로 늘림 */}
+          <Box w={TABLE_W} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column" }}>
             <Box style={{ ...rowStyle, height: HEADER_H, background: "var(--mantine-color-default-hover)", borderTopLeftRadius: 7 }}>
               {COLUMNS.map((column) => (
                 <Box key={column.key} style={{ ...cellStyle(column.key), justifyContent: "center", fontWeight: 600, fontSize: 12, textAlign: "center", lineHeight: 1.2 }}>
@@ -318,6 +319,10 @@ export function WbsBoard({ documentId }: Props) {
                   }}
                 />
               )}
+            </Box>
+            {/* 표 아래 남는 높이: 계산 열의 회색 배경과 구분선만 바닥까지 이어 그림 */}
+            <Box aria-hidden data-testid="wbs-filler" style={{ display: "flex", flex: "1 0 0" }}>
+              {COLUMNS.map((column) => <Box key={column.key} style={cellStyle(column.key)} />)}
             </Box>
           </Box>
         </Box>
