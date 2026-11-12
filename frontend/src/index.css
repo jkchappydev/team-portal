@@ -476,37 +476,39 @@ button.cell-selection-handle[aria-expanded="true"] svg {
   display: block;
 }
 
-/* 본문 제목 크기: BlockNote 기본 제목1(48px)이 페이지 제목(36px)보다 커서, 제목1을 페이지 제목 크기로 두고 아래 단계를 노션 비율로 줄임 */
+/* 본문 제목 크기·굵기: 노션과 같게 (본문 16px 기준 제목1 30px, 제목2 24px, 제목3 20px, 굵기 600)
+   BlockNote 기본은 제목1 48px·굵기 700이라 노션보다 크고 두꺼움 */
 :root .bn-root [data-content-type="heading"] {
-  --level: 2.25em;
+  --level: 1.875em;
 }
 
-/* 제목1: 36px, 페이지 제목과 같은 크기 */
+/* 굵기는 h1~h6 태그의 브라우저 기본값(bold)이 적용되므로 태그에 직접 지정 */
+:root .bn-root .bn-block-content[data-content-type="heading"] > :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+}
+
+/* 제목1: 30px */
 :root .bn-root [data-content-type="heading"][data-level="1"] {
-  --level: 2.25em;
+  --level: 1.875em;
 }
 
-/* 제목2: 28px */
+/* 제목2: 24px */
 :root .bn-root [data-content-type="heading"][data-level="2"] {
-  --level: 1.75em;
-}
-
-/* 제목3: 24px */
-:root .bn-root [data-content-type="heading"][data-level="3"] {
   --level: 1.5em;
 }
 
-/* 제목4: 20px */
-:root .bn-root [data-content-type="heading"][data-level="4"] {
+/* 제목3: 20px */
+:root .bn-root [data-content-type="heading"][data-level="3"] {
   --level: 1.25em;
 }
 
-/* 제목5: 18px */
-:root .bn-root [data-content-type="heading"][data-level="5"] {
+/* 제목4: 18px */
+:root .bn-root [data-content-type="heading"][data-level="4"] {
   --level: 1.125em;
 }
 
-/* 제목6: 16px, 본문과 같은 크기의 굵은 글자 */
+/* 제목5·6: 16px, 본문과 같은 크기의 굵은 글자 */
+:root .bn-root [data-content-type="heading"][data-level="5"],
 :root .bn-root [data-content-type="heading"][data-level="6"] {
   --level: 1em;
 }
@@ -514,25 +516,22 @@ button.cell-selection-handle[aria-expanded="true"] svg {
 /* 제목 단계를 바꿀 때 이전 크기에서 새 크기로 줄어드는 효과의 시작 크기도 같은 기준으로
    (BlockNote 기본값이 남아 있으면 제목1→제목2 변경 시 48px로 커졌다가 줄어듦) */
 :root .bn-root [data-prev-level="1"] {
-  --prev-level: 2.25em;
+  --prev-level: 1.875em;
 }
 
 :root .bn-root [data-prev-level="2"] {
-  --prev-level: 1.75em;
-}
-
-:root .bn-root [data-prev-level="3"] {
   --prev-level: 1.5em;
 }
 
-:root .bn-root [data-prev-level="4"] {
+:root .bn-root [data-prev-level="3"] {
   --prev-level: 1.25em;
 }
 
-:root .bn-root [data-prev-level="5"] {
+:root .bn-root [data-prev-level="4"] {
   --prev-level: 1.125em;
 }
 
+:root .bn-root [data-prev-level="5"],
 :root .bn-root [data-prev-level="6"] {
   --prev-level: 1em;
 }

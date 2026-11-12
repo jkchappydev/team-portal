@@ -112,6 +112,27 @@ describe("SpaceNavItem", () => {
     expect(screen.getByText("📄")).toBeTruthy();
   });
 
+  it("제목은 한 줄로 말줄임하고, 잘린 제목만 마우스를 올리면 전체 제목을 띄운다", async () => {
+    renderItem();
+    fireEvent.click(screen.getByLabelText("스쿨북스 펼치기"));
+    const title = await screen.findByText("배포 절차");
+    expect(title.closest("[data-no-wrap]")).not.toBeNull();
+
+    // 칸보다 넓지 않은 제목은 툴팁 없음
+    fireEvent.mouseEnter(title);
+    await new Promise((r) => setTimeout(r, 600));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseLeave(title);
+
+    // 칸을 넘어 잘린 제목은 전체 제목 툴팁
+    const body = title.closest(".mantine-NavLink-body")!;
+    Object.defineProperty(body, "scrollWidth", { configurable: true, value: 300 });
+    Object.defineProperty(body, "clientWidth", { configurable: true, value: 150 });
+    fireEvent.mouseEnter(title);
+    fireEvent.mouseMove(title);
+    expect((await screen.findByRole("tooltip")).textContent).toBe("배포 절차");
+  });
+
   it("⋯ 메뉴에서 확인 후 페이지를 삭제한다", async () => {
     renderItem();
     fireEvent.click(screen.getByLabelText("스쿨북스 펼치기"));

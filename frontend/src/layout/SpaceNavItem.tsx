@@ -157,12 +157,26 @@ function TreeRow({
   const showActions = hovered || menuOpened;
   // 파일·WBS는 펼칠 하위가 없어 아이콘만 표시
   const showChevron = !isFile && (showActions || !icon);
+  // 제목이 칸을 넘어 말줄임(…)으로 잘렸을 때만 마우스를 올리면 전체 제목 표시
+  const [truncated, setTruncated] = useState(false);
   return (
     <Box>
       <NavLink
         component={RouterLink}
         to={to}
-        label={label}
+        label={
+          <Tooltip label={label} disabled={!truncated} openDelay={500} withArrow position="right" multiline maw={320}>
+            <span
+              onMouseEnter={(e) => {
+                const body = e.currentTarget.closest(".mantine-NavLink-body");
+                setTruncated(!!body && body.scrollWidth > body.clientWidth);
+              }}
+            >
+              {label}
+            </span>
+          </Tooltip>
+        }
+        noWrap
         active={active}
         py={4}
         pl={6}
