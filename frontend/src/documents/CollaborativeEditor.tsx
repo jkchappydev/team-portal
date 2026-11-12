@@ -9,6 +9,8 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { filterSuggestionItems } from "@blocknote/core";
 import { syntaxHighlighter } from "@blocknote/code-block";
 import { pasteOptions } from "./editor/paste";
+import { yUndoPluginKey } from "y-prosemirror";
+import { reviveUndoManager } from "./editor/undoRevive";
 import {
   getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
@@ -234,6 +236,15 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
   useEffect(() => {
     setEditorEditable(editor, editable);
   }, [editor, editable]);
+
+  // 편집 화면이 다시 붙을 때 파괴된 되돌리기(Ctrl+Z) 기록 복구 (StrictMode 개발 환경에서 되돌리기가 동작하지 않던 문제)
+  useEffect(() => {
+    const revive = () => {
+      reviveUndoManager(yUndoPluginKey.getState(editor.prosemirrorState)?.undoManager);
+    };
+    revive();
+    return editor.onMount(revive);
+  }, [editor]);
 
   // 내 설정에서 색·이미지를 바꾸면 편집기를 새로 만들지 않고 다른 사람에게 보이는 내 정보만 갱신
   const { profileColor, profileImageUrl } = user;
