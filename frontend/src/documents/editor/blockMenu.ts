@@ -57,6 +57,43 @@ export function tableColor(content: TableContent, kind: ColorKind): string {
   return (first.props[kind] as string | undefined) ?? "default";
 }
 
+// 표 칸 위치 (행·열 번호, BlockNote 칸 선택과 같은 기준)
+export interface CellIndex {
+  row: number;
+  col: number;
+}
+
+// 고른 칸들만 고쳐 새 표 내용으로
+function updateCells(content: TableContent, cells: CellIndex[], update: (cell: TableCellObject) => TableCellObject): TableContent {
+  const targets = new Set(cells.map(({ row, col }) => `${row}:${col}`));
+  return {
+    ...content,
+    rows: content.rows.map((row, r) => ({
+      ...row,
+      cells: row.cells.map((cell, c) => (targets.has(`${r}:${c}`) ? update(toCellObject(cell)) : cell)),
+    })),
+  };
+}
+
+// 고른 칸들에 글자색 또는 배경색 적용
+export function colorCells(content: TableContent, cells: CellIndex[], kind: ColorKind, color: string): TableContent {
+  return updateCells(content, cells, (cell) => ({ ...cell, props: { ...cell.props, [kind]: color } }));
+}
+
+// 고른 칸들의 글만 비움 (칸 색·병합 상태는 유지)
+export function clearCells(content: TableContent, cells: CellIndex[]): TableContent {
+  return updateCells(content, cells, (cell) => ({ ...cell, content: [] }));
+}
+
+// 고른 칸들의 색이 모두 같으면 그 색, 다르면 undefined (메뉴에 현재 색 표시용)
+export function cellsColor(content: TableContent, cells: CellIndex[], kind: ColorKind): string | undefined {
+  const colors = new Set(cells.map(({ row, col }) => {
+    const cell = content.rows[row]?.cells[col];
+    return !cell || Array.isArray(cell) ? "default" : ((cell.props[kind] as string | undefined) ?? "default");
+  }));
+  return colors.size === 1 ? [...colors][0] : undefined;
+}
+
 interface CopyableBlock {
   id?: string;
   type: string;

@@ -1,0 +1,14 @@
+// 노션식 메뉴 아이콘 모양 (16x16 얇은 선, MenuIcon으로 그림)
+export const MENU_ICONS = {
+  headerRow: "M2.5 3.5h11v9h-11zM2.5 6.5h11",
+  headerColumn: "M2.5 3.5h11v9h-11zM6 3.5v9",
+  color: "M8 2.5 3.5 13.5M8 2.5l4.5 11M5 10h6",
+  above: "M8 13V3M4 7l4-4 4 4",
+  below: "M8 3v10M4 9l4 4 4-4",
+  copy: "M5.5 5.5h8v8h-8zM2.5 10.5v-8h8",
+  trash: "M2.5 4h11M6 4V2.75h4V4M3.75 4l.7 9.25h7.1l.7-9.25",
+  merge: "M8 13.5V8M8 8 3.5 3M8 8l4.5-5M5.5 11 8 13.5l2.5-2.5",
+  split: "M8 2.5V8M8 8l-4.5 5M8 8l4.5 5M5.5 5 8 2.5 10.5 5",
+  clear: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM5.75 5.75l4.5 4.5M10.25 5.75l-4.5 4.5",
+  more: "M8 3.5v.01M8 8v.01M8 12.5v.01",
+};

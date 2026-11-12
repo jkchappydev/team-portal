@@ -122,6 +122,9 @@ vi.mock("./editor/schema", () => ({ editorSchema: {} }));
 vi.mock("./editor/NotionDragHandleMenu", () => ({ NotionDragHandleMenu: () => null }));
 vi.mock("./editor/formattingToolbar", () => ({ NotionFormattingToolbar: () => null }));
 vi.mock("./editor/formatShortcuts", () => ({ FORMAT_SHORTCUTS: { code: "Mod+E" }, formatShortcutsExtension: {} }));
+vi.mock("./editor/activeTableCell", () => ({ activeTableCellExtension: {} }));
+vi.mock("./editor/tableHandleDrag", () => ({ tableHandleDragExtension: {} }));
+vi.mock("./editor/CellSelectionMenu", () => ({ CellSelectionMenu: () => null }));
 vi.mock("@blocknote/mantine", () => ({
   // StrictMode에서 버려진 인스턴스와 구분하려고 실제 렌더된 편집기를 기록
   BlockNoteView: ({ editor }: { editor: { isEditable: boolean } }) => {

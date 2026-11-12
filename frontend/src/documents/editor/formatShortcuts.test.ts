@@ -1,41 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { alignSelection, clearFormatting, shortcutLabel } from "./formatShortcuts";
+import { clearFormatting, formatShortcutsExtension, shortcutLabel } from "./formatShortcuts";
 import { editorSchema } from "./schema";
-
-function createEditor() {
-  return BlockNoteEditor.create({
-    schema: editorSchema,
-    initialContent: [
-      { type: "paragraph", content: "가" },
-      { type: "paragraph", content: "나" },
-      { type: "codeBlock", content: "x" },
-    ],
-  });
-}
-
-describe("alignSelection", () => {
-  it("커서가 있는 블록의 정렬을 바꾼다", () => {
-    const editor = createEditor();
-    editor.setTextCursorPosition(editor.document[0], "end");
-    expect(alignSelection(editor, "center")).toBe(true);
-    expect(editor.document[0].props).toMatchObject({ textAlignment: "center" });
-    expect(editor.document[1].props).toMatchObject({ textAlignment: "left" });
-  });
-
-  it("여러 블록을 고르면 모두 바꾼다", () => {
-    const editor = createEditor();
-    editor.setSelection(editor.document[0], editor.document[1]);
-    expect(alignSelection(editor, "right")).toBe(true);
-    expect(editor.document.slice(0, 2).map((b) => b.props)).toMatchObject([{ textAlignment: "right" }, { textAlignment: "right" }]);
-  });
-
-  it("정렬할 수 없는 블록(코드 블록)만 고르면 처리하지 않고 넘긴다", () => {
-    const editor = createEditor();
-    editor.setTextCursorPosition(editor.document[2]);
-    expect(alignSelection(editor, "right")).toBe(false);
-  });
-});
 
 describe("clearFormatting", () => {
   it("링크를 뺀 굵게·기울임·밑줄·취소선·코드·글자색·배경색을 지운다", () => {
@@ -43,6 +9,31 @@ describe("clearFormatting", () => {
     clearFormatting({ removeStyles });
     expect(Object.keys(removeStyles.mock.calls[0][0]).sort())
       .toEqual(["backgroundColor", "bold", "code", "italic", "strike", "textColor", "underline"]);
+  });
+});
+
+describe("formatShortcutsExtension", () => {
+  // 실제 편집기에 키를 눌러 편집기가 가로챘는지(기본 동작 막음) 확인
+  const press = (key: string, shift: boolean) => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, extensions: [formatShortcutsExtension] });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    const event = new KeyboardEvent("keydown", { key, ctrlKey: true, shiftKey: shift, bubbles: true, cancelable: true });
+    editor.prosemirrorView!.dom.dispatchEvent(event);
+    editor.unmount();
+    host.remove();
+    return event.defaultPrevented;
+  };
+
+  it("서식 지우기(Ctrl+역슬래시)는 편집기가 처리한다", () => {
+    expect(press("\\", false)).toBe(true);
+  });
+
+  it("브라우저 단축키와 겹치는 Ctrl+Shift+R(강력 새로고침)·L·E는 편집기가 막지 않는다", () => {
+    expect(press("R", true)).toBe(false);
+    expect(press("L", true)).toBe(false);
+    expect(press("E", true)).toBe(false);
   });
 });
 

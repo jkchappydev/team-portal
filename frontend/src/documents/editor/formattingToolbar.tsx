@@ -1,10 +1,9 @@
-import { isValidElement, useMemo } from "react";
-import type { ComponentProps, ReactElement } from "react";
+import { isValidElement } from "react";
+import type { ReactElement } from "react";
 import {
-  BasicTextStyleButton, ComponentsContext, FormattingToolbar, getFormattingToolbarItems, useBlockNoteEditor,
-  useComponentsContext, useEditorState,
+  BasicTextStyleButton, FormattingToolbar, getFormattingToolbarItems, useBlockNoteEditor, useComponentsContext,
+  useEditorState,
 } from "@blocknote/react";
-import type { Components } from "@blocknote/react";
 import { clearFormatting, FORMAT_SHORTCUTS, shortcutLabel } from "./formatShortcuts";
 
 // 노션의 "Tx" 아이콘 (T와 x)
@@ -72,29 +71,7 @@ export function formattingToolbarItems(): ReactElement[] {
     .map(({ item }) => item);
 }
 
-// BlockNote 정렬 버튼은 단축키 칸이 없어 버튼 종류(data-test)별로 단축키 툴팁을 채움
-const ALIGN_SHORTCUTS: Record<string, string> = {
-  alignTextLeft: FORMAT_SHORTCUTS.alignLeft,
-  alignTextCenter: FORMAT_SHORTCUTS.alignCenter,
-  alignTextRight: FORMAT_SHORTCUTS.alignRight,
-};
-
-type ToolbarButtonProps = ComponentProps<Components["FormattingToolbar"]["Button"]> & { "data-test"?: string };
-
-// 코드·서식 지우기 버튼을 더하고 정렬 버튼에 단축키 툴팁을 붙인 서식 도구 막대
+// 코드·서식 지우기 버튼을 더한 서식 도구 막대
 export function NotionFormattingToolbar() {
-  const components = useComponentsContext()!;
-  const withShortcuts = useMemo<Components>(() => {
-    const Button = components.FormattingToolbar.Button;
-    const ShortcutButton = (props: ToolbarButtonProps) => {
-      const shortcut = props["data-test"] ? ALIGN_SHORTCUTS[props["data-test"]] : undefined;
-      return <Button {...props} secondaryTooltip={props.secondaryTooltip ?? (shortcut && shortcutLabel(shortcut))} />;
-    };
-    return { ...components, FormattingToolbar: { ...components.FormattingToolbar, Button: ShortcutButton } };
-  }, [components]);
-  return (
-    <ComponentsContext.Provider value={withShortcuts}>
-      <FormattingToolbar>{formattingToolbarItems()}</FormattingToolbar>
-    </ComponentsContext.Provider>
-  );
+  return <FormattingToolbar>{formattingToolbarItems()}</FormattingToolbar>;
 }

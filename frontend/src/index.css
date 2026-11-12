@@ -314,8 +314,9 @@ a:not([draggable="true"]) {
   background: var(--mantine-color-default-hover);
 }
 
-/* 노션식 블록 메뉴의 켜고 끄는 줄: 다른 메뉴 항목과 같은 높이·여백, 스위치는 오른쪽 끝 */
-.menu-toggle-row {
+/* 노션식 블록 메뉴의 켜고 끄는 줄: 다른 메뉴 항목과 같은 높이·여백·글자 크기, 스위치는 오른쪽 끝 */
+/* Mantine 버튼 기본 글자 크기(16px)가 BlockNote 스타일과 함께 나중에 다시 불러와져 덮어쓰므로 button 태그까지 붙여 우선순위를 높임 */
+button.menu-toggle-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -323,7 +324,8 @@ a:not([draggable="true"]) {
   min-height: 30px;
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.55;
   color: var(--bn-colors-menu-text);
 }
 
@@ -407,6 +409,71 @@ a:not([draggable="true"]) {
 :root .bn-root[data-color-scheme="dark"] [data-content-type="table"] th,
 :root .bn-root[data-color-scheme="dark"] [data-content-type="table"] td {
   border-color: #373737;
+}
+
+/* 노션처럼 지금 입력 중인 표 칸을 파란 테두리로 강조 (편집 중이고 초점이 있을 때만, 여러 칸 선택은 BlockNote 기본 칸 선택 표시) */
+.bn-editor.ProseMirror-focused[contenteditable="true"] [data-content-type="table"] .active-table-cell {
+  box-shadow: inset 0 0 0 2px #2383e2;
+}
+
+/* 드래그로 여러 칸을 고르면 BlockNote 기본(칸마다 연보라 칠)은 대신 노션처럼 선택 범위 바깥에 파란 테두리 */
+.bn-editor [data-content-type="table"] .selectedCell::after {
+  background: none;
+}
+
+.bn-editor [data-content-type="table"] .cell-range::after {
+  border: 0 solid #2383e2;
+}
+
+.bn-editor [data-content-type="table"] .cell-range-top::after {
+  border-top-width: 2px;
+}
+
+.bn-editor [data-content-type="table"] .cell-range-right::after {
+  border-right-width: 2px;
+}
+
+.bn-editor [data-content-type="table"] .cell-range-bottom::after {
+  border-bottom-width: 2px;
+}
+
+.bn-editor [data-content-type="table"] .cell-range-left::after {
+  border-left-width: 2px;
+}
+
+/* 여러 칸 선택 범위 오른쪽 가운데의 칸 메뉴 버튼: 평소에는 선택 테두리 위의 얇은 파란 막대,
+   마우스를 올리거나 메뉴가 열려 있으면 세로 점(⋮) 상자 (가운데 기준 배치라 크기가 바뀌어도 테두리선 위에 그대로) */
+button.cell-selection-handle {
+  position: fixed;
+  z-index: 20; /* 표 오른쪽 "열 추가" 막대(z-index 10)보다 위 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: #2383e2;
+  color: #fff;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+button.cell-selection-handle svg {
+  display: none;
+}
+
+button.cell-selection-handle:hover,
+button.cell-selection-handle[aria-expanded="true"] {
+  width: 14px;
+  height: 22px;
+  border-radius: 4px;
+}
+
+button.cell-selection-handle:hover svg,
+button.cell-selection-handle[aria-expanded="true"] svg {
+  display: block;
 }
 
 /* 본문 제목 크기: BlockNote 기본 제목1(48px)이 페이지 제목(36px)보다 커서, 제목1을 페이지 제목 크기로 두고 아래 단계를 노션 비율로 줄임 */
@@ -728,43 +795,86 @@ a:not([draggable="true"]) {
   font-size: 13px;
 }
 
-/* 표 행·열 손잡이를 노션처럼 칸 테두리선 위에 걸친 얇은 막대로
+/* 표 행·열 손잡이: 노션처럼 평소에는 칸 테두리선 위에 걸친 가는 선, 마우스를 올리거나 끌 때는 점 6개(⠿) 상자
    BlockNote는 행 손잡이 오른쪽 끝을 칸 왼쪽 테두리 안쪽 10px, 열 손잡이 아래쪽 끝을 위 테두리 안쪽 12px에 둠
-   막대(4×14px) 가운데가 테두리선에 오도록 행은 왼쪽 8px(10-4/2), 열은 위로 5px(12-14/2) 옮김
+   선(투명 테두리 포함)과 상자는 모두 16×22px로 브라우저에서 잰 값으로 가운데를 테두리선에 맞춤
    열 손잡이는 BlockNote가 행 손잡이를 90도 돌려 쓰므로(transform) 회전과 따로 적용되는 translate 사용 */
 :root .bn-mantine .bn-table-handle {
-  width: 4px;
-  min-width: 4px;
-  height: 14px;
-  min-height: 14px;
+  /* 보이는 선은 가운데 2×16px, 좌우 7px·위아래 3px는 투명 테두리로 두어 마우스가 닿는 영역만 넓힘
+     (전체 16×22px = 마우스를 올렸을 때의 상자 크기와 같아 가장자리에서 깜빡이지 않음) */
+  box-sizing: content-box;
+  width: 2px;
+  min-width: 2px;
+  height: 16px;
+  min-height: 16px;
   padding: 0;
-  border: none;
-  border-radius: 2px;
+  border: solid transparent;
+  border-width: 3px 7px;
+  border-radius: 1px;
   box-shadow: none;
-  background-color: var(--mantine-color-gray-5);
-  translate: -8px 0;
+  background-clip: content-box;
+  background-color: var(--mantine-color-gray-6);
+  color: var(--mantine-color-gray-6);
+  translate: -2.5px 0;
+  cursor: pointer;
 }
 
 :root .bn-mantine .bn-table-handle[style*="rotate"] {
-  translate: 0 -5px;
+  translate: 0 -1.5px;
 }
 
 :root .bn-mantine .bn-table-handle svg {
   display: none;
+  width: 14px;
+  height: 14px;
 }
 
 :root .bn-mantine .bn-table-handle:hover,
 :root .bn-mantine .bn-table-handle-dragging {
-  background-color: var(--mantine-color-gray-7);
+  width: 16px;
+  min-width: 16px;
+  height: 22px;
+  min-height: 22px;
+  box-sizing: border-box;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.08);
+  background-clip: padding-box;
+  background-color: var(--mantine-color-white);
+  translate: -2.5px 0;
+}
+
+/* 표 손잡이를 누르고 있거나 끄는 중에는 잡는 손 커서
+   끄는 동안은 커서가 손잡이를 벗어나므로 editor/tableHandleDrag.ts가 html에 붙이는 클래스로 화면 전체에 적용 */
+html.table-handle-dragging-cursor,
+html.table-handle-dragging-cursor * {
+  cursor: grab !important;
+}
+
+:root .bn-mantine .bn-table-handle:active,
+:root .bn-mantine .bn-table-handle-dragging {
+  cursor: grab;
+}
+
+:root .bn-mantine .bn-table-handle[style*="rotate"]:hover,
+:root .bn-mantine .bn-table-handle-dragging[style*="rotate"] {
+  translate: 0 -1.5px;
+}
+
+:root .bn-mantine .bn-table-handle:hover svg,
+:root .bn-mantine .bn-table-handle-dragging svg {
+  display: block;
 }
 
 :root .bn-root[data-color-scheme="dark"] .bn-table-handle {
   background-color: var(--mantine-color-dark-2);
+  color: var(--mantine-color-dark-1);
 }
 
 :root .bn-root[data-color-scheme="dark"] .bn-table-handle:hover,
 :root .bn-root[data-color-scheme="dark"] .bn-table-handle-dragging {
-  background-color: var(--mantine-color-dark-0);
+  border-color: var(--mantine-color-dark-4);
+  background-color: var(--mantine-color-dark-6);
 }
 
 /* 사이드바 고정 메뉴: 페이지 트리 줄과 같은 아이콘·글자 간격 6px (오른쪽 단축키 표시는 기본 간격으로 끝에 붙임) */

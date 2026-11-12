@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { colorTableCells, tableColor, withoutIds } from "./blockMenu";
+import { cellsColor, clearCells, colorCells, colorTableCells, tableColor, withoutIds } from "./blockMenu";
 import type { TableContent } from "./blockMenu";
 
 const table = (): TableContent => ({
@@ -44,5 +44,36 @@ describe("withoutIds", () => {
       content: [],
       children: [{ type: "paragraph", children: [] }],
     });
+  });
+});
+
+describe("고른 칸 처리", () => {
+  const grid = (): TableContent => ({
+    type: "tableContent",
+    rows: [
+      { cells: [{ type: "tableCell", props: {}, content: [{ type: "text", text: "가" }] }, [{ type: "text", text: "나" }]] },
+      { cells: [{ type: "tableCell", props: {}, content: [{ type: "text", text: "다" }] }, [{ type: "text", text: "라" }]] },
+    ],
+  });
+  const firstRow = [{ row: 0, col: 0 }, { row: 0, col: 1 }];
+
+  it("고른 칸에만 색을 칠한다", () => {
+    const colored = colorCells(grid(), firstRow, "backgroundColor", "yellow");
+    expect(cellsColor(colored, firstRow, "backgroundColor")).toBe("yellow");
+    expect(cellsColor(colored, [{ row: 1, col: 0 }], "backgroundColor")).toBe("default");
+  });
+
+  it("고른 칸들의 색이 서로 다르면 현재 색이 없다", () => {
+    const colored = colorCells(grid(), [{ row: 0, col: 0 }], "textColor", "red");
+    expect(cellsColor(colored, firstRow, "textColor")).toBeUndefined();
+  });
+
+  it("고른 칸의 글만 비우고 칸 색은 남긴다", () => {
+    const cleared = clearCells(colorCells(grid(), firstRow, "textColor", "red"), firstRow);
+    expect(cleared.rows[0].cells).toEqual([
+      { type: "tableCell", props: { textColor: "red" }, content: [] },
+      { type: "tableCell", props: { textColor: "red" }, content: [] },
+    ]);
+    expect(cleared.rows[1].cells[0]).toEqual({ type: "tableCell", props: {}, content: [{ type: "text", text: "다" }] });
   });
 });

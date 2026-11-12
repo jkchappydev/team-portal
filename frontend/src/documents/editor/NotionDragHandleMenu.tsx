@@ -1,29 +1,12 @@
 import type { ReactNode } from "react";
 import { Switch, UnstyledButton } from "@mantine/core";
 import { SideMenuExtension } from "@blocknote/core/extensions";
-import { DragHandleMenu, useBlockNoteEditor, useComponentsContext, useExtensionState, usePortalElement } from "@blocknote/react";
-import { BLOCK_COLORS, colorTableCells, tableColor, withoutIds } from "./blockMenu";
+import { DragHandleMenu, useBlockNoteEditor, useComponentsContext, useExtensionState } from "@blocknote/react";
+import { colorTableCells, tableColor, withoutIds } from "./blockMenu";
+import { ColorSubmenu } from "./ColorSubmenu";
+import { MenuIcon } from "./MenuIcon";
+import { MENU_ICONS } from "./menuIcons";
 import type { ColorKind, TableContent } from "./blockMenu";
-
-// 메뉴 아이콘 (글자색을 따라가는 얇은 선)
-function Icon({ d }: { d: string }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
-      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  );
-}
-
-const ICONS = {
-  headerRow: "M2.5 3.5h11v9h-11zM2.5 6.5h11",
-  headerColumn: "M2.5 3.5h11v9h-11zM6 3.5v9",
-  color: "M8 2.5 3.5 13.5M8 2.5l4.5 11M5 10h6",
-  above: "M8 13V3M4 7l4-4 4 4",
-  below: "M8 3v10M4 9l4 4 4-4",
-  copy: "M5.5 5.5h8v8h-8zM2.5 10.5v-8h8",
-  trash: "M2.5 4h11M6 4V2.75h4V4M3.75 4l.7 9.25h7.1l.7-9.25",
-};
 
 interface MenuToggleProps {
   label: string;
@@ -57,8 +40,6 @@ export function MenuToggle({ label, icon, checked, onToggle }: MenuToggleProps) 
 export function NotionDragHandleMenu() {
   const Components = useComponentsContext()!;
   const editor = useBlockNoteEditor();
-  // 하위 메뉴(색)를 편집기와 같은 위치에 띄우기 위한 요소
-  const portalElement = usePortalElement();
   const block = useExtensionState(SideMenuExtension, { editor, selector: (state) => state?.block });
   if (!block) return null;
 
@@ -93,21 +74,6 @@ export function NotionDragHandleMenu() {
     editor.insertBlocks([withoutIds(block) as never], block, "after");
   };
 
-  const colorItems = (kind: ColorKind) =>
-    BLOCK_COLORS.map((color) => (
-      <Components.Generic.Menu.Item
-        key={`${kind}-${color.value}`}
-        className="bn-menu-item"
-        checked={currentColor(kind) === color.value}
-        icon={kind === "textColor"
-          ? <span className="color-swatch" data-text-color={color.value}>A</span>
-          : <span className="color-swatch" data-background-color={color.value} />}
-        onClick={() => setColor(kind, color.value)}
-      >
-        {color.label} {kind === "textColor" ? "텍스트" : "배경"}
-      </Components.Generic.Menu.Item>
-    ));
-
   return (
     <DragHandleMenu>
       {/* 메뉴 항목은 누르면 메뉴가 닫히므로, 노션처럼 켜고 꺼도 열려 있도록 스위치 줄은 일반 버튼으로 둠 */}
@@ -115,51 +81,33 @@ export function NotionDragHandleMenu() {
         <>
           <MenuToggle
             label="제목 행"
-            icon={<Icon d={ICONS.headerRow} />}
+            icon={<MenuIcon d={MENU_ICONS.headerRow} />}
             checked={!!tableContent.headerRows}
             onToggle={() => toggleHeader("headerRows")}
           />
           <MenuToggle
             label="제목 열"
-            icon={<Icon d={ICONS.headerColumn} />}
+            icon={<MenuIcon d={MENU_ICONS.headerColumn} />}
             checked={!!tableContent.headerCols}
             onToggle={() => toggleHeader("headerCols")}
           />
         </>
       )}
-      {(supports("textColor") || supports("backgroundColor")) && (
-        <Components.Generic.Menu.Root position="right" sub portalElement={portalElement}>
-          <Components.Generic.Menu.Trigger sub>
-            <Components.Generic.Menu.Item className="bn-menu-item" subTrigger icon={<Icon d={ICONS.color} />}>
-              색
-            </Components.Generic.Menu.Item>
-          </Components.Generic.Menu.Trigger>
-          <Components.Generic.Menu.Dropdown sub className="bn-menu-dropdown notion-color-menu">
-            {supports("textColor") && (
-              <>
-                <Components.Generic.Menu.Label>텍스트 색상</Components.Generic.Menu.Label>
-                {colorItems("textColor")}
-              </>
-            )}
-            {supports("backgroundColor") && (
-              <>
-                <Components.Generic.Menu.Label>배경 색상</Components.Generic.Menu.Label>
-                {colorItems("backgroundColor")}
-              </>
-            )}
-          </Components.Generic.Menu.Dropdown>
-        </Components.Generic.Menu.Root>
-      )}
-      <Components.Generic.Menu.Item className="bn-menu-item" icon={<Icon d={ICONS.above} />} onClick={() => insert("before")}>
+      <ColorSubmenu
+        kinds={(["textColor", "backgroundColor"] as const).filter(supports)}
+        current={currentColor}
+        onSelect={setColor}
+      />
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.above} />} onClick={() => insert("before")}>
         위에 삽입
       </Components.Generic.Menu.Item>
-      <Components.Generic.Menu.Item className="bn-menu-item" icon={<Icon d={ICONS.below} />} onClick={() => insert("after")}>
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.below} />} onClick={() => insert("after")}>
         아래에 삽입
       </Components.Generic.Menu.Item>
-      <Components.Generic.Menu.Item className="bn-menu-item" icon={<Icon d={ICONS.copy} />} onClick={duplicate}>
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.copy} />} onClick={duplicate}>
         복제
       </Components.Generic.Menu.Item>
-      <Components.Generic.Menu.Item className="bn-menu-item" icon={<Icon d={ICONS.trash} />} onClick={() => editor.removeBlocks([block])}>
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.trash} />} onClick={() => editor.removeBlocks([block])}>
         삭제
       </Components.Generic.Menu.Item>
     </DragHandleMenu>
