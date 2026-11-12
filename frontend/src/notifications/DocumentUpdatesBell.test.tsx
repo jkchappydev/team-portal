@@ -60,6 +60,7 @@ describe("DocumentUpdatesBell", () => {
         </QueryClientProvider>
       </MantineProvider>,
     );
+    return queryClient;
   }
 
   it("수정된 페이지 수를 종 아이콘에 표시하고, 누르면 목록에서 해당 페이지로 이동한다", async () => {
@@ -99,6 +100,18 @@ describe("DocumentUpdatesBell", () => {
     fireEvent.click(screen.getByLabelText("수정 알림"));
     fireEvent.click(await screen.findByText("가입 요청 2건"));
     expect(await screen.findByText("팀원 화면")).toBeTruthy();
+  });
+
+  it("처음 열 때는 종을 흔들지 않고, 이후 새 알림이 늘어나면 한 번 흔든다", async () => {
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
+    const queryClient = renderBell();
+    expect(await screen.findByText("1")).toBeTruthy();
+    const bell = () => screen.getByLabelText("수정 알림").querySelector("svg")!;
+    expect(bell().hasAttribute("data-ring")).toBe(false);
+
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차"), update(14, "회의록")]);
+    await queryClient.refetchQueries();
+    await waitFor(() => expect(bell().hasAttribute("data-ring")).toBe(true));
   });
 
   it("일반 팀원은 가입 요청 수를 조회하지 않는다", async () => {

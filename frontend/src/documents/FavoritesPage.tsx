@@ -9,6 +9,7 @@ import type { FavoriteDto } from "../api/favorites";
 import { DragHandleIcon } from "./ChildPages";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
 import { PageIcon } from "./PageIconView";
+import { useReorderAnimation } from "../layout/reorderAnimation";
 
 const rowStyle = { display: "block", width: "100%", padding: "6px 8px", borderRadius: 6 };
 
@@ -22,6 +23,8 @@ export function FavoritesPage() {
   const draggingId = useRef<number | null>(null);
   const [dropSlot, setDropSlot] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // 순서를 바꾸면 줄들이 새 위치로 미끄러지게 (사이드바·하위 페이지 목록과 같은 효과)
+  useReorderAnimation(listRef);
 
   // 놓자마자 화면 순서를 바꾸고, 서버가 돌려준 목록으로 맞춤 (실패하면 다시 불러옴)
   const reorder = useMutation({
@@ -106,6 +109,7 @@ export function FavoritesPage() {
                   className="page-row child-page-row"
                   data-testid={`favorite-row-${favorite.documentId}`}
                   data-drop-position={dropPositionOf(rowIndex)}
+                  data-flip-id={`favorite-${favorite.documentId}`}
                 >
                   <span
                     className="child-page-handle"

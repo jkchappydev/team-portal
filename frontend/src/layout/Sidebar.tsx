@@ -12,6 +12,7 @@ import { focusTitleState } from "../documents/titleFocus";
 import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
 import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
+import { markNewItem } from "./reorderAnimation";
 import { logout } from "../api/auth";
 import { ProfileSettingsModal } from "../user/ProfileSettingsModal";
 import { RankBadge } from "../members/RankBadge";
@@ -32,6 +33,7 @@ export function Sidebar({ user }: Props) {
   const create = useMutation({
     mutationFn: () => createSpace(),
     onSuccess: (space) => {
+      markNewItem(`space-${space.id}`);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       navigate(`/spaces/${space.id}`, space.homeDocumentId ? focusTitleState(space.homeDocumentId) : undefined);
     },

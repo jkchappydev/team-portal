@@ -10,6 +10,7 @@ import { dropSlotAt, moveIndexOf } from "./dropSlot";
 import { itemPath } from "./itemPath";
 import { PageIcon } from "./PageIconView";
 import { childrenOf, groupByParent } from "./pageTree";
+import { isNewItem, markNewItem, useReorderAnimation } from "../layout/reorderAnimation";
 
 const rowStyle = { display: "block", width: "100%", padding: "6px 8px", borderRadius: 6 };
 
@@ -48,10 +49,13 @@ export function ChildPages({ spaceId, parentId }: Props) {
   const draggingId = useRef<number | null>(null);
   const [dropSlot, setDropSlot] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // 순서를 바꾸면 줄들이 새 위치로 미끄러지게 (사이드바 트리와 같은 효과)
+  useReorderAnimation(listRef);
 
   const create = useMutation({
     mutationFn: () => createDocument(spaceId, parentId),
     onSuccess: (doc) => {
+      markNewItem(`page-${doc.id}`);
       queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       navigate(`/documents/${doc.id}`, focusTitleState(doc.id));
@@ -125,6 +129,8 @@ export function ChildPages({ spaceId, parentId }: Props) {
           className="page-row child-page-row"
           data-testid={`child-row-${page.id}`}
           data-drop-position={dropPositionOf(rowIndex)}
+          data-flip-id={`page-${page.id}`}
+          data-new={isNewItem(`page-${page.id}`) || undefined}
         >
           <span
             className="child-page-handle"

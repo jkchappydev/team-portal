@@ -992,3 +992,88 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
 }
 .icon-emoji-skin-tone:hover { background-color: var(--icon-emoji-hover); }
 
+
+/* ===== 움직임 효과 (운영체제의 "애니메이션 줄이기" 설정을 켜면 맨 아래에서 모두 끔) ===== */
+
+/* 방금 만든 페이지: 사이드바·하위 페이지 목록에 처음 나타날 때 파란 배경이 잠깐 비쳤다 사라짐 */
+@keyframes new-item-flash {
+  0%, 30% { background-color: rgba(35, 131, 226, 0.18); }
+  100% { background-color: transparent; }
+}
+
+.mantine-NavLink-root[data-new],
+.child-page-row[data-new] {
+  animation: new-item-flash 1.6s ease-out;
+}
+
+/* 즐겨찾기 별: 색은 부드럽게 바뀌고, 추가할 때 살짝 커졌다 돌아옴 */
+.favorite-star {
+  transition: fill 150ms, stroke 150ms;
+}
+
+@keyframes favorite-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  70% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+.favorite-star[data-pop] {
+  animation: favorite-pop 360ms ease-out;
+}
+
+/* 알림 종: 새 알림이 오면 위쪽 고리를 축으로 한 번 흔들림 */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(9deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+
+.bell-icon[data-ring] {
+  transform-origin: 50% 2px;
+  animation: bell-ring 800ms ease-in-out;
+}
+
+/* 체크리스트: 상자를 누르면 살짝 눌림. 체크한 줄은 노션처럼 회색 글자에 취소선
+   (체크 직후 취소선·회색이 서서히 나타나는 효과는 editor/checkListAnimation.ts) */
+.bn-block-content[data-content-type="checkListItem"] > div > input {
+  transition: transform 120ms;
+}
+
+.bn-block-content[data-content-type="checkListItem"] > div > input:active {
+  transform: scale(0.8);
+}
+
+:root .bn-root .bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content {
+  color: var(--mantine-color-dimmed);
+}
+
+/* WBS 일정 막대: 처음 그릴 때 위 줄부터 차례로 왼쪽에서 자라남 (줄 순서는 --bar-order, 12번째 줄부터 같은 시점) */
+@keyframes wbs-bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.wbs-bar {
+  transform-origin: left center;
+  animation: wbs-bar-grow 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--bar-order, 0) * 30ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mantine-NavLink-root[data-new],
+  .wbs-bar,
+  .child-page-row[data-new],
+  .favorite-star[data-pop],
+  .bell-icon[data-ring] {
+    animation: none;
+  }
+
+  .favorite-star,
+  .bn-block-content[data-content-type="checkListItem"] > div > input {
+    transition: none;
+  }
+}

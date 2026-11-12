@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ActionIcon, Alert, Badge, Button, Group, Menu, Modal, Paper, SegmentedControl, Select, Stack, Table, Text, TextInput, Title,
@@ -8,6 +8,7 @@ import { ApiError } from "../api/client";
 import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin, setMemberDeveloper } from "../api/admin";
 import type { SignupRequestDto } from "../api/admin";
 import { Navigate } from "react-router-dom";
+import { useReorderAnimation } from "../layout/reorderAnimation";
 import { deleteMember, listMembers, updateMember } from "../api/members";
 import type { MemberDto } from "../api/members";
 import { useCurrentUser } from "../user/currentUser";
@@ -174,6 +175,7 @@ function MemberRow({ member, me, admin, developer, refresh, reorder }: {
   const action = useMutation({ mutationFn: (run: () => Promise<unknown>) => run(), onSuccess: refresh });
   return (
     <Table.Tr
+      data-flip-id={`member-${member.id}`}
       data-member-drop={reorder.target?.id === member.id ? (reorder.target.after ? "after" : "before") : undefined}
       onDragOver={(e) => reorder.over(e, member.id)}
       onDrop={(e) => reorder.drop(e, member.id)}
@@ -260,6 +262,9 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
   const { data: members = [], error } = useQuery({ queryKey: ["members", true], queryFn: () => listMembers(true) });
   const { data: requests = [] } = useQuery({ queryKey: ["admin", "signup-requests"], queryFn: listSignupRequests, enabled: admin });
   const reorder = useMemberReorder(members.map((m) => m.id), admin);
+  // 순서를 바꾸면 팀원 줄들이 새 위치로 미끄러지게
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useReorderAnimation(bodyRef);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["members"] });
     void client.invalidateQueries({ queryKey: ["admin"] });
@@ -311,7 +316,7 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
                 <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
-            <Table.Tbody>
+            <Table.Tbody ref={bodyRef}>
               {members.map((member) => (
                 <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin} developer={admin && !!user?.developer}
                   refresh={refresh} reorder={reorder} />

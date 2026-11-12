@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { DragEvent, MouseEvent, ReactNode } from "react";
-import { ActionIcon, Box, Group, Menu, NavLink, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Box, Collapse, Group, Menu, NavLink, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { focusTitleState } from "../documents/titleFocus";
@@ -20,6 +20,7 @@ import { PageIcon } from "../documents/PageIconView";
 import { childrenOf, descendantIds, groupByParent } from "../documents/pageTree";
 import { dropPositionAt } from "./dropPosition";
 import type { DropPosition } from "./dropPosition";
+import { isNewItem, markNewItem, prefersReducedMotion, useReorderAnimation } from "./reorderAnimation";
 
 type PageGroups = Map<number | null, DocumentSummaryDto[]>;
 
@@ -30,6 +31,7 @@ function useCreatePage(spaceId: number, onCreated?: () => void) {
   return useMutation({
     mutationFn: (parentId: number | null) => createDocument(spaceId, parentId),
     onSuccess: (doc) => {
+      markNewItem(`page-${doc.id}`);
       queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       onCreated?.();
@@ -61,6 +63,8 @@ function useDeletePage(page: DocumentSummaryDto, onDeleted: () => void) {
 
 interface TreeRowProps {
   label: string;
+  // 순서 변경 이동 효과·새 항목 강조에 쓰는 줄 식별자 (page-ID, space-ID)
+  flipId: string;
   // 제목 앞 아이콘 (없으면 화살표만 표시)
   icon?: ReactNode;
   to: string;
@@ -140,7 +144,7 @@ function Chevron({ opened }: { opened: boolean }) {
 
 // 트리 한 줄: 평소엔 아이콘, 마우스를 올리면 그 자리에 펼치기 화살표와 오른쪽 + / ⋯ 버튼
 function TreeRow({
-  label, icon, to, active, opened, onToggle, addLabel, addTooltip, onAdd, adding, menuItems,
+  label, flipId, icon, to, active, opened, onToggle, addLabel, addTooltip, onAdd, adding, menuItems,
   onDragStart, siblingDrop = false, leaf = false, onDeleteKey, canDrop, onDrop, onDropFiles, pagePositionOf, spaceRow, spaceDropLine, children,
 }: TreeRowProps) {
   const isFile = leaf;
@@ -159,6 +163,8 @@ function TreeRow({
   const showChevron = !isFile && (showActions || !icon);
   // 제목이 칸을 넘어 말줄임(…)으로 잘렸을 때만 마우스를 올리면 전체 제목 표시
   const [truncated, setTruncated] = useState(false);
+  // 방금 만든 항목이면 처음 나타날 때 잠깐 강조
+  const [isNew] = useState(() => isNewItem(flipId));
   return (
     <Box>
       <NavLink
@@ -188,6 +194,8 @@ function TreeRow({
           onDeleteKey();
         }}
         draggable={!!onDragStart}
+        data-flip-id={flipId}
+        data-new={isNew || undefined}
         data-space-row={spaceRow || undefined}
         data-drop-target={dropPosition === "inside" || undefined}
         data-drop-position={spaceDropLine ?? dropPosition ?? undefined}
@@ -291,7 +299,12 @@ function TreeRow({
         ) : null}
         styles={{ section: { marginInlineEnd: 6 } }}
       />
-      {opened && !isFile && <Box pl={12}>{children}</Box>}
+      {/* 하위 목록은 높이가 늘었다 줄며 펼쳐지고 접힘 (접힌 뒤에는 그리지 않음) */}
+      {!isFile && (
+        <Collapse expanded={opened} keepMounted={false} transitionDuration={prefersReducedMotion() ? 0 : 160}>
+          <Box pl={12}>{children}</Box>
+        </Collapse>
+      )}
     </Box>
   );
 }
@@ -359,6 +372,7 @@ function PageNavItem({ page, groups, spaceId, onMove, onUpload }: PageNavItemPro
     <>
       <TreeRow
         label={page.title}
+        flipId={`page-${page.id}`}
         icon={<PageIcon icon={page.icon} />}
         // 파일 항목은 미리보기 화면, WBS는 일정표, 페이지는 편집 화면
         to={path}
@@ -543,78 +557,84 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
     upload.mutate({ parentId, index, files });
   };
   const uploadFailed = upload.data ?? [];
+  // 이 페이지 안 하위 페이지들을 끌어 옮기면 새 위치로 미끄러지게
+  const treeRef = useRef<HTMLDivElement>(null);
+  useReorderAnimation(treeRef, '[data-flip-id^="page-"]');
 
   return (
     <>
-      <TreeRow
-        label={space.name}
-        icon={<PageIcon icon={space.icon} />}
-        to={`/spaces/${space.id}`}
-        opened={opened}
-        onToggle={() => setOpened((v) => !v)}
-        addLabel={`${space.name}에 페이지 추가`}
-        addTooltip="페이지 추가"
-        onAdd={() => create.mutate(null)}
-        adding={create.isPending}
-        onDeleteKey={() => setConfirmDelete(true)}
-        menuItems={
-          <>
-            <CopyLinkMenuItem path={`/spaces/${space.id}`} />
-            {space.homeDocumentId !== null && (
-              <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
-            )}
-            {space.homeDocumentId !== null && (
-              <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
-            )}
-            <Menu.Divider />
-            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>
-              페이지 삭제
-            </Menu.Item>
-          </>
-        }
-        // 최상위 페이지 줄에 놓으면 그 안의 맨 아래로 이동 (이미 바로 아래면 무시)
-        // 펼쳐서 페이지가 보일 때 줄 아래쪽 절반에 놓으면 노션처럼 그 안의 맨 위로
-        pagePositionOf={(offsetY, height) =>
-          height > 0 && opened && topLevel.length > 0 && offsetY > height / 2 ? "after" : "inside"}
-        canDrop={(position) => {
-          if (!draggingPage || draggingPage.spaceId !== space.id) return false;
-          if (position === "after") return topLevel[0]?.id !== draggingPage.id;
-          return draggingPage.parentId !== null;
-        }}
-        onDrop={(position) => {
-          if (draggingPage) onMove(draggingPage.id, null, position === "after" ? 0 : undefined);
-        }}
-        onDropFiles={(position, files) => onUpload(null, position === "after" ? 0 : undefined, files)}
-        onDragStart={reorderable ? () => {
-          draggingSpaceId = space.id;
-        } : undefined}
-        spaceRow
-        spaceDropLine={dropLine}
-      >
-        {move.error && (
-          <Text size="xs" c="red" px="sm" py={4}>
-            {move.error instanceof ApiError ? move.error.message : "옮기지 못했습니다."}
-          </Text>
-        )}
-        {upload.isPending && <Text size="xs" c="dimmed" px="sm" py={4}>파일 올리는 중…</Text>}
-        {uploadFailed.length > 0 && (
-          <Text size="xs" c="red" px="sm" py={4}>올리지 못한 파일: {uploadFailed.join(", ")}</Text>
-        )}
-        {topLevel.map((page) => (
-          <PageNavItem key={page.id} page={page} groups={groups} spaceId={space.id} onMove={onMove} onUpload={onUpload} />
-        ))}
-        {topLevel.length === 0 && <Text size="xs" c="dimmed" px="sm" py={4}>페이지 없음</Text>}
-        {topLevel.length > 0 && (
-          <EndDropZone
-            canDrop={() => !!draggingPage && draggingPage.spaceId === space.id
-              && !(draggingPage.parentId === null && topLevel[topLevel.length - 1].id === draggingPage.id)}
-            onDrop={() => {
-              if (draggingPage) onMove(draggingPage.id, null);
-            }}
-            onDropFiles={(files) => onUpload(null, undefined, files)}
-          />
-        )}
-      </TreeRow>
+      <Box ref={treeRef}>
+        <TreeRow
+          label={space.name}
+          flipId={`space-${space.id}`}
+          icon={<PageIcon icon={space.icon} />}
+          to={`/spaces/${space.id}`}
+          opened={opened}
+          onToggle={() => setOpened((v) => !v)}
+          addLabel={`${space.name}에 페이지 추가`}
+          addTooltip="페이지 추가"
+          onAdd={() => create.mutate(null)}
+          adding={create.isPending}
+          onDeleteKey={() => setConfirmDelete(true)}
+          menuItems={
+            <>
+              <CopyLinkMenuItem path={`/spaces/${space.id}`} />
+              {space.homeDocumentId !== null && (
+                <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
+              )}
+              {space.homeDocumentId !== null && (
+                <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
+              )}
+              <Menu.Divider />
+              <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>
+                페이지 삭제
+              </Menu.Item>
+            </>
+          }
+          // 최상위 페이지 줄에 놓으면 그 안의 맨 아래로 이동 (이미 바로 아래면 무시)
+          // 펼쳐서 페이지가 보일 때 줄 아래쪽 절반에 놓으면 노션처럼 그 안의 맨 위로
+          pagePositionOf={(offsetY, height) =>
+            height > 0 && opened && topLevel.length > 0 && offsetY > height / 2 ? "after" : "inside"}
+          canDrop={(position) => {
+            if (!draggingPage || draggingPage.spaceId !== space.id) return false;
+            if (position === "after") return topLevel[0]?.id !== draggingPage.id;
+            return draggingPage.parentId !== null;
+          }}
+          onDrop={(position) => {
+            if (draggingPage) onMove(draggingPage.id, null, position === "after" ? 0 : undefined);
+          }}
+          onDropFiles={(position, files) => onUpload(null, position === "after" ? 0 : undefined, files)}
+          onDragStart={reorderable ? () => {
+            draggingSpaceId = space.id;
+          } : undefined}
+          spaceRow
+          spaceDropLine={dropLine}
+        >
+          {move.error && (
+            <Text size="xs" c="red" px="sm" py={4}>
+              {move.error instanceof ApiError ? move.error.message : "옮기지 못했습니다."}
+            </Text>
+          )}
+          {upload.isPending && <Text size="xs" c="dimmed" px="sm" py={4}>파일 올리는 중…</Text>}
+          {uploadFailed.length > 0 && (
+            <Text size="xs" c="red" px="sm" py={4}>올리지 못한 파일: {uploadFailed.join(", ")}</Text>
+          )}
+          {topLevel.map((page) => (
+            <PageNavItem key={page.id} page={page} groups={groups} spaceId={space.id} onMove={onMove} onUpload={onUpload} />
+          ))}
+          {topLevel.length === 0 && <Text size="xs" c="dimmed" px="sm" py={4}>페이지 없음</Text>}
+          {topLevel.length > 0 && (
+            <EndDropZone
+              canDrop={() => !!draggingPage && draggingPage.spaceId === space.id
+                && !(draggingPage.parentId === null && topLevel[topLevel.length - 1].id === draggingPage.id)}
+              onDrop={() => {
+                if (draggingPage) onMove(draggingPage.id, null);
+              }}
+              onDropFiles={(files) => onUpload(null, undefined, files)}
+            />
+          )}
+        </TreeRow>
+      </Box>
       {/* 링크 밖에 두어 확인 창 안의 클릭이 페이지 이동으로 이어지지 않게 함 */}
       {space.homeDocumentId !== null && (
         <ExportModal opened={exporting} documentId={space.homeDocumentId} title={space.name} onClose={() => setExporting(false)} />

@@ -4,6 +4,7 @@ import { Box, ScrollArea } from "@mantine/core";
 import type { SpaceDto } from "../api/spaces";
 import { dropSlotAt, moveIndexOf } from "../documents/dropSlot";
 import { draggingSpace, SpaceNavItem } from "./SpaceNavItem";
+import { useReorderAnimation } from "./reorderAnimation";
 
 interface Props {
   spaces: SpaceDto[];
@@ -16,6 +17,8 @@ export function SpaceList({ spaces, onMove }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   // 가로선을 그을 줄 사이 위치 (0 = 맨 앞, spaces.length = 맨 뒤)
   const [slot, setSlot] = useState<number | null>(null);
+  // 순서를 바꾸면 최상위 페이지 줄들이 새 위치로 미끄러지게
+  useReorderAnimation(listRef, '[data-flip-id^="space-"]');
 
   const slotOf = (e: DragEvent<HTMLElement>): number => {
     const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-space-row]") ?? []);

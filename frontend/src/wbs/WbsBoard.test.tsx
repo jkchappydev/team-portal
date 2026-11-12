@@ -168,6 +168,15 @@ describe("WbsBoard", () => {
     expect(screen.getByTestId("wbs-base-line")).toBeTruthy();
   });
 
+  it("간트 막대는 처음 그릴 때 위 줄부터 차례로 자라나도록 줄 순서를 넘긴다", async () => {
+    renderBoard();
+    const bar = await screen.findByTestId("wbs-bar-2");
+    expect(bar.classList.contains("wbs-bar")).toBe(true);
+    // 전체 합계 줄이 0번, 작업 줄은 그 아래부터
+    expect(Number(bar.parentElement!.style.getPropertyValue("--bar-order"))).toBeGreaterThan(0);
+    expect(screen.getByTestId("wbs-bar-summary").parentElement!.style.getPropertyValue("--bar-order")).toBe("0");
+  });
+
   // jsdom은 배치를 계산하지 않아 줄마다 높이 36px로 위에서부터 쌓인 위치를 넣고,
   // 끌기 이벤트는 마우스 위치를 받지 않아 직접 넣어서 발생
   const dragAt = (type: "dragOver" | "drop", clientX: number, clientY: number) => {

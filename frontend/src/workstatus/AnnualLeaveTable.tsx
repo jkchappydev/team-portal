@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Alert, Group, HoverCard, NumberInput, Text, Title, Tooltip } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { leaveWeekRangeLabel } from "./calendar";
 import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf } from "./highlight";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "../members/useMemberReorder";
+import { useReorderAnimation } from "../layout/reorderAnimation";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const WEEKS = [1, 2, 3, 4, 5];
@@ -129,7 +130,7 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
   const usage = new Map(item.weeklyUsages.map((u) => [`${u.month}-${u.week}`, u]));
 
   return (
-    <tr data-member-drop={reorder.target?.id === item.memberId ? (reorder.target.after ? "after" : "before") : undefined}
+    <tr data-flip-id={`member-${item.memberId}`} data-member-drop={reorder.target?.id === item.memberId ? (reorder.target.after ? "after" : "before") : undefined}
       onDragOver={(event) => reorder.over(event, item.memberId)} onDrop={(event) => reorder.drop(event, item.memberId)}>
       <td style={{ ...cell, position: "relative", overflow: "visible", textAlign: "left", paddingLeft: 6, fontWeight: 600,
         color: item.editable ? undefined : "var(--mantine-color-dimmed)" }} title={item.memberName}>
@@ -170,6 +171,9 @@ export function AnnualLeaveTable({ year }: { year: number }) {
   });
   const { user } = useCurrentUser();
   const reorder = useMemberReorder(data.map((item) => item.memberId), !!user?.admin);
+  // 순서를 바꾸면 팀원 줄들이 새 위치로 미끄러지게 (팀원 관리 화면과 같은 효과)
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useReorderAnimation(bodyRef);
 
   return (
     <section>
@@ -227,7 +231,7 @@ export function AnnualLeaveTable({ year }: { year: number }) {
               }))}
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={bodyRef}>
             {data.map((item) => (
               <AnnualLeaveRow
                 key={`${year}-${item.memberId}-${item.confirmedDays}-${item.carriedDays}`}

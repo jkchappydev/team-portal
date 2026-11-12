@@ -645,7 +645,9 @@ function Gantt({ data }: { data: WbsDto }) {
             />
           )}
           {allRows.map((row, i) => (
-            <Box key={row.id ?? "summary"} style={{ position: "absolute", top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: BORDER, boxSizing: "border-box" }}>
+            <Box key={row.id ?? "summary"} style={{ position: "absolute", top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: BORDER, boxSizing: "border-box",
+              // 처음 그릴 때 막대가 위 줄부터 차례로 왼쪽에서 자라나도록 줄 순서 전달 (index.css .wbs-bar)
+              ["--bar-order" as string]: Math.min(i, 12) }}>
               <GanttBar row={row} rangeStart={data.rangeStart} summary={row.id === null} />
             </Box>
           ))}
@@ -672,12 +674,12 @@ function GanttBar({ row, rangeStart, summary }: { row: WbsRowDto; rangeStart: st
   const title = `${row.name}: ${row.startDate} ~ ${row.endDate} · 실적 ${percent(row.actualPercent)}`;
   if (row.hasChildren || summary) {
     return (
-      <Box title={title} data-testid={`wbs-bar-${row.id ?? "summary"}`}
+      <Box title={title} data-testid={`wbs-bar-${row.id ?? "summary"}`} className="wbs-bar"
         style={{ position: "absolute", left, width, top: ROW_H / 2 - 4, height: 8, borderRadius: 2, background: "var(--mantine-color-gray-6)" }} />
     );
   }
   return (
-    <Box title={title} data-testid={`wbs-bar-${row.id}`}
+    <Box title={title} data-testid={`wbs-bar-${row.id}`} className="wbs-bar"
       style={{ position: "absolute", left, width, top: 8, height: ROW_H - 17, borderRadius: 3, background: "var(--mantine-color-blue-light)", border: "1px solid var(--mantine-color-blue-4)", overflow: "hidden", boxSizing: "border-box" }}>
       <Box style={{ width: `${row.actualPercent}%`, height: "100%", background: "var(--mantine-color-blue-filled)" }} />
     </Box>

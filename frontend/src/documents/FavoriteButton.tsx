@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addFavorite, FAVORITES_KEY, listFavorites, removeFavorite } from "../api/favorites";
 
 // 별 모양 (채우면 노란 별, 비우면 회색 테두리 별)
-function StarIcon({ filled }: { filled: boolean }) {
+// pop: 방금 눌러 추가했을 때 별이 살짝 커졌다 돌아오는 효과
+function StarIcon({ filled, pop, onPopEnd }: { filled: boolean; pop: boolean; onPopEnd: () => void }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden className="favorite-star"
+      data-pop={pop || undefined} onAnimationEnd={onPopEnd}
       fill={filled ? "var(--mantine-color-yellow-5)" : "none"}
       stroke={filled ? "var(--mantine-color-yellow-6)" : "currentColor"}
       strokeWidth="1.8" strokeLinejoin="round">
@@ -18,17 +21,24 @@ function StarIcon({ filled }: { filled: boolean }) {
 export function FavoriteButton({ documentId }: { documentId: number }) {
   const queryClient = useQueryClient();
   const { data: favorites = [] } = useQuery({ queryKey: FAVORITES_KEY, queryFn: listFavorites });
-  const favorite = favorites.some((f) => f.documentId === documentId);
+  const saved = favorites.some((f) => f.documentId === documentId);
+  const [pop, setPop] = useState(false);
   const toggle = useMutation({
-    mutationFn: () => (favorite ? removeFavorite(documentId) : addFavorite(documentId)),
+    mutationFn: (add: boolean) => (add ? addFavorite(documentId) : removeFavorite(documentId)),
     onSuccess: (list) => queryClient.setQueryData(FAVORITES_KEY, list),
   });
+  // 서버 응답을 기다리지 않고 누르자마자 별 모양을 바꿈 (실패하면 원래 모양으로)
+  const favorite = toggle.isPending ? toggle.variables : saved;
   const label = favorite ? "즐겨찾기에서 빼기" : "즐겨찾기에 추가";
   return (
     <Tooltip label={label} withArrow>
       <ActionIcon variant="subtle" color="gray" aria-label={label} aria-pressed={favorite}
-        loading={toggle.isPending} onClick={() => toggle.mutate()}>
-        <StarIcon filled={favorite} />
+        onClick={() => {
+          if (toggle.isPending) return;
+          setPop(!favorite);
+          toggle.mutate(!favorite);
+        }}>
+        <StarIcon filled={favorite} pop={pop} onPopEnd={() => setPop(false)} />
       </ActionIcon>
     </Tooltip>
   );
