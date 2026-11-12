@@ -99,7 +99,7 @@ vi.mock("yjs", () => {
 });
 
 vi.mock("@blocknote/core/yjs", () => ({ withCollaboration: (options: unknown) => options }));
-vi.mock("@blocknote/core/locales", () => ({ ko: {} }));
+vi.mock("@blocknote/core/locales", () => ({ ko: { formatting_toolbar: { code: {} } } }));
 vi.mock("@blocknote/react", async () => {
   const { useState } = await import("react");
   return {
@@ -113,11 +113,15 @@ vi.mock("@blocknote/react", async () => {
     // "/일정"을 더한 슬래시 메뉴 연결부도 그리지 않음
     SuggestionMenuController: () => null,
     getDefaultReactSlashMenuItems: () => [],
+    // 코드·서식 지우기를 더한 서식 도구 막대 연결부도 그리지 않음
+    FormattingToolbarController: () => null,
   };
 });
 // 일정 블록 스키마는 실제 편집기 없이 확인하므로 빈 값
 vi.mock("./editor/schema", () => ({ editorSchema: {} }));
 vi.mock("./editor/NotionDragHandleMenu", () => ({ NotionDragHandleMenu: () => null }));
+vi.mock("./editor/formattingToolbar", () => ({ NotionFormattingToolbar: () => null }));
+vi.mock("./editor/formatShortcuts", () => ({ FORMAT_SHORTCUTS: { code: "Mod+E" }, formatShortcutsExtension: {} }));
 vi.mock("@blocknote/mantine", () => ({
   // StrictMode에서 버려진 인스턴스와 구분하려고 실제 렌더된 편집기를 기록
   BlockNoteView: ({ editor }: { editor: { isEditable: boolean } }) => {

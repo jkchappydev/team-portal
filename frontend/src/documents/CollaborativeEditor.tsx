@@ -11,8 +11,10 @@ import { syntaxHighlighter } from "@blocknote/code-block";
 import { pasteOptions } from "./editor/paste";
 import { yUndoPluginKey } from "y-prosemirror";
 import { reviveUndoManager } from "./editor/undoRevive";
+import { NotionFormattingToolbar } from "./editor/formattingToolbar";
+import { FORMAT_SHORTCUTS, formatShortcutsExtension } from "./editor/formatShortcuts";
 import {
-  getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
+  FormattingToolbarController, getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
 } from "@blocknote/react";
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
@@ -171,6 +173,15 @@ export default function CollaborativeEditor({ documentId, user, scheduleSpaceId,
   );
 }
 
+// 한국어 문구는 코드 버튼 단축키 칸이 비어 있어 Ctrl+E를 채움
+const editorDictionary = {
+  ...ko,
+  formatting_toolbar: {
+    ...ko.formatting_toolbar,
+    code: { ...ko.formatting_toolbar.code, secondary_tooltip: FORMAT_SHORTCUTS.code },
+  },
+};
+
 // 접속 상태에 싣는 내 정보 (커서 색은 팀원 번호로 고정, 동그라미는 고른 색·이미지 우선)
 function presenceUser(user: Pick<MemberDto, "id" | "name" | "profileColor" | "profileImageUrl">) {
   return {
@@ -207,7 +218,7 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
     withCollaboration({
       // 기본 블록 + 일정(WBS) 블록
       schema: editorSchema,
-      dictionary: ko,
+      dictionary: editorDictionary,
       collaboration: {
         provider: { awareness: session.provider.awareness ?? undefined },
         fragment: session.doc.getXmlFragment(FRAGMENT_NAME),
@@ -223,7 +234,7 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       pasteHandler: ({ event, defaultPasteHandler }) =>
         defaultPasteHandler(pasteOptions(Array.from(event.clipboardData?.types ?? []))),
       // 코드 블록 문법 색칠 (언어별 문법은 필요할 때 불러옴)
-      extensions: [syntaxHighlighter],
+      extensions: [syntaxHighlighter, formatShortcutsExtension],
       // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 2px로 축소)
       dropCursor: { width: 2, color: "var(--mantine-primary-color-filled)" },
       // 노션처럼 표의 행·열 색칠(배경·글자), 첫 행·첫 열 머리글, 셀 병합·분할 허용
@@ -344,7 +355,10 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       {scheduleError && (
         <Alert color="red" mb="xs" withCloseButton onClose={() => setScheduleError(null)}>{scheduleError}</Alert>
       )}
-      <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false} slashMenu={false}>
+      <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false} slashMenu={false}
+        formattingToolbar={false}>
+        {/* 서식 도구 막대: 기본 버튼 + 노션처럼 코드(Ctrl+E)·서식 지우기 */}
+        <FormattingToolbarController formattingToolbar={NotionFormattingToolbar} />
         <SideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 기본 슬래시 메뉴에 "/일정" 추가 */}
