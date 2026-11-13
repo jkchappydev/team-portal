@@ -221,6 +221,21 @@ describe("팀원 관리", () => {
     expect(screen.queryByLabelText("팀원 메뉴")).toBeNull();
   });
 
+  it("팀원 목록 아래에 전화기 사용법을 보여준다 (팀원 관리에는 없음)", async () => {
+    vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "관리자", active: true, email: null, admin: true }]);
+    renderPage("list");
+    expect(await screen.findByRole("heading", { name: "전화기 사용법" })).toBeTruthy();
+    expect(screen.getByText("당겨받기")).toBeTruthy();
+    expect(screen.getByText("**")).toBeTruthy();
+    expect(screen.getByText("5 + 전화번호")).toBeTruthy();
+    expect(screen.getByText("플래시 + 내선번호(3자리)")).toBeTruthy();
+    cleanup();
+
+    renderPage("manage");
+    expect(await screen.findByRole("heading", { name: "팀원 관리" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "전화기 사용법" })).toBeNull();
+  });
+
   it("관리자가 아니면 팀원 관리 주소로 와도 팀원 목록으로 보낸다", async () => {
     vi.mocked(useCurrentUser).mockReturnValue({
       user: { id: 2, name: "팀원", active: true, admin: false },

@@ -325,6 +325,32 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
           </Table>
         </Paper>
       </Stack>
+
+      {/* 팀원 목록에서만: 사무실 전화기 사용법 */}
+      {mode === "list" && (
+        <Stack gap="sm">
+          <Title order={5}>전화기 사용법</Title>
+          <Paper withBorder radius="md" px="md" py="xs">
+            <Table verticalSpacing="sm">
+              <Table.Tbody>
+                {PHONE_GUIDE.map(([action, keys]) => (
+                  <Table.Tr key={action}>
+                    <Table.Td w={200}>{action}</Table.Td>
+                    <Table.Td>{keys}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Paper>
+        </Stack>
+      )}
     </Stack>
   );
 }
+
+// 사무실 전화기 기능별 누르는 순서
+const PHONE_GUIDE: [string, string][] = [
+  ["당겨받기", "**"],
+  ["외부전화", "5 + 전화번호"],
+  ["넘기기", "플래시 + 내선번호(3자리)"],
+];
