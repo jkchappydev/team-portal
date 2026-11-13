@@ -18,10 +18,11 @@ public final class WorkStatusLabelFormatter {
     WorkStatusType type = ws.getType();
     String title = type == WorkStatusType.OTHER ? ws.getContent() : type.getDisplayName();
 
-    // 종류별로 괄호 안 항목 순서가 다름
+    // 종류별로 괄호 안 항목 순서가 다름 (연차·팀자율연차는 달력에 날마다 보이므로 기간을 붙이지 않음)
     List<String> details = new ArrayList<>();
     switch (type) {
-      case LEAVE -> addIfPresent(details, period(ws));
+      case LEAVE -> {
+      }
       case HALF_DAY -> {
         if (ws.getHalfDayPeriod() != null) {
           details.add(ws.getHalfDayPeriod().getDisplayName());
@@ -36,7 +37,6 @@ public final class WorkStatusLabelFormatter {
         if (ws.getHalfDayPeriod() != null) {
           details.add(ws.getHalfDayPeriod().getDisplayName());
         }
-        addIfPresent(details, period(ws));
       }
       case BUSINESS_TRIP -> {
         addIfPresent(details, ws.getPlace());

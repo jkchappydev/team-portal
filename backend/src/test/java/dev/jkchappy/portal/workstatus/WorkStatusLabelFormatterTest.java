@@ -27,7 +27,7 @@ class WorkStatusLabelFormatterTest {
   @Test
   void leave_range() {
     assertThat(f(ws(WorkStatusType.LEAVE, "2026-11-02", "2026-11-06", null, null, null, null, null)))
-      .isEqualTo("홍길동 연차(11/2~6)");
+      .isEqualTo("홍길동 연차");
   }
 
   @Test
@@ -41,7 +41,7 @@ class WorkStatusLabelFormatterTest {
     assertThat(f(ws(WorkStatusType.TEAM_LEAVE, "2026-10-30", "2026-10-30", HalfDayPeriod.AM, null, null,
       null, null))).isEqualTo("홍길동 팀자율연차(오전)");
     assertThat(f(ws(WorkStatusType.TEAM_LEAVE, "2026-11-02", "2026-11-03", null, null, null, null, null)))
-      .isEqualTo("홍길동 팀자율연차(11/2~3)");
+      .isEqualTo("홍길동 팀자율연차");
   }
 
   @Test

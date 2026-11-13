@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listAnnualLeaves, updateAnnualLeave } from "../api/annualLeaves";
 import type { AnnualLeaveSummaryDto, LeaveUsageDayDto } from "../api/annualLeaves";
 import { leaveWeekRangeLabel } from "./calendar";
-import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf } from "./highlight";
+import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf, currentWeekOf } from "./highlight";
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "../members/useMemberReorder";
 import { useReorderAnimation } from "../layout/reorderAnimation";
@@ -73,15 +73,32 @@ function monthBg(month: number, currentMonth: number | null): string | undefined
   return month % 2 === 0 ? EVEN_MONTH_BG : undefined;
 }
 
+type CurrentWeek = ReturnType<typeof currentWeekOf>;
+// 이번 주 열 테두리 (같은 너비면 왼쪽 칸 테두리가 이겨 빨간 선이 묻히므로 기본선보다 두껍게)
+const CURRENT_WEEK_BORDER = "2px solid var(--mantine-color-red-filled)";
+
+// 이번 주 열은 주 번호 머리글부터 마지막 팀원 줄까지 빨간 사각형으로 둘러쌈
+function weekFrame(month: number, week: number, currentWeek: CurrentWeek, edge: { top?: boolean; bottom?: boolean }): CSSProperties {
+  if (currentWeek?.month !== month || currentWeek.week !== week) return {};
+  return {
+    borderLeft: CURRENT_WEEK_BORDER,
+    borderRight: CURRENT_WEEK_BORDER,
+    ...(edge.top ? { borderTop: CURRENT_WEEK_BORDER } : {}),
+    ...(edge.bottom ? { borderBottom: CURRENT_WEEK_BORDER } : {}),
+  };
+}
+
 interface AnnualLeaveRowProps {
   item: AnnualLeaveSummaryDto;
   year: number;
   currentMonth: number | null;
+  currentWeek: CurrentWeek;
+  last: boolean;
   admin: boolean;
   reorder: ReturnType<typeof useMemberReorder>;
 }
 
-function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeaveRowProps) {
+function AnnualLeaveRow({ item, year, currentMonth, currentWeek, last, admin, reorder }: AnnualLeaveRowProps) {
   const queryClient = useQueryClient();
   const [confirmedDays, setConfirmedDays] = useState<number | string>(item.confirmedDays);
   const [carriedDays, setCarriedDays] = useState<number | string>(item.carriedDays);
@@ -146,7 +163,7 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
             testId={`usage-${item.memberId}-${month}-${week}`}
             days={weekUsage?.days}
             dates={weekUsage?.dates ?? []}
-            style={{ ...cell, background: monthBg(month, currentMonth) }}
+            style={{ ...cell, background: monthBg(month, currentMonth), ...weekFrame(month, week, currentWeek, { bottom: last }) }}
           />
         );
       }))}
@@ -165,6 +182,7 @@ function AnnualLeaveRow({ item, year, currentMonth, admin, reorder }: AnnualLeav
 
 export function AnnualLeaveTable({ year }: { year: number }) {
   const currentMonth = currentMonthOf(year);
+  const currentWeek = currentWeekOf(year);
   const { data = [], error } = useQuery({
     queryKey: ["annualLeaves", year],
     queryFn: () => listAnnualLeaves(year),
@@ -222,7 +240,9 @@ export function AnnualLeaveTable({ year }: { year: number }) {
                   <Tooltip key={`${month}-${week}`} label={range} disabled={!range} fz="xs" withArrow openDelay={100}>
                     <th
                       data-testid={`week-head-${month}-${week}`}
-                      style={{ ...cell, fontSize: 10, fontWeight: 400, color: "var(--mantine-color-dimmed)", background: monthBg(month, currentMonth) }}
+                      data-current-week={(currentWeek?.month === month && currentWeek.week === week) || undefined}
+                      style={{ ...cell, fontSize: 10, fontWeight: 400, color: "var(--mantine-color-dimmed)", background: monthBg(month, currentMonth),
+                        ...weekFrame(month, week, currentWeek, { top: true, bottom: data.length === 0 }) }}
                     >
                       {week}
                     </th>
@@ -232,12 +252,14 @@ export function AnnualLeaveTable({ year }: { year: number }) {
             </tr>
           </thead>
           <tbody ref={bodyRef}>
-            {data.map((item) => (
+            {data.map((item, index) => (
               <AnnualLeaveRow
                 key={`${year}-${item.memberId}-${item.confirmedDays}-${item.carriedDays}`}
                 item={item}
                 year={year}
                 currentMonth={currentMonth}
+                currentWeek={currentWeek}
+                last={index === data.length - 1}
                 admin={!!user?.admin}
                 reorder={reorder}
               />

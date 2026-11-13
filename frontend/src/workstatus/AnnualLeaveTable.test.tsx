@@ -84,6 +84,20 @@ describe("AnnualLeaveTable", () => {
     expect(screen.getByTestId("team-leave-1").textContent).toBe("1");
   });
 
+  it("올해 표는 이번 주 열만 표시한다", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 13, 10));
+    try {
+      renderTable();
+      expect(await screen.findByText("홍길동")).toBeTruthy();
+      const current = document.querySelectorAll("[data-current-week]");
+      expect(current.length).toBe(1);
+      expect(current[0].getAttribute("data-testid")).toBe("week-head-11-2");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("주 번호에 마우스를 올리면 해당 주의 월~금 날짜 범위를 보여준다", async () => {
     renderTable();
     expect(await screen.findByText("홍길동")).toBeTruthy();
