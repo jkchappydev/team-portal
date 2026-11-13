@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { ComponentProps } from "react";
-import { SideMenuExtension } from "@blocknote/core/extensions";
+import { SideMenuExtension, SuggestionMenu } from "@blocknote/core/extensions";
 import { SideMenuController, useBlockNoteEditor, useExtensionState } from "@blocknote/react";
 import { firstLineCenter } from "./firstLine";
+import { marqueeSelection, selectBlockRange } from "./blockMarquee";
 
 type Options = NonNullable<ComponentProps<typeof SideMenuController>["floatingUIOptions"]>;
 type Middleware = NonNullable<NonNullable<Options["useFloatingOptions"]>["middleware"]>[number];
+
+// 콜아웃 바깥 손잡이 버튼 위 끝을 상자 위 끝에 맞춤 (손잡이 틀 안쪽 여백 3px만큼 올림)
+const CALLOUT_HANDLE_TOP = -3;
+// 손잡이와 블록 사이를 기본보다 더 띄움 (콜아웃 안 본문 줄은 상자 안이 좁아 조금만)
+const HANDLE_GAP = 12;
+const CALLOUT_INNER_GAP = 6;
 
 // 손잡이를 블록 첫 글줄 가운데에 맞춤 (콜아웃 안 본문 줄 손잡이는 상자 안, 바깥 손잡이는 콜아웃 전체)
 // BlockNote 기본은 제목 단계별 고정값(제목1 39px 등)으로 내리는데 이 프로젝트는 제목 크기를 노션처럼 줄여 어긋남
@@ -19,12 +26,24 @@ export function alignSideMenu(currentBlockId: () => string | undefined): Middlew
       const reference = state.elements.reference.getBoundingClientRect();
       // 자기 줄만 보고 하위 블록 줄은 제외 (콜아웃은 아이콘 칸 가운데)
       const own = block.querySelector(":scope > .bn-block-content, :scope > .react-renderer > .bn-block-content");
-      const center = own ? firstLineCenter(own, block, true) ?? iconCenter(own, block) : null;
+      const type = own?.getAttribute("data-content-type");
+      const center = !own ? null
+        : type === "table" ? firstRowCenter(own, block)
+        // 콜아웃은 표처럼 상자 위쪽에 붙임 (첫 줄 가운데는 상자 위 여백만큼 내려가 애매하게 뜸)
+        : type === "callout" ? CALLOUT_HANDLE_TOP + state.rects.floating.height / 2
+        : firstLineCenter(own, block, true) ?? iconCenter(own, block);
       const blockTopGap = block.getBoundingClientRect().top - reference.top;
       const y = center === null ? state.y : state.y + blockTopGap + center - state.rects.floating.height / 2;
-      return { y };
+      const inCallout = !!block.parentElement?.closest(".bn-block:has(> .node-callout)");
+      return { x: state.x - (inCallout ? CALLOUT_INNER_GAP : HANDLE_GAP), y };
     },
   };
+}
+
+// 표는 노션처럼 첫 행 가운데 (표 전체 가운데로 두면 긴 표에서 손잡이가 중간에 뜸)
+function firstRowCenter(own: Element, block: Element): number | null {
+  const row = own.querySelector("tr");
+  return row ? iconCenter(row, block) : iconCenter(own, block);
 }
 
 // 글줄이 없는 블록(콜아웃 아이콘 등)은 내용 칸의 세로 가운데
@@ -63,13 +82,38 @@ export function AlignedSideMenuController(props: Omit<ComponentProps<typeof Side
     const originalDragStart = sideMenu.blockDragStart;
     sideMenu.blockDragStart = (event, block) => {
       const current = editor.getBlock(block.id) ?? block;
-      originalDragStart(event, calloutOfTitle(current, editor.getParentBlock(current)) ?? current);
+      const target = calloutOfTitle(current, editor.getParentBlock(current)) ?? current;
+      // 끌어서 고른 여러 블록 중 하나의 손잡이를 끌면 고른 블록을 함께 옮김 (BlockNote는 편집기 선택이 여러 블록에 걸쳐 있으면 그 범위를 끎)
+      const marquee = marqueeSelection(editor);
+      if (marquee.length > 1 && marquee.includes(target.id)) selectBlockRange(editor, marquee);
+      originalDragStart(event, target);
     };
     // BlockNote는 마우스 아래 블록이 바뀔 때만 손잡이 대상을 다시 정함
     // 콜아웃 안 줄을 제목 자리로 끌어 놓으면 손잡이가 그 줄(이제 첫 줄)을 계속 잡고 있어 콜아웃 대신 그 줄이 끌려 나가므로 문서가 바뀔 때도 다시 확인
     const offChange = editor.onChange(() => redirect());
+    // 스타일(슬래시) 메뉴가 떠 있는 동안 손잡이는 숨기고(NotionSideMenu), 메뉴가 닫히면 바로 다시 보이게 함
+    // BlockNote는 키를 누르면 손잡이를 숨겨 Enter로 고르면 마우스를 움직일 때까지 안 보이므로 닫힌 직후 다시 띄움
+    const suggestionStore = editor.getExtension(SuggestionMenu)?.store;
+    let slashOpen = false;
+    let reshowTimer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribeSlash = suggestionStore?.subscribe(({ currentVal }) => {
+      const open = !!currentVal?.show;
+      if (slashOpen && !open) {
+        clearTimeout(reshowTimer);
+        reshowTimer = setTimeout(() => {
+          const state = store.state;
+          const block = state?.block && editor.getBlock(state.block.id);
+          const element = block && document.querySelector(`.bn-editor .bn-block[data-id="${CSS.escape(block.id)}"]`);
+          if (!state || !block || !element || state.show) return;
+          store.setState({ ...state, show: true, block, referencePos: element.getBoundingClientRect() });
+        }, 0);
+      }
+      slashOpen = open;
+    });
     return () => {
       unsubscribe();
+      unsubscribeSlash?.();
+      clearTimeout(reshowTimer);
       offChange?.();
       sideMenu.blockDragStart = originalDragStart;
     };

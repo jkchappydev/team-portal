@@ -105,7 +105,7 @@ vi.mock("@blocknote/react", async () => {
   return {
     // 마운트 동안 같은 편집기 인스턴스 유지
     // 되돌리기 기록 복구가 읽는 편집기 상태·화면 연결 알림은 빈 값으로 둠
-    useCreateBlockNote: () => useState(() => ({ isEditable: true, prosemirrorState: {}, onMount: () => () => {} }))[0],
+    useCreateBlockNote: () => useState(() => ({ isEditable: true, prosemirrorState: {}, onMount: () => () => {}, onChange: () => () => {} }))[0],
     // 노션식 블록 메뉴 연결부는 화면에 그리지 않음
     SideMenuController: () => null,
     SideMenu: () => null,

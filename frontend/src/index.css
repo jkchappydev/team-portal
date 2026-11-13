@@ -1111,7 +1111,7 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
   background: var(--mantine-color-default-hover);
 }
 
-/* 본문 콜아웃 블록: 아이콘 블록과 그 하위 블록(안의 글)을 한 상자로 묶음 (노션처럼, 배경 없음을 고르면 테두리만) */
+/* 본문 콜아웃 블록: 아이콘 블록과 그 하위 블록(안의 글)을 한 상자로 묶음 (노션처럼 기본 배경도 회색) */
 .bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) {
   --callout-bg: var(--bn-colors-highlights-gray-background);
   display: flex;
@@ -1125,7 +1125,6 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
   background: var(--callout-bg);
 }
 
-.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="default"]) { --callout-bg: transparent; border-color: var(--mantine-color-default-border); }
 .bn-block:has(> .node-callout > .bn-block-content [data-callout-color="brown"]) { --callout-bg: var(--bn-colors-highlights-brown-background); }
 .bn-block:has(> .node-callout > .bn-block-content [data-callout-color="orange"]) { --callout-bg: var(--bn-colors-highlights-orange-background); }
 .bn-block:has(> .node-callout > .bn-block-content [data-callout-color="yellow"]) { --callout-bg: var(--bn-colors-highlights-yellow-background); }
@@ -1216,4 +1215,49 @@ input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="dat
 .menu-item-shortcut {
   font-size: 12px;
   color: var(--mantine-color-dimmed);
+}
+
+/* 콜아웃 본문 줄 손잡이(+ ⠿)는 상자 안에 들어가도록 버튼 폭을 줄임 (editor/NotionSideMenu, 블록과 간격 포함) */
+.bn-side-menu:has(.callout-side-menu) .bn-button {
+  width: 18px;
+  min-width: 18px;
+  padding: 0;
+}
+
+/* 표는 BlockNote가 행 손잡이 자리로 왼쪽에 여백을 둬 다른 블록보다 안쪽에서 시작함 → 그만큼 왼쪽으로 당겨 본문·페이지 제목과 같은 선에 맞춤 (노션과 같음) */
+.bn-block-content[data-content-type="table"] .tableWrapper {
+  margin-left: calc(-1 * var(--bn-table-handle-size));
+}
+
+/* 블록 바깥에서 끌어 여러 블록 고르기 (editor/blockMarquee): 끄는 사각형과 고른 블록 표시 */
+.block-marquee {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(35, 131, 226, 0.14);
+  pointer-events: none;
+}
+
+.bn-editor .bn-block[data-marquee-selected] {
+  position: relative;
+}
+
+.bn-editor .bn-block[data-marquee-selected]::after {
+  content: "";
+  position: absolute;
+  /* 노션처럼 붙어 있는 블록끼리도 사이에 흰 틈이 보이게 위아래를 조금 줄임 */
+  inset: 2px 0;
+  border-radius: 4px;
+  background: rgba(35, 131, 226, 0.14);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 블록을 고른 동안은 글자 선택 색을 감춰 블록 표시만 보이게 함 */
+.bn-editor.block-marquee-active ::selection {
+  background: transparent;
+}
+
+/* 사각형을 그리는 동안은 블록 손잡이(+ ⠿)를 숨김 */
+html.block-marquee-dragging .bn-side-menu {
+  visibility: hidden;
 }

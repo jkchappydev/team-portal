@@ -20,6 +20,7 @@ import { tableHandleDragExtension } from "./editor/tableHandleDrag";
 import { checkListAnimationExtension } from "./editor/checkListAnimation";
 import { blockDropExtension, notionDropCursor } from "./editor/blockDrop";
 import { calloutBackspaceExtension } from "./editor/calloutBackspace";
+import { installBlockMarquee } from "./editor/blockMarquee";
 import {
   FormattingToolbarController, getDefaultReactSlashMenuItems, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
@@ -293,6 +294,15 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
       activity.dispose();
     };
   }, [session]);
+
+  // 노션처럼 블록 바깥 여백에서 끌어 여러 블록 고르기 (페이지 본문 영역 전체에서 시작 가능)
+  useEffect(() => {
+    const box = editorBoxRef.current;
+    if (!box) return;
+    const controller = new AbortController();
+    installBlockMarquee(editor, box.closest<HTMLElement>(".mantine-AppShell-main") ?? box, controller.signal);
+    return () => controller.abort();
+  }, [editor]);
 
   // "/일정": 이 페이지 아래에 WBS 항목을 만들고, 슬래시를 입력한 줄에 그 일정 블록을 넣음
   const queryClient = useQueryClient();
