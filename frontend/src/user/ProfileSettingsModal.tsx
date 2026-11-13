@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip } from "@mantine/core";
+import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import type { MantineColorScheme } from "@mantine/core";
 import { ColorSchemeToggle } from "../layout/ColorSchemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
@@ -106,6 +107,9 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
   const [draftColor, setDraftColor] = useState<string | undefined>(undefined);
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const [draftRemove, setDraftRemove] = useState(false);
+  // 화면 테마도 다른 항목처럼 저장을 눌러야 적용
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const [draftScheme, setDraftScheme] = useState<MantineColorScheme | undefined>(undefined);
 
   // 고른 이미지 파일을 미리 보기 주소로 만들고, 바뀌면 이전 주소를 해제
   const draftFileUrl = useMemo(
@@ -118,7 +122,8 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
   const color = pickedColor ?? userColor(user.id);
   const imageUrl = draftFile ? draftFileUrl : draftRemove ? null : user.profileImageUrl;
   const hasImage = !!draftFile || (!draftRemove && !!user.profileImageUrl);
-  const dirty = draftColor !== undefined || !!draftFile || draftRemove;
+  const schemeChanged = draftScheme !== undefined && draftScheme !== colorScheme;
+  const dirty = draftColor !== undefined || !!draftFile || draftRemove || schemeChanged;
 
   const edit = () => { setSaved(false); setError(null); };
 
@@ -132,6 +137,8 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
       return profile;
     },
     onSuccess: (profile) => {
+      if (draftScheme !== undefined) setColorScheme(draftScheme);
+      setDraftScheme(undefined);
       if (profile) queryClient.setQueryData(["auth", "me"], (me: object | undefined) => me && { ...me, ...profile });
       setDraftColor(undefined);
       setDraftFile(null);
@@ -232,10 +239,10 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
           </SimpleGrid>
         </Stack>
 
-        {/* 화면 테마는 이 브라우저에만 저장되어 저장 버튼 없이 바로 적용 */}
+        {/* 화면 테마는 이 브라우저에만 저장되며 다른 항목처럼 저장을 눌러야 적용 */}
         <Stack gap="xs">
           <Text size="sm" fw={500}>화면 테마</Text>
-          <ColorSchemeToggle />
+          <ColorSchemeToggle value={draftScheme ?? colorScheme} onChange={(value) => { edit(); setDraftScheme(value); }} />
         </Stack>
 
         {error && <Alert color="red" p="xs">{error}</Alert>}

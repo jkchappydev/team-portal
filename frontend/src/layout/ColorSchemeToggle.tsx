@@ -1,4 +1,4 @@
-import { Select, useMantineColorScheme, type MantineColorScheme } from "@mantine/core";
+import { Select, type MantineColorScheme } from "@mantine/core";
 
 const OPTIONS: { label: string; value: MantineColorScheme }[] = [
   { label: "라이트", value: "light" },
@@ -6,19 +6,22 @@ const OPTIONS: { label: string; value: MantineColorScheme }[] = [
   { label: "시스템", value: "auto" },
 ];
 
-// 화면 테마 선택 (이 브라우저에 저장되어 바로 적용)
-export function ColorSchemeToggle() {
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+interface Props {
+  value: MantineColorScheme;
+  onChange: (value: MantineColorScheme) => void;
+}
 
+// 화면 테마 선택 칸 (고른 값은 부모가 저장할 때 적용)
+export function ColorSchemeToggle({ value, onChange }: Props) {
   return (
     <Select
       size="sm"
       w={160}
       aria-label="화면 테마"
       data={OPTIONS}
-      value={colorScheme}
+      value={value}
       allowDeselect={false}
-      onChange={(value) => { if (value) setColorScheme(value as MantineColorScheme); }}
+      onChange={(next) => { if (next) onChange(next as MantineColorScheme); }}
     />
   );
 }
