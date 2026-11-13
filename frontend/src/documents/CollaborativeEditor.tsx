@@ -18,8 +18,10 @@ import { FORMAT_SHORTCUTS, formatShortcutsExtension } from "./editor/formatShort
 import { activeTableCellExtension } from "./editor/activeTableCell";
 import { tableHandleDragExtension } from "./editor/tableHandleDrag";
 import { checkListAnimationExtension } from "./editor/checkListAnimation";
+import { blockDropExtension, notionDropCursor } from "./editor/blockDrop";
+import { calloutBackspaceExtension } from "./editor/calloutBackspace";
 import {
-  FormattingToolbarController, getDefaultReactSlashMenuItems, SideMenu, SuggestionMenuController, TableHandlesController,
+  FormattingToolbarController, getDefaultReactSlashMenuItems, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
 } from "@blocknote/react";
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
@@ -37,7 +39,7 @@ import type { MemberDto } from "../api/members";
 import { collabUrl, FRAGMENT_NAME } from "./collab";
 import { createCursorActivity, editingClientIds, renderCursor } from "./cursorActivity";
 import type { CursorUser } from "./cursorActivity";
-import { NotionDragHandleMenu } from "./editor/NotionDragHandleMenu";
+import { NotionSideMenu } from "./editor/NotionSideMenu";
 import { CellSelectionMenu } from "./editor/CellSelectionMenu";
 import { sameViewers, viewersOf } from "./presence";
 import type { PresenceUser, Viewer } from "./presence";
@@ -241,9 +243,9 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
         defaultPasteHandler(pasteOptions(Array.from(event.clipboardData?.types ?? []))),
       // 코드 블록 문법 색칠 (언어별 문법은 필요할 때 불러옴)
       extensions: [syntaxHighlighter, formatShortcutsExtension, activeTableCellExtension, tableHandleDragExtension,
-        checkListAnimationExtension],
-      // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 2px로 축소)
-      dropCursor: { width: 2, color: "var(--mantine-primary-color-filled)" },
+        checkListAnimationExtension, blockDropExtension(), calloutBackspaceExtension],
+      // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 노션처럼 얇게), 위치는 노션식 계산 (editor/blockDrop.ts)
+      dropCursor: { width: 3, color: "var(--mantine-primary-color-filled)", hooks: notionDropCursor },
       // 노션처럼 표의 행·열 색칠(배경·글자), 첫 행·첫 열 머리글, 셀 병합·분할 허용
       tables: { cellBackgroundColor: true, cellTextColor: true, headers: true, splitCells: true },
     }),
@@ -379,7 +381,7 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
         formattingToolbar={false}>
         {/* 서식 도구 막대: 기본 버튼 + 노션처럼 코드(Ctrl+E)·서식 지우기 */}
         <FormattingToolbarController formattingToolbar={NotionFormattingToolbar} />
-        <AlignedSideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
+        <AlignedSideMenuController sideMenu={NotionSideMenu} />
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />
