@@ -133,7 +133,7 @@ class WorkStatusServiceTest {
     when(workStatusRepository.findById(99L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().update(99L, new WorkStatusRequest(1L, WorkStatusType.LEAVE,
-      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null)))
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null), 1L))
       .isInstanceOfSatisfying(BusinessException.class,
         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
   }
@@ -147,24 +147,44 @@ class WorkStatusServiceTest {
       LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null), 1L);
 
     verify(events).publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
+    // 팀장 이상에게 남길 변경 알림 (바꾼 사람과 표기)
+    verify(events).publishEvent(new WorkStatusChangedEvent(WorkStatusAction.CREATED, 1L, "홍길동 연차",
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2)));
   }
 
   @Test
   void delete_publishesLiveUpdate() {
-    when(workStatusRepository.existsById(5L)).thenReturn(true);
+    when(workStatusRepository.findById(5L)).thenReturn(Optional.of(entry(5, 2, WorkStatusType.LEAVE)));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of(2L, "이순신"));
 
-    service().delete(5L);
+    service().delete(5L, 7L);
 
+    verify(workStatusRepository).delete(any(WorkStatus.class));
     verify(events).publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
+    verify(events).publishEvent(new WorkStatusChangedEvent(WorkStatusAction.DELETED, 7L, "이순신 연차",
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2)));
   }
 
   @Test
   void delete_unknownId_throwsNotFound() {
-    when(workStatusRepository.existsById(99L)).thenReturn(false);
+    when(workStatusRepository.findById(99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service().delete(99L))
+    assertThatThrownBy(() -> service().delete(99L, 1L))
       .isInstanceOfSatisfying(BusinessException.class,
         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
     verify(events, never()).publishEvent(any(Object.class));
+  }
+
+  @Test
+  void update_publishesNoticeWithNewLabel() {
+    WorkStatus ws = entry(3, 1, WorkStatusType.LEAVE);
+    when(workStatusRepository.findById(3L)).thenReturn(Optional.of(ws));
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(Member.create("홍길동")));
+
+    service().update(3L, new WorkStatusRequest(1L, WorkStatusType.HALF_DAY, LocalDate.of(2026, 11, 3),
+      LocalDate.of(2026, 11, 3), HalfDayPeriod.PM, null, null, null, null), 4L);
+
+    verify(events).publishEvent(new WorkStatusChangedEvent(WorkStatusAction.UPDATED, 4L, "홍길동 반차(오후)",
+      LocalDate.of(2026, 11, 3), LocalDate.of(2026, 11, 3)));
   }
 }

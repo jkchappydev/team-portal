@@ -88,3 +88,22 @@ export function leaveWeekRangeLabel(year: number, month: number, week: number): 
   if (from > to) return null;
   return from === to ? formatShortDate(from) : `${formatShortDate(from)} ~ ${formatShortDate(to)}`;
 }
+
+// "2026-11" 형태의 월 주소 값을 연·월로 (형식이 다르면 null)
+export function parseMonthParam(value: string | null): { year: number; month: number } | null {
+  const match = value?.match(/^(\d{4})-(\d{1,2})$/);
+  if (!match) return null;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12 ? { year: Number(match[1]), month } : null;
+}
+
+// 근무 상황 기간을 "11/20(금)" 또는 "11/20(금) ~ 11/21(토)"처럼 짧게 표시 (날짜는 YYYY-MM-DD)
+export function formatDateRange(start: string, end: string): string {
+  const toMs = (value: string) => {
+    const [y, m, d] = value.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const from = toMs(start);
+  const to = toMs(end);
+  return from === to ? formatShortDate(from) : `${formatShortDate(from)} ~ ${formatShortDate(to)}`;
+}

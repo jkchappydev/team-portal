@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WorkStatusDto } from "../api/workStatuses";
-import { buildMonthGrid, expandToWeekdays, leaveWeekRangeLabel } from "./calendar";
+import { buildMonthGrid, expandToWeekdays, formatDateRange, leaveWeekRangeLabel, parseMonthParam } from "./calendar";
 
 function item(id: number, startDate: string, endDate: string): WorkStatusDto {
   return {
@@ -55,5 +55,21 @@ describe("leaveWeekRangeLabel", () => {
 
   it("달 안에 평일이 없는 주는 null", () => {
     expect(leaveWeekRangeLabel(2026, 2, 5)).toBeNull();
+  });
+});
+
+describe("parseMonthParam", () => {
+  it("YYYY-MM 주소 값만 연·월로 바꾼다", () => {
+    expect(parseMonthParam("2026-12")).toEqual({ year: 2026, month: 12 });
+    expect(parseMonthParam("2026-13")).toBeNull();
+    expect(parseMonthParam("abc")).toBeNull();
+    expect(parseMonthParam(null)).toBeNull();
+  });
+});
+
+describe("formatDateRange", () => {
+  it("하루면 날짜 하나, 여러 날이면 시작 ~ 끝으로 표시한다", () => {
+    expect(formatDateRange("2026-11-20", "2026-11-20")).toBe("11/20(금)");
+    expect(formatDateRange("2026-12-03", "2026-12-04")).toBe("12/3(목) ~ 12/4(금)");
   });
 });

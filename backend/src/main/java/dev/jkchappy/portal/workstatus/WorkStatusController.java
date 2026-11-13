@@ -45,12 +45,12 @@ public class WorkStatusController {
   @PutMapping("/{id}")
   public ApiResponse<WorkStatusResponse> update(
     @PathVariable Long id, @Valid @RequestBody WorkStatusRequest request, @CurrentUser Long userId) {
-    return ApiResponse.ok(workStatusService.update(id, request));
+    return ApiResponse.ok(workStatusService.update(id, request, userId));
   }
 
   @DeleteMapping("/{id}")
   public ApiResponse<Void> delete(@PathVariable Long id, @CurrentUser Long userId) {
-    workStatusService.delete(id);
+    workStatusService.delete(id, userId);
     return ApiResponse.ok(null);
   }
 }

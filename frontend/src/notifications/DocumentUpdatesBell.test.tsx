@@ -1,10 +1,12 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentUpdatesBell } from "./DocumentUpdatesBell";
-import { listDocumentUpdates, markAllDocumentUpdatesRead } from "../api/notifications";
+import {
+  listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead, markAllWorkStatusNoticesRead, markWorkStatusNoticeRead,
+} from "../api/notifications";
 import { formatRelative, updatePath } from "./updateFormat";
 import { useCurrentUser } from "../user/currentUser";
 import { countPendingSignups } from "../api/admin";
@@ -17,7 +19,21 @@ const update = (id: number, title: string, kind: "PAGE" | "FILE" = "PAGE") => ({
 vi.mock("../api/notifications", () => ({
   listDocumentUpdates: vi.fn(),
   markAllDocumentUpdatesRead: vi.fn(() => Promise.resolve()),
+  listWorkStatusNotices: vi.fn(),
+  markWorkStatusNoticeRead: vi.fn(() => Promise.resolve()),
+  markAllWorkStatusNoticesRead: vi.fn(() => Promise.resolve()),
 }));
+
+const notice = (id: number, label: string, action: "CREATED" | "UPDATED" | "DELETED" = "CREATED") => ({
+  id, action, label, startDate: "2026-12-03", endDate: "2026-12-04", actorName: "김동료",
+  createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
+});
+
+// 이동한 근무 상황표 주소 확인용
+function WorkStatusRoute() {
+  const location = useLocation();
+  return <div>근무 상황표 {location.search}</div>;
+}
 vi.mock("../api/spaces", () => ({
   listSpaces: () => Promise.resolve([{ id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, icon: null }]),
 }));
@@ -43,6 +59,7 @@ describe("DocumentUpdatesBell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "팀원", active: true, admin: false }, me: null });
+    vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: false, items: [] });
   });
 
   function renderBell() {
@@ -55,6 +72,7 @@ describe("DocumentUpdatesBell", () => {
               <Route path="/" element={<DocumentUpdatesBell />} />
               <Route path="/documents/:id" element={<div>페이지 화면</div>} />
               <Route path="/members" element={<div>팀원 화면</div>} />
+              <Route path="/work-status" element={<WorkStatusRoute />} />
             </Routes>
           </MemoryRouter>
         </QueryClientProvider>
@@ -112,6 +130,43 @@ describe("DocumentUpdatesBell", () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차"), update(14, "회의록")]);
     await queryClient.refetchQueries();
     await waitFor(() => expect(bell().hasAttribute("data-ring")).toBe(true));
+  });
+
+  it("팀장 이상·개발자는 수정된 페이지 위에 근무 상황 변경을 보고, 누르면 확인 처리 후 그 달 근무 상황표로 이동한다", async () => {
+    vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: true, items: [notice(5, "홍길동 연차"), notice(6, "이순신 출장", "DELETED")] });
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
+    renderBell();
+
+    expect(await screen.findByText("3")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("수정 알림"));
+    const sectionTitle = await screen.findByText("근무 상황 변경");
+    // 근무 상황 변경 칸이 수정된 페이지보다 위
+    expect(sectionTitle.compareDocumentPosition(screen.getByText("수정된 페이지")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("삭제")).toBeTruthy();
+    expect(screen.getAllByText("12/3(목) ~ 12/4(금) · 김동료 · 2분 전")).toHaveLength(2);
+
+    fireEvent.click(screen.getByText("홍길동 연차"));
+    expect(await screen.findByText("근무 상황표 ?month=2026-12")).toBeTruthy();
+    await waitFor(() => expect(markWorkStatusNoticeRead).toHaveBeenCalledWith(5, expect.anything()));
+  });
+
+  it("근무 상황 변경 모두 읽음은 근무 상황 알림만 확인 처리한다", async () => {
+    vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: true, items: [notice(5, "홍길동 연차")] });
+    vi.mocked(listDocumentUpdates).mockResolvedValue([]);
+    renderBell();
+    fireEvent.click(await screen.findByLabelText("수정 알림"));
+    await screen.findByText("홍길동 연차");
+    fireEvent.click(screen.getAllByText("모두 읽음")[0]);
+    await waitFor(() => expect(markAllWorkStatusNoticesRead).toHaveBeenCalled());
+    expect(markAllDocumentUpdatesRead).not.toHaveBeenCalled();
+  });
+
+  it("알림 대상이 아니면 근무 상황 변경 칸을 보이지 않는다", async () => {
+    vi.mocked(listDocumentUpdates).mockResolvedValue([]);
+    renderBell();
+    fireEvent.click(screen.getByLabelText("수정 알림"));
+    expect(await screen.findByText("수정된 페이지")).toBeTruthy();
+    expect(screen.queryByText("근무 상황 변경")).toBeNull();
   });
 
   it("일반 팀원은 가입 요청 수를 조회하지 않는다", async () => {

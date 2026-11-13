@@ -2,11 +2,12 @@ import { useState } from "react";
 import { ActionIcon, Button, Group, Indicator, Popover, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { listDocumentUpdates, markAllDocumentUpdatesRead } from "../api/notifications";
+import { listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead } from "../api/notifications";
+import { WorkStatusNotices } from "./WorkStatusNotices";
 import { listSpaces } from "../api/spaces";
 import { PageIcon } from "../documents/PageIconView";
 import { formatRelative, updatePath } from "./updateFormat";
-import { DOCUMENT_UPDATES_KEY } from "./useMarkDocumentRead";
+import { DOCUMENT_UPDATES_KEY, WORK_STATUS_NOTICES_KEY } from "./useMarkDocumentRead";
 import { countPendingSignups } from "../api/admin";
 import { useCurrentUser } from "../user/currentUser";
 
@@ -38,9 +39,16 @@ export function DocumentUpdatesBell() {
     queryFn: listDocumentUpdates,
     refetchInterval: POLL_MS,
   });
+  // 근무 상황 변경 알림 (팀장 이상·개발자만 enabled)
+  const { data: workStatus, isFetched: workStatusLoaded } = useQuery({
+    queryKey: WORK_STATUS_NOTICES_KEY,
+    queryFn: listWorkStatusNotices,
+    refetchInterval: POLL_MS,
+  });
+  const workStatusItems = workStatus?.enabled ? workStatus.items : [];
   // 처음 불러온 뒤 알림 수가 늘어나면 종을 한 번 흔듦 (화면을 처음 열 때는 흔들지 않음)
-  const count = updates.length + pending;
-  const loaded = isSuccess && (!user?.admin || pendingLoaded);
+  const count = updates.length + pending + workStatusItems.length;
+  const loaded = isSuccess && workStatusLoaded && (!user?.admin || pendingLoaded);
   const [lastCount, setLastCount] = useState<number | null>(null);
   const [ring, setRing] = useState(false);
   if (loaded && lastCount !== count) {
@@ -56,7 +64,7 @@ export function DocumentUpdatesBell() {
   return (
     <Popover opened={opened} onChange={setOpened} position="bottom-start" width={300} shadow="md" withinPortal>
       <Popover.Target>
-        <Indicator label={updates.length + pending > 9 ? "9+" : updates.length + pending} disabled={updates.length + pending === 0}
+        <Indicator label={count > 9 ? "9+" : count} disabled={count === 0}
           size={16} offset={4} color="red">
           <ActionIcon variant="subtle" color="gray" aria-label="수정 알림" onClick={() => setOpened((v) => !v)}>
             <BellIcon ring={ring} onRingEnd={() => setRing(false)} />
@@ -67,8 +75,11 @@ export function DocumentUpdatesBell() {
         {pending > 0 && <UnstyledButton px="sm" py="xs" onClick={() => { setOpened(false); navigate("/members"); }}>
           가입 요청 {pending}건
         </UnstyledButton>}
+        {workStatus?.enabled && <WorkStatusNotices items={workStatusItems} onNavigate={() => setOpened(false)} />}
+        {/* 근무 상황 변경 칸이 위에 있으면 위쪽에도 구분선 */}
         <Group justify="space-between" px="sm" py={8}
-          style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+          style={{ borderBottom: "1px solid var(--mantine-color-default-border)",
+            borderTop: workStatus?.enabled ? "1px solid var(--mantine-color-default-border)" : undefined }}>
           <Text size="sm" fw={600}>수정된 페이지</Text>
           <Button size="compact-xs" variant="subtle" disabled={updates.length === 0}
             loading={readAll.isPending} onClick={() => readAll.mutate()}>

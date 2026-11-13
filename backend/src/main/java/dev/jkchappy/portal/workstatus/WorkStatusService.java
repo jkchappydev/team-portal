@@ -49,12 +49,12 @@ public class WorkStatusService {
     WorkStatus saved = workStatusRepository.save(WorkStatus.create(request.memberId(), request.type(),
       request.startDate(), request.endDate(), request.halfDayPeriod(), request.startTime(),
       request.endTime(), request.place(), request.content(), currentUserId));
-    publishChanged();
+    publishChanged(WorkStatusAction.CREATED, saved, target.getName(), currentUserId);
     return WorkStatusResponse.from(saved, target.getName());
   }
 
   @Transactional
-  public WorkStatusResponse update(Long id, WorkStatusRequest request) {
+  public WorkStatusResponse update(Long id, WorkStatusRequest request, Long currentUserId) {
     WorkStatus ws = workStatusRepository.findById(id)
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     validator.validate(request);
@@ -62,22 +62,24 @@ public class WorkStatusService {
     ws.change(request.memberId(), request.type(), request.startDate(), request.endDate(),
       request.halfDayPeriod(), request.startTime(), request.endTime(), request.place(),
       request.content());
-    publishChanged();
+    publishChanged(WorkStatusAction.UPDATED, ws, target.getName(), currentUserId);
     return WorkStatusResponse.from(ws, target.getName());
   }
 
   @Transactional
-  public void delete(Long id) {
-    if (!workStatusRepository.existsById(id)) {
-      throw new BusinessException(ErrorCode.NOT_FOUND);
-    }
-    workStatusRepository.deleteById(id);
-    publishChanged();
+  public void delete(Long id, Long currentUserId) {
+    WorkStatus ws = workStatusRepository.findById(id)
+      .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    String memberName = memberService.findNamesByIds(List.of(ws.getMemberId())).getOrDefault(ws.getMemberId(), "");
+    workStatusRepository.delete(ws);
+    publishChanged(WorkStatusAction.DELETED, ws, memberName, currentUserId);
   }
 
-  // 근무 상황표를 열어 둔 다른 화면에 변경 알림 (저장 확정 후 전송)
-  private void publishChanged() {
+  // 근무 상황표를 열어 둔 다른 화면에 변경 알림 (저장 확정 후 전송), 팀장 이상에게 남길 변경 알림
+  private void publishChanged(WorkStatusAction action, WorkStatus ws, String memberName, Long actorId) {
     events.publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
+    events.publishEvent(new WorkStatusChangedEvent(action, actorId,
+      WorkStatusLabelFormatter.format(memberName, ws), ws.getStartDate(), ws.getEndDate()));
   }
 
   // 등록 대상 팀원이 없거나 비활성이면 입력 오류

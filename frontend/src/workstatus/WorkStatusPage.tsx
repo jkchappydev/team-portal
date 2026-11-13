@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { ActionIcon, Alert, Anchor, Badge, Box, Group, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { listHolidays } from "../api/holidays";
 import { LIVE_TOPICS, useLiveRefresh } from "../api/live";
 import { listWorkStatuses } from "../api/workStatuses";
 import type { WorkStatusDto } from "../api/workStatuses";
 import { useCurrentUser } from "../user/currentUser";
-import { buildMonthGrid, expandToWeekdays } from "./calendar";
+import { buildMonthGrid, expandToWeekdays, parseMonthParam } from "./calendar";
 import { calculateWeekMinHeight } from "./calendarLayout";
 import { groupHolidaysByDate } from "./holidayCalendar";
 import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER } from "./types";
@@ -52,6 +53,16 @@ export function WorkStatusPage() {
   const { user } = useCurrentUser();
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth() + 1);
+  // 알림에서 ?month=YYYY-MM으로 들어오면 그 달을 보여 줌 (같은 주소로 다시 들어와도 이동마다 한 번 적용)
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [appliedKey, setAppliedKey] = useState<string | null>(null);
+  const target = parseMonthParam(searchParams.get("month"));
+  if (target && appliedKey !== location.key) {
+    setAppliedKey(location.key);
+    setYear(target.year);
+    setMonth(target.month);
+  }
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<WorkStatusDto | null>(null);
   const [defaultDate, setDefaultDate] = useState(todayString);
