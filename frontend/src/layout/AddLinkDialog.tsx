@@ -1,0 +1,155 @@
+import { useRef, useState } from "react";
+import { Alert, Button, Group, Modal, Stack, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
+import { IconPicker } from "../documents/IconPicker";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createLink, LINKS_KEY } from "../api/links";
+import { ApiError } from "../api/client";
+import { markNewItem } from "./reorderAnimation";
+
+interface Props {
+  opened: boolean;
+  onClose: () => void;
+}
+
+// 노션처럼 얇은 선으로 그린 링크 아이콘
+function LinkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
+      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 9.5a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4L7.6 4.4" />
+      <path d="M9.5 6.5a2.8 2.8 0 0 0-4 0L3.3 8.7a2.8 2.8 0 0 0 4 4l1.1-1.1" />
+    </svg>
+  );
+}
+
+// 아이콘을 고르지 않았을 때 제목 칸 앞에 보이는 웃는 얼굴 (누르면 이모지 선택)
+function SmileIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
+      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M5.6 9.4a2.8 2.8 0 0 0 4.8 0" />
+      <path d="M6 6.4h.01M10 6.4h.01" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+// 필수 칸 이름표 (별표를 이름 앞에 표시)
+function RequiredLabel({ children }: { children: string }) {
+  return (
+    <>
+      <Text component="span" c="red" inherit aria-hidden>*</Text> {children}
+    </>
+  );
+}
+
+// 제목과 주소를 넣어 사이드바 링크 추가
+export function AddLinkDialog({ opened, onClose }: Props) {
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      withCloseButton={false}
+      centered
+      size={440}
+      padding={0}
+      radius="lg"
+      overlayProps={{ backgroundOpacity: 0.35 }}
+      returnFocus={false}
+    >
+      {/* 열 때마다 입력을 초기화 */}
+      {opened && <AddLinkBody onClose={onClose} />}
+    </Modal>
+  );
+}
+
+function AddLinkBody({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [icon, setIcon] = useState<string | null>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
+  const add = useMutation({
+    mutationFn: () => createLink(url.trim(), title.trim(), icon),
+    onSuccess: (link) => {
+      markNewItem(`link-${link.id}`);
+      void queryClient.invalidateQueries({ queryKey: LINKS_KEY });
+      onClose();
+    },
+  });
+  const invalid = add.error instanceof ApiError && add.error.code === "INVALID_INPUT";
+  // 제목과 주소 모두 필수
+  const ready = !!title.trim() && !!url.trim();
+  const submit = () => {
+    if (!ready || add.isPending) return;
+    add.mutate();
+  };
+  return (
+    <>
+      <Text fw={600} fz="md" px="lg" pt="lg" pb="md">링크 추가</Text>
+      <Stack gap="md" px="lg" pb="lg">
+        <TextInput
+          label={<RequiredLabel>제목</RequiredLabel>}
+          aria-label="링크 제목"
+          placeholder="예: 팀 위키"
+          // 제목 앞 칸을 눌러 아이콘 선택 (선택값, 고르지 않으면 🔗)
+          leftSection={
+            <IconPicker
+              hasIcon={!!icon}
+              onSelect={setIcon}
+              target={(toggle) => (
+                <Tooltip label="아이콘 (선택)" withinPortal>
+                  <UnstyledButton aria-label="링크 아이콘 선택" onClick={toggle} className="link-icon-button">
+                    {icon ? <span aria-hidden>{icon}</span> : <SmileIcon />}
+                  </UnstyledButton>
+                </Tooltip>
+              )}
+            />
+          }
+          leftSectionPointerEvents="all"
+          leftSectionWidth={40}
+          value={title}
+          maxLength={100}
+          onChange={(e) => setTitle(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            // 제목 입력 후 Enter는 주소 칸으로 이동
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            urlRef.current?.focus();
+          }}
+          data-autofocus
+        />
+        <TextInput
+          ref={urlRef}
+          label={<RequiredLabel>주소</RequiredLabel>}
+          aria-label="링크 주소"
+          placeholder="https://"
+          leftSection={<LinkIcon />}
+          value={url}
+          error={add.error ? (invalid ? "웹 주소(http, https)만 추가할 수 있습니다." : undefined) : undefined}
+          onChange={(e) => {
+            setUrl(e.currentTarget.value);
+            add.reset();
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            submit();
+          }}
+        />
+        {add.error && !invalid && <Alert color="red">링크를 추가하지 못했습니다.</Alert>}
+      </Stack>
+      <Group
+        justify="flex-end"
+        gap="xs"
+        px="lg"
+        py="sm"
+        bg="var(--mantine-color-default-hover)"
+        style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+      >
+        <Button variant="default" onClick={onClose}>취소</Button>
+        <Button onClick={submit} loading={add.isPending} disabled={!ready}>추가</Button>
+      </Group>
+    </>
+  );
+}

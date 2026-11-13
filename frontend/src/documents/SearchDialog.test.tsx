@@ -13,6 +13,10 @@ vi.mock("../api/documents", () => ({
   ] : [])),
 }));
 
+// 검색어 강조로 제목이 여러 요소로 나뉘어도 제목 전체로 찾음
+const titleText = (title: string) => (_: string, el: Element | null) =>
+  el?.classList.contains("mantine-Highlight-root") === true && el.textContent === title;
+
 function renderDialog(onClose = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -54,8 +58,10 @@ describe("SearchDialog", () => {
   it("입력하는 대로 결과를 보여준다", async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText("문서 검색"), { target: { value: "배포" } });
-    expect(await screen.findByText("배포 절차")).toBeTruthy();
-    expect(screen.getByText("배포 체크리스트")).toBeTruthy();
+    expect(await screen.findByText(titleText("배포 절차"))).toBeTruthy();
+    expect(screen.getByText(titleText("배포 체크리스트"))).toBeTruthy();
+    // 제목 안 검색어를 강조
+    expect(screen.getAllByText("배포", { selector: "mark" })).toHaveLength(2);
     // 아이콘이 있으면 그 아이콘, 없으면 기본 아이콘
     expect(screen.getByText("🚀", { exact: false })).toBeTruthy();
     expect(screen.getByText("📄", { exact: false })).toBeTruthy();
@@ -65,7 +71,7 @@ describe("SearchDialog", () => {
     const onClose = renderDialog();
     const input = screen.getByLabelText("문서 검색");
     fireEvent.change(input, { target: { value: "배포" } });
-    await screen.findByText("배포 체크리스트");
+    await screen.findByText(titleText("배포 체크리스트"));
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(screen.getByText("문서 화면")).toBeTruthy());

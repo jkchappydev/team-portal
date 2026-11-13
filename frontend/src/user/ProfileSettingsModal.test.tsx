@@ -60,6 +60,13 @@ describe("ProfileSettingsModal", () => {
     expect((within(screen.getByRole("tabpanel", { name: "내 설정" })).getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("내 설정 탭에서 화면 테마를 고를 수 있다", () => {
+    renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
+    expect(screen.getByText("화면 테마")).toBeTruthy();
+    expect(screen.getByLabelText("화면 테마", { selector: "input" })).toBeTruthy();
+  });
+
   it("이름 아래에 내 이메일 주소를 보여 준다", () => {
     renderModal();
     expect(screen.getByText("hong@example.com")).toBeTruthy();

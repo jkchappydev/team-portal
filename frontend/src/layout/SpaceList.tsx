@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { Box, ScrollArea } from "@mantine/core";
+import { Box } from "@mantine/core";
 import type { SpaceDto } from "../api/spaces";
 import { dropSlotAt, moveIndexOf } from "../documents/dropSlot";
 import { draggingSpace, SpaceNavItem } from "./SpaceNavItem";
@@ -32,8 +32,7 @@ export function SpaceList({ spaces, onMove }: Props) {
   };
 
   return (
-    <ScrollArea
-      style={{ flex: 1 }}
+    <Box
       data-testid="space-list"
       onDragOver={(e: DragEvent<HTMLDivElement>) => {
         if (draggingSpace() === null) return;
@@ -60,6 +59,6 @@ export function SpaceList({ spaces, onMove }: Props) {
           <SpaceNavItem key={space.id} space={space} reorderable dropLine={lineOf(index)} />
         ))}
       </Box>
-    </ScrollArea>
+    </Box>
   );
 }

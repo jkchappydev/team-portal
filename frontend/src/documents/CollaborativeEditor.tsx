@@ -6,7 +6,8 @@ import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme 
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
-import { filterSuggestionItems } from "@blocknote/core";
+import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
+import { isOutsideTable, NEW_CALLOUT, withCalloutItem } from "./editor/calloutCommand";
 import { syntaxHighlighter } from "@blocknote/code-block";
 import { pasteOptions } from "./editor/paste";
 import { yUndoPluginKey } from "y-prosemirror";
@@ -293,6 +294,19 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
   // "/일정": 이 페이지 아래에 WBS 항목을 만들고, 슬래시를 입력한 줄에 그 일정 블록을 넣음
   const queryClient = useQueryClient();
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  // 콜아웃: 지금 줄이 비어 있으면 그 줄을, 글이 있으면 아래에 새 콜아웃을 넣고 안의 빈 줄로 커서 이동
+  const calloutItem: DefaultReactSuggestionItem = {
+    title: "콜아웃",
+    subtext: "이모지와 배경색으로 눈에 띄게 쓰기",
+    aliases: ["콜아웃", "callout", "강조", "메모", "알림"],
+    group: ko.slash_menu.quote.group,
+    icon: <span aria-hidden>💡</span>,
+    onItemClick: () => {
+      const callout = insertOrUpdateBlockForSlashMenu(editor, NEW_CALLOUT);
+      if (callout.children[0]) editor.setTextCursorPosition(callout.children[0], "start");
+    },
+  };
+
   const scheduleItem: DefaultReactSuggestionItem = {
     title: "일정",
     subtext: "WBS 표와 간트 차트",
@@ -368,11 +382,15 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />
-        {/* 기본 슬래시 메뉴에 "/일정" 추가 */}
+        {/* 기본 슬래시 메뉴에 "/콜아웃"(인용 아래)과 "/일정" 추가 */}
         <SuggestionMenuController
           triggerCharacter="/"
+          shouldOpen={isOutsideTable}
           getItems={async (query) => filterSuggestionItems(
-            [...getDefaultReactSlashMenuItems(editor), ...(scheduleSpaceId === undefined ? [] : [scheduleItem])],
+            [
+              ...withCalloutItem(getDefaultReactSlashMenuItems(editor), calloutItem, ko.slash_menu.quote.title),
+              ...(scheduleSpaceId === undefined ? [] : [scheduleItem]),
+            ],
             query,
           )}
         />

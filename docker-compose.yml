@@ -4,7 +4,10 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
+    # 로그 시각을 KST로 (log_timezone은 DB 생성 시점 값이 설정 파일에 남아 있어 실행 옵션으로 덮어씀)
+    command: ["postgres", "-c", "log_timezone=Asia/Seoul"]
     environment:
+      TZ: Asia/Seoul
       POSTGRES_DB: portal
       POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME을 .env에 설정하세요}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 .env에 설정하세요}
@@ -23,6 +26,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      # 로그 시각을 KST로 (저장 시각은 Instant·TIMESTAMPTZ라 영향 없음)
+      TZ: Asia/Seoul
       DB_URL: jdbc:postgresql://postgres:5432/portal
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -46,6 +51,7 @@ services:
     depends_on:
       - backend
     environment:
+      TZ: Asia/Seoul
       COLLAB_PORT: 1234
       BACKEND_URL: http://backend:8080
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
@@ -56,6 +62,8 @@ services:
     depends_on:
       - backend
       - collab
+    environment:
+      TZ: Asia/Seoul
     ports:
       - "${PORTAL_PORT:-80}:80"
 

@@ -31,6 +31,12 @@ const blocks: ExportBlock[] = [
   ] },
   { type: "checkListItem", props: { checked: true }, content: [{ type: "text", text: "완료한 일" }] },
   { type: "quote", content: [{ type: "text", text: "인용" }] },
+  // 콜아웃은 안의 글(하위 블록)을 담은 배경색 상자, 배경 없음은 테두리 상자
+  { type: "callout", props: { icon: "💡", backgroundColor: "gray" }, children: [
+    { type: "paragraph", content: [{ type: "text", text: "주의 사항" }] },
+    { type: "heading", props: { level: 2 }, content: [{ type: "text", text: "안의 제목" }] },
+  ] },
+  { type: "callout", props: { icon: "📌", backgroundColor: "default" }, children: [{ type: "paragraph", content: [{ type: "text", text: "배경 없음" }] }] },
   { type: "codeBlock", content: [{ type: "text", text: "const a = 1;" }] },
   { type: "divider" },
   { type: "table", content: {

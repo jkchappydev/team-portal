@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip } from "@mantine/core";
+import { ColorSchemeToggle } from "../layout/ColorSchemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { listMembers } from "../api/members";
@@ -202,7 +203,16 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
         </Stack>
 
         <Stack gap="xs">
-          <Text size="sm" fw={500}>색</Text>
+          {/* 랜덤 버튼은 제목 오른쪽 */}
+          <Group gap="xs">
+            <Text size="sm" fw={500}>색</Text>
+            <Tooltip label="아래 색 중 하나를 무작위로 고름" withArrow>
+              <Button size="compact-xs" variant="light" color="gray"
+                onClick={() => { edit(); setDraftColor(randomColor(color)); }}>
+                랜덤
+              </Button>
+            </Tooltip>
+          </Group>
           <SimpleGrid cols={6} spacing={8} verticalSpacing={8} w="fit-content">
             {PROFILE_COLORS.map((swatch) => (
               <ColorSwatch
@@ -220,14 +230,12 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
               </ColorSwatch>
             ))}
           </SimpleGrid>
-          <Group gap="xs">
-            <Tooltip label="위 색 중 하나를 무작위로 고름" withArrow>
-              <Button size="compact-xs" variant="light" color="gray"
-                onClick={() => { edit(); setDraftColor(randomColor(color)); }}>
-                랜덤
-              </Button>
-            </Tooltip>
-          </Group>
+        </Stack>
+
+        {/* 화면 테마는 이 브라우저에만 저장되어 저장 버튼 없이 바로 적용 */}
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>화면 테마</Text>
+          <ColorSchemeToggle />
         </Stack>
 
         {error && <Alert color="red" p="xs">{error}</Alert>}

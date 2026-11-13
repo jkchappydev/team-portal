@@ -1,4 +1,4 @@
-import { SegmentedControl, useMantineColorScheme, type MantineColorScheme } from "@mantine/core";
+import { Select, useMantineColorScheme, type MantineColorScheme } from "@mantine/core";
 
 const OPTIONS: { label: string; value: MantineColorScheme }[] = [
   { label: "라이트", value: "light" },
@@ -6,17 +6,19 @@ const OPTIONS: { label: string; value: MantineColorScheme }[] = [
   { label: "시스템", value: "auto" },
 ];
 
+// 화면 테마 선택 (이 브라우저에 저장되어 바로 적용)
 export function ColorSchemeToggle() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   return (
-    <SegmentedControl
-      size="xs"
-      fullWidth
+    <Select
+      size="sm"
+      w={160}
       aria-label="화면 테마"
       data={OPTIONS}
       value={colorScheme}
-      onChange={(value) => setColorScheme(value as MantineColorScheme)}
+      allowDeselect={false}
+      onChange={(value) => { if (value) setColorScheme(value as MantineColorScheme); }}
     />
   );
 }

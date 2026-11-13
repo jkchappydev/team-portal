@@ -1,4 +1,5 @@
-import { BlockNoteSchema, defaultBlockSpecs, defaultStyleSpecs } from "@blocknote/core";
+import { BlockNoteSchema, defaultBlockSpecs, defaultProps, defaultStyleSpecs } from "@blocknote/core";
+import { CalloutBlockView } from "./CalloutBlockView";
 import { codeStyleSpec } from "./codeStyle";
 import { backgroundColorSpec, textColorSpec } from "./colorStyles";
 import { codeBlockSpec } from "./codeBlock";
@@ -20,10 +21,38 @@ export const createScheduleBlock = createReactBlockSpec(
   },
 );
 
-// 편집기와 내보내기가 함께 쓰는 본문 스키마 (기본 블록 + 일정 블록)
+// 본문 콜아웃 블록: 이모지 + 배경색 상자 안의 하위 블록들 (배경색은 블록 메뉴의 색 기능으로 바꿈, 기본 회색)
+export const createCalloutBlock = createReactBlockSpec(
+  {
+    type: "callout",
+    propSchema: {
+      textColor: defaultProps.textColor,
+      backgroundColor: { default: "gray" as const },
+      icon: { default: "💡" },
+    },
+    // 노션처럼 글은 콜아웃 안의 하위 블록으로 담음 (안에서도 슬래시 메뉴·Enter·Tab이 본문과 똑같이 동작)
+    content: "none",
+  },
+  {
+    render: ({ block, editor }) => (
+      <CalloutBlockView
+        icon={block.props.icon}
+        color={block.props.backgroundColor}
+        editable={editor.isEditable}
+        onChangeIcon={(icon) => editor.updateBlock(block, { props: { icon } })}
+      />
+    ),
+    // 내보내기(HTML·Markdown)에서는 이모지만 인용문으로 남기고 안의 글은 하위 블록으로 이어짐
+    toExternalHTML: ({ block }) => <blockquote>{block.props.icon}</blockquote>,
+  },
+);
+
+// 편집기와 내보내기가 함께 쓰는 본문 스키마 (기본 블록 + 일정·콜아웃 블록)
 export const editorSchema = BlockNoteSchema.create({
   // 코드 블록은 문법 색칠 언어 목록 + 노션식 언어·복사 도구 막대 (색칠 자체는 편집기의 syntaxHighlighter 확장이 담당)
-  blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec, schedule: createScheduleBlock() },
+  blockSpecs: {
+    ...defaultBlockSpecs, codeBlock: codeBlockSpec, schedule: createScheduleBlock(), callout: createCalloutBlock(),
+  },
   // 다른 서식과 함께 쓸 수 있는 코드 서식, 붙여넣은 색을 노션 색 이름으로 바꾸는 글자색·배경색 서식
   styleSpecs: { ...defaultStyleSpecs, code: codeStyleSpec, textColor: textColorSpec, backgroundColor: backgroundColorSpec },
 });

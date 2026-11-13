@@ -99,7 +99,7 @@ vi.mock("yjs", () => {
 });
 
 vi.mock("@blocknote/core/yjs", () => ({ withCollaboration: (options: unknown) => options }));
-vi.mock("@blocknote/core/locales", () => ({ ko: { formatting_toolbar: { code: {} } } }));
+vi.mock("@blocknote/core/locales", () => ({ ko: { formatting_toolbar: { code: {} }, slash_menu: { quote: { title: "인용", group: "기본 블록" } } } }));
 vi.mock("@blocknote/react", async () => {
   const { useState } = await import("react");
   return {

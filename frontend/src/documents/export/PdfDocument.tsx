@@ -16,6 +16,8 @@ const styles = StyleSheet.create({
   marker: { width: 16 },
   listBody: { flex: 1 },
   quote: { borderLeftWidth: 3, borderLeftColor: "#37352f", paddingLeft: 10 },
+  callout: { padding: 10, borderRadius: 4 },
+  calloutPlain: { borderWidth: 1, borderColor: "#e9e9e7" },
   code: { backgroundColor: "#f7f6f3", padding: 10, borderRadius: 4, fontSize: 9.5 },
   divider: { borderBottomWidth: 1, borderBottomColor: "#e9e9e7", marginVertical: 8 },
   checkbox: { width: 9, height: 9, borderWidth: 1, borderColor: "#37352f", marginTop: 4, marginRight: 7 },
@@ -143,6 +145,17 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
     case "quote":
       body = <Text style={[styles.quote, blockStyle(block)]}><Runs content={block.content} /></Text>;
       break;
+    case "callout": {
+      // 안의 글(하위 블록)을 들여쓰지 않고 배경색 상자 안에 그림 (한글 글꼴에 이모지가 없어 아이콘은 생략, 배경 없음은 테두리)
+      const background = backgroundColorOf(props.backgroundColor);
+      return (
+        <View style={styles.block}>
+          <View style={[styles.callout, background ? { backgroundColor: background } : styles.calloutPlain]}>
+            <Blocks blocks={block.children ?? []} />
+          </View>
+        </View>
+      );
+    }
     case "codeBlock":
       body = <Text style={styles.code}><Runs content={block.content} /></Text>;
       break;

@@ -1077,3 +1077,104 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
     transition: none;
   }
 }
+
+/* 검색 팝업 입력 칸 (테두리 없이 팝업 상단을 꽉 채움) */
+.search-dialog-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--mantine-color-text);
+  font: inherit;
+  font-size: 17px;
+}
+
+.search-dialog-input::placeholder {
+  color: var(--mantine-color-placeholder);
+}
+
+/* 링크 추가 창 제목 칸 앞 아이콘 선택 버튼 */
+.link-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 18px;
+  color: var(--mantine-color-dimmed);
+}
+
+.link-icon-button:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 본문 콜아웃 블록: 아이콘 블록과 그 하위 블록(안의 글)을 한 상자로 묶음 (노션처럼, 배경 없음을 고르면 테두리만) */
+.bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) {
+  --callout-bg: var(--bn-colors-highlights-gray-background);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 10px 14px 10px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--callout-bg);
+}
+
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="default"]) { --callout-bg: transparent; border-color: var(--mantine-color-default-border); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="brown"]) { --callout-bg: var(--bn-colors-highlights-brown-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="orange"]) { --callout-bg: var(--bn-colors-highlights-orange-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="yellow"]) { --callout-bg: var(--bn-colors-highlights-yellow-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="green"]) { --callout-bg: var(--bn-colors-highlights-green-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="blue"]) { --callout-bg: var(--bn-colors-highlights-blue-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="purple"]) { --callout-bg: var(--bn-colors-highlights-purple-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="pink"]) { --callout-bg: var(--bn-colors-highlights-pink-background); }
+.bn-block:has(> .node-callout > .bn-block-content [data-callout-color="red"]) { --callout-bg: var(--bn-colors-highlights-red-background); }
+
+/* 아이콘 칸은 왼쪽 고정, BlockNote가 블록 바깥에 거는 배경색은 끔 (상자 배경만 사용) */
+.bn-editor .node-callout,
+.bn-editor .bn-block-content[data-content-type="callout"] {
+  width: auto;
+  flex-shrink: 0;
+  padding: 0;
+  background-color: transparent;
+}
+
+/* 안의 글(하위 블록)은 아이콘 오른쪽에 들여쓰기·세로선 없이 */
+.bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) > .bn-block-group {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0;
+}
+
+.bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) > .bn-block-group > .bn-block-outer::before {
+  display: none;
+}
+
+.callout-icon {
+  font-size: 1.25em;
+  line-height: 1.5;
+  user-select: none;
+}
+
+.callout-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+.callout-icon-button:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* 콜아웃 안 첫 줄이 제목이면 제목 위 여백(18px)을 없애 상자 위아래 여백을 맞춤 */
+.bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) > .bn-block-group > .bn-block-outer:first-child > .bn-block > .bn-block-content[data-content-type="heading"] {
+  padding-top: 3px;
+}
