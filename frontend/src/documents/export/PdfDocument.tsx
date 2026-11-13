@@ -146,8 +146,8 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
       body = <Text style={[styles.quote, blockStyle(block)]}><Runs content={block.content} /></Text>;
       break;
     case "callout": {
-      // 안의 글(하위 블록)을 들여쓰지 않고 배경색 상자 안에 그림 (한글 글꼴에 이모지가 없어 아이콘은 생략, 배경 없음은 테두리)
-      const background = backgroundColorOf(props.backgroundColor);
+      // 안의 글(하위 블록)을 들여쓰지 않고 배경색 상자 안에 그림 (한글 글꼴에 이모지가 없어 아이콘은 생략, 노션처럼 기본 배경도 회색)
+      const background = backgroundColorOf(props.backgroundColor === "default" ? "gray" : props.backgroundColor);
       return (
         <View style={styles.block}>
           <View style={[styles.callout, background ? { backgroundColor: background } : styles.calloutPlain]}>
