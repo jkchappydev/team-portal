@@ -6,6 +6,7 @@ import type { AuthMe } from "../api/auth";
 import { ApiError } from "../api/client";
 import { Navigate } from "react-router-dom";
 import { ProfileSetup } from "./ProfileSetup";
+import { ErrorPage } from "../layout/ErrorPage";
 
 // Google 공식 "G" 로고 (로그인 버튼용)
 function GoogleIcon() {
@@ -92,9 +93,22 @@ function AccessStatus({ me }: { me: AuthMe }) {
   );
 }
 
+// 로그인 정보를 확인하는 동안 보여주는 화면
+function AuthLoading() {
+  return <Center h="100vh"><Loader size="sm" aria-label="불러오는 중" /></Center>;
+}
+
+// 서버에 연결하지 못했을 때 자동으로 다시 확인하는 간격 (배포·재시작 중이면 잠시 뒤 저절로 돌아옴)
+export const CONNECTION_RETRY_MS = 5000;
+
+// 로그인 정보 확인 실패 시 공통 오류 페이지 (뒤에서는 계속 자동으로 다시 확인)
+export function connectionErrorCode(error: unknown): string {
+  return error instanceof ApiError ? String(error.status) : "Network Error";
+}
+
 export function LoginRoute() {
   const { data: me, isPending } = useQuery({ queryKey: ["auth", "me"], queryFn: getMe, retry: false });
-  if (isPending) return <Center h="100vh">불러오는 중...</Center>;
+  if (isPending) return <AuthLoading />;
   return me ? <Navigate to="/" replace /> : <LoginPage />;
 }
 
@@ -107,11 +121,16 @@ export function pendingRecheckInterval(me: AuthMe | undefined): number | false {
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { data: me, isPending, error } = useQuery({
+  const { data: me, isPending, isFetching, error } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getMe,
     retry: false,
-    refetchInterval: (query) => pendingRecheckInterval(query.state.data),
+    // 승인 대기 중이거나, 처음부터 서버에 연결하지 못했으면 주기적으로 다시 확인
+    refetchInterval: (query) => {
+      const failed = query.state.error;
+      if (!query.state.data && failed && !(failed instanceof ApiError && failed.code === "UNAUTHENTICATED")) return CONNECTION_RETRY_MS;
+      return pendingRecheckInterval(query.state.data);
+    },
     // 다른 탭에 있다가 돌아와도 바로 확인
     refetchOnWindowFocus: true,
   });
@@ -124,10 +143,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
     window.addEventListener("portal:auth-changed", changed);
     return () => window.removeEventListener("portal:auth-changed", changed);
   }, [queryClient]);
-  if (isPending) return <Center h="100vh">불러오는 중...</Center>;
+  if (isPending) return <AuthLoading />;
   if (error instanceof ApiError && error.code === "UNAUTHENTICATED") return <LoginPage />;
-  if (error || !me) return <Center h="100vh"><Stack align="center"><Text>로그인 정보를 불러오지 못했습니다.</Text>
-    <Button onClick={() => void queryClient.invalidateQueries({ queryKey: ["auth", "me"] })}>다시 시도</Button></Stack></Center>;
+  // 이미 들어와 있던 사용자는 다른 탭에서 돌아올 때 잠깐 연결이 끊겨도 작업 화면을 그대로 둠
+  if (!me) return <ErrorPage code={connectionErrorCode(error)} actionLabel="다시 시도" loading={isFetching}
+    onAction={() => void queryClient.invalidateQueries({ queryKey: ["auth", "me"] })} />;
   const inactive = me.status === "APPROVED" && me.active === false;
   if (inactive || me.status !== "APPROVED") return <AccessStatus me={me} />;
   if (me.profileComplete === false) return <ProfileSetup me={me} />;

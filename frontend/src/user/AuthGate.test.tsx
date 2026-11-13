@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { getMe } from "../api/auth";
 import { ApiError } from "../api/client";
 import { updateMember } from "../api/members";
-import { AuthGate, LoginPage, PENDING_RECHECK_MS, pendingRecheckInterval } from "./AuthGate";
+import { AuthGate, CONNECTION_RETRY_MS, LoginPage, PENDING_RECHECK_MS, connectionErrorCode, pendingRecheckInterval } from "./AuthGate";
 
 vi.mock("../api/auth", () => ({ getMe: vi.fn(), logout: vi.fn() }));
 vi.mock("../api/members", async (importOriginal) => ({ ...(await importOriginal<typeof import("../api/members")>()), updateMember: vi.fn() }));
@@ -118,5 +118,38 @@ describe("AuthGate", () => {
     fireEvent.click(start);
     await waitFor(() => expect(updateMember).toHaveBeenCalledWith(4, { department: "개발팀", jobRank: "SENIOR", phone: "010-0000-0000", extension: "386" }));
     expect(await screen.findByText("포털 본문")).toBeTruthy();
+  });
+
+  it("서버에 연결하지 못하면 안내하고, 서버가 돌아오면 자동으로 본문을 보여준다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(getMe)
+        .mockRejectedValueOnce(new ApiError("UNKNOWN_ERROR", "요청에 실패했습니다 (502)", 502))
+        .mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: true });
+      renderGate();
+      expect(await screen.findByText("서버를 준비하는 중입니다")).toBeTruthy();
+      expect(screen.getByText("502")).toBeTruthy();
+      await vi.advanceTimersByTimeAsync(CONNECTION_RETRY_MS);
+      expect(await screen.findByText("포털 본문")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("연결 실패는 Network Error, 서버 오류는 상태 코드로 보여준다", () => {
+    expect(connectionErrorCode(new TypeError("Failed to fetch"))).toBe("Network Error");
+    expect(connectionErrorCode(new ApiError("INTERNAL_ERROR", "", 500))).toBe("500");
+  });
+
+  it("이미 본문을 보던 중 로그인 정보 확인이 잠깐 실패해도 본문을 그대로 둔다", async () => {
+    vi.mocked(getMe)
+      .mockResolvedValueOnce({ email: "a@example.com", status: "APPROVED", memberId: 1, memberName: "팀원", admin: false, active: true })
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    renderGate();
+    expect(await screen.findByText("포털 본문")).toBeTruthy();
+    window.dispatchEvent(new CustomEvent("portal:auth-changed"));
+    await waitFor(() => expect(getMe).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("포털 본문")).toBeTruthy();
+    expect(screen.queryByText("서버에 연결하지 못했습니다")).toBeNull();
   });
 });

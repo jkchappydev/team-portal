@@ -13,6 +13,7 @@ import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
 import { ProfileSetupPreview } from "./user/ProfileSetup";
+import { NotFoundPage } from "./layout/NotFoundPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -27,8 +28,8 @@ export default function App() {
             <Route path="/preview/profile-setup" element={<AuthGate><ProfileSetupPreview /></AuthGate>} />
             <Route element={<AuthGate><AppLayout /></AuthGate>}>
               <Route path="/" element={<Navigate to="/work-status" replace />} />
-              {/* 없는 주소는 첫 화면(근무 상황표)으로 */}
-              <Route path="*" element={<Navigate to="/work-status" replace />} />
+              {/* 없는 주소는 404 안내 후 첫 화면으로 */}
+              <Route path="*" element={<NotFoundPage />} />
               <Route path="/work-status" element={<WorkStatusPage />} />
               <Route path="/spaces/:spaceId" element={<SpacePage />} />
               <Route path="/documents/:documentId" element={<DocumentPage />} />
