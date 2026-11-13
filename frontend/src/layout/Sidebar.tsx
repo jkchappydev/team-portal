@@ -63,41 +63,45 @@ export function Sidebar({ user }: Props) {
         {/* 다른 팀원이 수정한 페이지 알림 */}
         {user && <DocumentUpdatesBell />}
       </Group>
-      {/* 검색 도구와 개인 즐겨찾기는 머리글 없이 맨 위 (고정 메뉴는 페이지 트리 줄과 같은 높이로 붙여서 표시) */}
-      <Stack gap={0}>
-        <SidebarMenuLink
-          label="검색"
-          icon={<span aria-hidden>🔍</span>}
-          rightSection={<Kbd size="xs">Ctrl + K</Kbd>}
-          onClick={() => setSearching(true)}
-        />
-        <SidebarMenuLink to="/favorites" label="즐겨찾기" icon={<span aria-hidden>⭐</span>} />
-      </Stack>
-      {/* 팀이 함께 쓰는 메뉴 머리글 (페이지·링크 머리글과 같은 모양, 추가 버튼 없음) */}
-      <Group justify="space-between" mt="sm" mih={22}>
-        <Text size="xs" c="dimmed">팀 스페이스</Text>
-      </Group>
-      <Stack gap={0}>
-        <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
-        {/* 팀원 목록은 누구나 보고 본인 정보만 수정, 팀원 관리는 관리자만 */}
-        <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />
-        {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
-      </Stack>
-      <Group justify="space-between" mt="sm">
-        <Text size="xs" c="dimmed">페이지</Text>
-        <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 페이지</Button>
-      </Group>
-      {create.error && <Alert color="red" p="xs">페이지를 만들지 못했습니다.</Alert>}
-      {/* 링크는 페이지 목록 바로 아래에 붙어 하위 페이지가 펼쳐지면 함께 밀려남 (둘을 한 스크롤로) */}
-      <ScrollArea style={{ flex: 1 }} data-testid="sidebar-scroll">
+      {/* 노션처럼 검색부터 휴지통까지 메뉴 전체를 한 스크롤로 (포털 이름과 아래 내 정보 줄은 고정)
+          스크롤바 자리를 따로 비워 오른쪽 버튼·글자와 겹치지 않게 함 */}
+      <ScrollArea style={{ flex: 1 }} offsetScrollbars="y" scrollbarSize={8} data-testid="sidebar-scroll">
         <Stack gap="xs">
+          {/* 검색 도구와 개인 즐겨찾기는 머리글 없이 맨 위 (고정 메뉴는 페이지 트리 줄과 같은 높이로 붙여서 표시) */}
+          <Stack gap={0}>
+            <SidebarMenuLink
+              label="검색"
+              icon={<span aria-hidden>🔍</span>}
+              rightSection={<Kbd size="xs">Ctrl + K</Kbd>}
+              onClick={() => setSearching(true)}
+            />
+            <SidebarMenuLink to="/favorites" label="즐겨찾기" icon={<span aria-hidden>⭐</span>} />
+          </Stack>
+          {/* 팀이 함께 쓰는 메뉴 머리글 (페이지·링크 머리글과 같은 모양, 추가 버튼 없음) */}
+          <Group justify="space-between" mt="sm" mih={22}>
+            <Text size="xs" c="dimmed">팀 스페이스</Text>
+          </Group>
+          <Stack gap={0}>
+            <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
+            {/* 팀원 목록은 누구나 보고 본인 정보만 수정, 팀원 관리는 관리자만 */}
+            <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />
+            {/* 주소록 (화면은 아직 미구현) */}
+            <SidebarMenuLink to="/contacts" label="주소록" icon={<span aria-hidden>📒</span>} />
+            {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
+          </Stack>
+          <Group justify="space-between" mt="sm">
+            <Text size="xs" c="dimmed">페이지</Text>
+            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 페이지</Button>
+          </Group>
+          {create.error && <Alert color="red" p="xs">페이지를 만들지 못했습니다.</Alert>}
+          {/* 링크는 페이지 목록 바로 아래에 붙어 하위 페이지가 펼쳐지면 함께 밀려남 */}
           <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
           {/* 팀이 함께 쓰는 외부 주소 (새 탭으로 열림) */}
           {user && <LinkList />}
+          {/* 다른 고정 메뉴와 같은 컬러 이모지 아이콘 */}
+          <SidebarMenuLink to="/trash" label="휴지통" icon={<span aria-hidden>🗑️</span>} />
         </Stack>
       </ScrollArea>
-      {/* 다른 고정 메뉴와 같은 컬러 이모지 아이콘 */}
-      <SidebarMenuLink to="/trash" label="휴지통" icon={<span aria-hidden>🗑️</span>} />
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
         {/* 이름(옆에 직급)을 누르면 내 설정 */}

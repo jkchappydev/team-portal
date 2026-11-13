@@ -9,6 +9,7 @@ import { SpacePage } from "./documents/SpacePage";
 import { TrashPage } from "./documents/TrashPage";
 import { FavoritesPage } from "./documents/FavoritesPage";
 import { WorkStatusPage } from "./workstatus/WorkStatusPage";
+import { ContactsPage } from "./contacts/ContactsPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/trash" element={<TrashPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/team" element={<MembersPage mode="list" />} />
+              <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/members" element={<MembersPage />} />
             </Route>
           </Routes>
