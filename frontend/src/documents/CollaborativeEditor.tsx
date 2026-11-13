@@ -8,6 +8,7 @@ import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { isOutsideTable, NEW_CALLOUT, withCalloutItem } from "./editor/calloutCommand";
+import { AlignedSideMenuController } from "./editor/AlignedSideMenuController";
 import { syntaxHighlighter } from "@blocknote/code-block";
 import { pasteOptions } from "./editor/paste";
 import { yUndoPluginKey } from "y-prosemirror";
@@ -18,7 +19,7 @@ import { activeTableCellExtension } from "./editor/activeTableCell";
 import { tableHandleDragExtension } from "./editor/tableHandleDrag";
 import { checkListAnimationExtension } from "./editor/checkListAnimation";
 import {
-  FormattingToolbarController, getDefaultReactSlashMenuItems, SideMenu, SideMenuController, SuggestionMenuController, TableHandlesController,
+  FormattingToolbarController, getDefaultReactSlashMenuItems, SideMenu, SuggestionMenuController, TableHandlesController,
   useCreateBlockNote,
 } from "@blocknote/react";
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
@@ -378,7 +379,7 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
         formattingToolbar={false}>
         {/* 서식 도구 막대: 기본 버튼 + 노션처럼 코드(Ctrl+E)·서식 지우기 */}
         <FormattingToolbarController formattingToolbar={NotionFormattingToolbar} />
-        <SideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
+        <AlignedSideMenuController sideMenu={(props) => <SideMenu {...props} dragHandleMenu={NotionDragHandleMenu} />} />
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />

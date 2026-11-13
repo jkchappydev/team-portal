@@ -12,6 +12,13 @@ describe("콜아웃 블록", () => {
     expect(block.children.map((child) => child.type)).toEqual(["paragraph"]);
   });
 
+  // 슬래시 메뉴는 빈 줄을 콜아웃으로 바꾸는데, 그 줄의 배경 없음(default)이 넘어와 흰 상자가 되던 문제 재발 방지
+  it("빈 줄을 콜아웃으로 바꿔도 회색 배경으로 만든다", () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: [{ type: "paragraph" }] });
+    editor.updateBlock(editor.document[0], NEW_CALLOUT);
+    expect(editor.document[0].props).toMatchObject({ backgroundColor: "gray" });
+  });
+
   // 안의 글은 일반 블록이라 슬래시 메뉴로 다른 형식으로 바꿔도 콜아웃 안에 남음 (버그 재발 방지)
   it("콜아웃 안의 줄을 제목으로 바꿔도 콜아웃 안에 남는다", () => {
     const editor = BlockNoteEditor.create({

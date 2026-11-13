@@ -230,7 +230,7 @@ body {
   border-radius: 3px;
 }
 
-/* WBS 줄 끌기 손잡이: 연차 표 손잡이(.member-drag-handle)와 같은 회색 막대를 표 왼쪽 테두리선 위에 표시
+/* WBS 줄 끌기 손잡이: 연차 표 손잡이(.member-drag-handle)와 같은 회색 선(본문 표 손잡이처럼 2px)을 표 왼쪽 테두리선 위에 표시
    가로 스크롤과 따로 움직이도록 표 밖 층에 줄 위치(top)대로 놓고, 마우스를 올린 줄만 보임 */
 .wbs-drag-handle[data-visible],
 .wbs-drag-handle:hover,
@@ -901,7 +901,7 @@ tr[data-member-drop]::after { content: ""; position: absolute; left: 0; right: 0
 tr[data-member-drop="before"]::after { top: -1px; }
 tr[data-member-drop="after"]::after { bottom: -1px; }
 .member-drag-handle { position: absolute; left: -8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; width: 14px; height: 20px; padding: 0; font-size: 0; cursor: grab; opacity: 0; z-index: 3; }
-.member-drag-handle::before { content: ""; position: absolute; left: 5px; top: 3px; width: 4px; height: 14px; border-radius: 2px; background: var(--mantine-color-gray-5); }
+.member-drag-handle::before { content: ""; position: absolute; left: 6px; top: 2px; width: 2px; height: 16px; border-radius: 1px; background: var(--mantine-color-gray-6); }
 tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
 .member-drag-handle:active { cursor: grabbing; }
 .annual-leave-scroll { box-sizing: border-box; width: calc(100% + 10px); margin-left: -10px; padding-left: 10px; overflow-x: auto; }
@@ -1177,4 +1177,43 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
 /* 콜아웃 안 첫 줄이 제목이면 제목 위 여백(18px)을 없애 상자 위아래 여백을 맞춤 */
 .bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) > .bn-block-group > .bn-block-outer:first-child > .bn-block > .bn-block-content[data-content-type="heading"] {
   padding-top: 3px;
+}
+
+/* 날짜·시간 입력 칸은 모든 화면에서 누르면 달력이 열리므로 손가락 커서 (달력 아이콘 포함) */
+input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="datetime-local"]),
+input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="datetime-local"])::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="datetime-local"]):disabled {
+  cursor: default;
+}
+
+/* 블록 메뉴(⠿)가 열려 있는 동안 노션처럼 그 블록 전체(하위 블록 포함)를 연한 파랑으로 선택 표시 */
+.bn-editor .bn-block[data-menu-selected] {
+  position: relative;
+}
+
+.bn-editor .bn-block[data-menu-selected]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: rgba(35, 131, 226, 0.14);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 메뉴 항목 오른쪽 단축키 표시 (삭제 Del) */
+.menu-item-with-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+}
+
+.menu-item-shortcut {
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
 }

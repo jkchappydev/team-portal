@@ -40,6 +40,7 @@ export const createCalloutBlock = createReactBlockSpec(
         color={block.props.backgroundColor}
         editable={editor.isEditable}
         onChangeIcon={(icon) => editor.updateBlock(block, { props: { icon } })}
+        onDocumentChange={(callback) => editor.onChange(callback)}
       />
     ),
     // 내보내기(HTML·Markdown)에서는 이모지만 인용문으로 남기고 안의 글은 하위 블록으로 이어짐

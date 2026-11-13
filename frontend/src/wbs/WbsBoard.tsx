@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, DragEvent, ReactNode } from "react";
 import {
   ActionIcon, Alert, Box, Button, Checkbox, Group, Loader, Menu, Modal, NumberInput, Popover, ScrollArea, Stack, Text,
@@ -18,6 +18,7 @@ import {
 } from "./wbsTree";
 import type { WbsDropTarget } from "./wbsTree";
 import type { GanttDay } from "./wbsTree";
+import { blockWbsDragOutside, stopWbsDragAtBoard, WBS_DRAG_TYPE } from "./dragIsolation";
 
 // 표와 간트 차트가 같은 높이를 쓰도록 고정
 const ROW_H = 36;
@@ -171,6 +172,10 @@ export function WbsBoard({ documentId }: Props) {
   // 놓일 위치와 그 위치를 표시할 가로선의 세로 위치(작업 줄 목록 기준 px)
   const [drop, setDrop] = useState<(WbsDropTarget & { top: number }) | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  // 끄는 동안 일정표 밖이 반응하지 않게 거는 감시 해제 함수
+  const releaseOutside = useRef<(() => void) | null>(null);
+  useEffect(() => () => releaseOutside.current?.(), []);
 
   if (error && !data) return <Alert color="red">{errorText(error, "WBS를 불러오지 못했습니다.")}</Alert>;
   if (isPending || !data) return <Loader size="sm" />;
@@ -231,7 +236,9 @@ export function WbsBoard({ documentId }: Props) {
   const mutationError = create.error ?? addNamed.error ?? update.error ?? move.error;
 
   return (
-    <Stack gap="sm">
+    // 본문 안 일정 블록에서 줄을 끌 때 편집기가 본문 블록 놓기 선을 그리지 않게 끌기 이벤트를 여기서 멈춤
+    <Stack gap="sm" ref={boardRef} onDragEnter={stopWbsDragAtBoard} onDragOver={stopWbsDragAtBoard}
+      onDragLeave={stopWbsDragAtBoard} onDrop={stopWbsDragAtBoard}>
       <Group justify="space-between" wrap="wrap">
         <Group gap="xs">
           <Text size="sm" c="dimmed">기준일</Text>
@@ -266,13 +273,16 @@ export function WbsBoard({ documentId }: Props) {
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.clearData();
-                e.dataTransfer.setData("application/x-portal-wbs-task", String(row.id));
+                e.dataTransfer.setData(WBS_DRAG_TYPE, String(row.id));
                 e.dataTransfer.effectAllowed = "move";
                 const rowEl = document.querySelector<HTMLElement>(`[data-testid="wbs-row-${row.id}"]`);
                 if (rowEl) e.dataTransfer.setDragImage?.(rowEl, 16, ROW_H / 2);
                 setDraggingId(row.id);
+                if (boardRef.current) releaseOutside.current = blockWbsDragOutside(boardRef.current);
               }}
               onDragEnd={() => {
+                releaseOutside.current?.();
+                releaseOutside.current = null;
                 setDraggingId(null);
                 setDrop(null);
               }}

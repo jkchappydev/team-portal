@@ -6,7 +6,12 @@ export function withCalloutItem<T extends { title: string }>(items: T[], callout
 }
 
 // 새 콜아웃은 안에 빈 줄 하나를 담아 만듦 (커서를 그 줄로 옮겨 바로 입력)
-export const NEW_CALLOUT = { type: "callout" as const, children: [{ type: "paragraph" as const }] };
+// 빈 줄을 콜아웃으로 바꿀 때 그 줄의 배경 없음(default)이 넘어오지 않도록 회색 배경을 지정
+export const NEW_CALLOUT = {
+  type: "callout" as const,
+  props: { backgroundColor: "gray" as const },
+  children: [{ type: "paragraph" as const }],
+};
 
 // 커서 위치 조상 노드 이름 (ProseMirror 트랜잭션 선택 기준)
 interface SelectionLike {

@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
+import { isDeleteKey, markMenuBlock } from "./menuSelection";
 import { Switch, UnstyledButton } from "@mantine/core";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { DragHandleMenu, useBlockNoteEditor, useComponentsContext, useExtensionState } from "@blocknote/react";
@@ -36,7 +38,30 @@ export function MenuToggle({ label, icon, checked, onToggle }: MenuToggleProps) 
   );
 }
 
+// 메뉴가 열려 있는 동안만 그려짐: 블록 전체 선택 표시, Delete·Backspace로 블록 삭제 후 메뉴 닫기
+function MenuBlockSelection({ blockId, onDelete }: { blockId: string; onDelete: () => void }) {
+  const deleteRef = useRef(onDelete);
+  deleteRef.current = onDelete;
+  useEffect(() => markMenuBlock(blockId), [blockId]);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isDeleteKey(e)) return;
+      // 메뉴 안 입력 칸(있다면)에서는 글자 지우기로 둠
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // 포커스된 메뉴에 Esc를 보내 노션처럼 메뉴를 닫은 뒤 블록 삭제
+      (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      deleteRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+  return null;
+}
+
 // 노션처럼 블록 손잡이(⠿)를 누르면 나오는 메뉴: 표 제목 행·열, 색, 위·아래 삽입, 복제, 삭제
+// 열려 있는 동안 블록 전체를 선택 표시하고 Delete로 삭제
 export function NotionDragHandleMenu() {
   const Components = useComponentsContext()!;
   const editor = useBlockNoteEditor();
@@ -74,8 +99,11 @@ export function NotionDragHandleMenu() {
     editor.insertBlocks([withoutIds(block) as never], block, "after");
   };
 
+  const remove = () => editor.removeBlocks([block]);
+
   return (
     <DragHandleMenu>
+      <MenuBlockSelection blockId={block.id} onDelete={remove} />
       {/* 메뉴 항목은 누르면 메뉴가 닫히므로, 노션처럼 켜고 꺼도 열려 있도록 스위치 줄은 일반 버튼으로 둠 */}
       {tableContent && (
         <>
@@ -107,8 +135,8 @@ export function NotionDragHandleMenu() {
       <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.copy} />} onClick={duplicate}>
         복제
       </Components.Generic.Menu.Item>
-      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.trash} />} onClick={() => editor.removeBlocks([block])}>
-        삭제
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.trash} />} onClick={remove}>
+        <span className="menu-item-with-shortcut">삭제<span className="menu-item-shortcut">Del</span></span>
       </Components.Generic.Menu.Item>
     </DragHandleMenu>
   );
