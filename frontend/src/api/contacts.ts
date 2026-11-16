@@ -7,9 +7,12 @@ export interface ContactDto {
   // 비어 있으면 null
   company: string | null;
   email: string | null;
+  // 전화번호 1
   phone: string | null;
+  phone2: string | null;
   // 연관 프로젝트 이름 (없으면 빈 목록)
   projects: string[];
+  memo: string | null;
 }
 
 export interface ContactRequest {
@@ -17,7 +20,9 @@ export interface ContactRequest {
   company: string | null;
   email: string | null;
   phone: string | null;
+  phone2: string | null;
   projects: string[];
+  memo: string | null;
 }
 
 export const CONTACTS_KEY = ["contacts"];

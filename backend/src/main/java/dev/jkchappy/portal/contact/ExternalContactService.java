@@ -63,7 +63,7 @@ public class ExternalContactService {
       : new ArrayList<>(new LinkedHashSet<>(request.projects().stream()
         .filter(p -> p != null && !p.isBlank()).map(String::trim).toList()));
     return new ContactValues(request.name().trim(), blankToNull(request.company()), blankToNull(request.email()),
-      normalizePhone(request.phone()), projects);
+      normalizePhone(request.phone()), normalizePhone(request.phone2()), projects, blankToNull(request.memo()));
   }
 
   // 선택 값, 숫자·하이픈·괄호·+·공백만 허용 (국내 번호는 팀원 전화번호와 같은 규칙으로 하이픈을 맞춤)

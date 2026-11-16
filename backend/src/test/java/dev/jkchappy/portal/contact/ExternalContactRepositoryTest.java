@@ -25,7 +25,7 @@ class ExternalContactRepositoryTest {
 
   private ExternalContact save(String name, int sortOrder, List<String> projects) {
     return contactRepository.save(ExternalContact.create(
-      new ContactValues(name, "가나출판", null, null, projects), sortOrder, 1L));
+      new ContactValues(name, "가나출판", null, null, null, projects, null), sortOrder, 1L));
   }
 
   // 표시 순서대로 조회하고 연관 프로젝트는 입력한 순서 그대로 다시 읽힘

@@ -14,11 +14,15 @@ vi.mock("../api/contacts", () => ({
   deleteContact: vi.fn(),
 }));
 
-const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", projects: ["교과서 개발"] };
-const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, projects: [] };
+const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", phone2: "02-555-1234", projects: ["교과서 개발"], memo: "오전에만 통화 가능" };
+const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, phone2: null, projects: [], memo: null };
 
 describe("ContactsPage", () => {
   beforeAll(() => {
+    // 메모 칸 자동 높이(react-textarea-autosize)가 쓰는 글꼴 API가 jsdom에 없어 흉내
+    if (!document.fonts) {
+      Object.defineProperty(document, "fonts", { value: { addEventListener() {}, removeEventListener() {} }, configurable: true });
+    }
     globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
     window.matchMedia ??= ((query: string) => ({ matches: false, media: query, onchange: null,
       addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
@@ -42,6 +46,9 @@ describe("ContactsPage", () => {
     expect(screen.getByText("hong@example.com").closest("a")!.getAttribute("href")).toBe("mailto:hong@example.com");
     expect(screen.getByText("010-1234-5678").closest("a")!.getAttribute("href")).toBe("tel:010-1234-5678");
     expect(screen.getByText("교과서 개발")).toBeTruthy();
+    // 전화번호 2와 메모도 표에 보임
+    expect(screen.getByText("02-555-1234").closest("a")!.getAttribute("href")).toBe("tel:02-555-1234");
+    expect(screen.getByText("오전에만 통화 가능")).toBeTruthy();
     // 처음에는 이름 가나다순이라 끌기 손잡이가 없음
     expect(screen.queryByLabelText("홍길동 순서 변경")).toBeNull();
   });
@@ -54,6 +61,12 @@ describe("ContactsPage", () => {
     expect(screen.queryByLabelText("홍길동 순서 변경")).toBeNull();
     fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "01012345678" } });
     expect(screen.getByText("홍길동")).toBeTruthy();
+    // 전화번호 2 숫자와 메모로도 찾음
+    fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "025551234" } });
+    expect(screen.getByText("홍길동")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "통화 가능" } });
+    expect(screen.getByText("홍길동")).toBeTruthy();
+    expect(screen.queryByText("김철수")).toBeNull();
     fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "없는 업체" } });
     expect(screen.getByText("검색 결과가 없습니다.")).toBeTruthy();
   });
@@ -64,7 +77,9 @@ describe("ContactsPage", () => {
     await screen.findByText("홍길동");
     fireEvent.click(screen.getByRole("button", { name: "+ 연락처 추가" }));
     fireEvent.change(await screen.findByLabelText(/^이름/, { selector: "input" }), { target: { value: " 이영희 " } });
-    fireEvent.change(screen.getByLabelText("전화번호"), { target: { value: "0212345678" } });
+    fireEvent.change(screen.getByLabelText("전화번호 1"), { target: { value: "0212345678" } });
+    fireEvent.change(screen.getByLabelText("전화번호 2"), { target: { value: "0311234567" } });
+    fireEvent.change(screen.getByLabelText("메모"), { target: { value: " 평일 오후 연락 " } });
     const projects = screen.getByLabelText("연관 프로젝트", { selector: "input" });
     // 사용자가 칸을 눌러 입력한 경우만 받으므로 먼저 포커스
     projects.focus();
@@ -72,7 +87,7 @@ describe("ContactsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     await waitFor(() => expect(createContact).toHaveBeenCalledWith({
-      name: "이영희", company: null, email: null, phone: "02-1234-5678", projects: ["전자책"],
+      name: "이영희", company: null, email: null, phone: "02-1234-5678", phone2: "031-123-4567", projects: ["전자책"], memo: "평일 오후 연락",
     }));
   });
 

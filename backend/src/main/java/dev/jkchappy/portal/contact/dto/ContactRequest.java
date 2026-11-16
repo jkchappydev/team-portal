@@ -11,5 +11,7 @@ public record ContactRequest(
   @Size(max = 100) String company,
   @Email @Size(max = 255) String email,
   @Size(max = 20) String phone,
-  @Size(max = 20) List<@Size(max = 100) String> projects) {
+  @Size(max = 20) String phone2,
+  @Size(max = 20) List<@Size(max = 100) String> projects,
+  @Size(max = 1000) String memo) {
 }

@@ -41,6 +41,13 @@ public class ExternalContact {
   @Column(length = 20)
   private String phone;
 
+  // 두 번째 전화번호 (예: 사무실·휴대폰)
+  @Column(length = 20)
+  private String phone2;
+
+  @Column(length = 1000)
+  private String memo;
+
   // 연관 프로젝트 이름 (입력한 순서대로)
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "external_contact_project", joinColumns = @JoinColumn(name = "contact_id"))
@@ -85,11 +92,14 @@ public class ExternalContact {
     this.company = values.company();
     this.email = values.email();
     this.phone = values.phone();
+    this.phone2 = values.phone2();
+    this.memo = values.memo();
     this.projects.clear();
     this.projects.addAll(values.projects());
   }
 
   // 정리를 마친 입력값
-  public record ContactValues(String name, String company, String email, String phone, List<String> projects) {
+  public record ContactValues(String name, String company, String email, String phone, String phone2,
+    List<String> projects, String memo) {
   }
 }

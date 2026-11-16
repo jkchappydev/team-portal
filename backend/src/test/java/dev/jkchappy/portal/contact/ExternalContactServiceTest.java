@@ -33,7 +33,7 @@ class ExternalContactServiceTest {
 
   private ExternalContact contact(long id, int sortOrder) {
     ExternalContact contact = ExternalContact.create(
-      new ContactValues("담당자" + id, null, null, null, List.of()), sortOrder, 1L);
+      new ContactValues("담당자" + id, null, null, null, null, List.of(), null), sortOrder, 1L);
     ReflectionTestUtils.setField(contact, "id", id);
     return contact;
   }
@@ -44,13 +44,15 @@ class ExternalContactServiceTest {
     when(contactRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of(contact(1L, 0), contact(2L, 3)));
     when(contactRepository.save(any(ExternalContact.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    ContactResponse created = service().create(new ContactRequest(" 홍길동 ", " 가나출판 ", " ", "01012345678",
-      Arrays.asList(" 교과서 개발 ", "", null, "교과서 개발", "전자책")), 5L);
+    ContactResponse created = service().create(new ContactRequest(" 홍길동 ", " 가나출판 ", " ", "01012345678", " ",
+      Arrays.asList(" 교과서 개발 ", "", null, "교과서 개발", "전자책"), " "), 5L);
 
     assertThat(created.name()).isEqualTo("홍길동");
     assertThat(created.company()).isEqualTo("가나출판");
     assertThat(created.email()).isNull();
     assertThat(created.phone()).isEqualTo("010-1234-5678");
+    assertThat(created.phone2()).isNull();
+    assertThat(created.memo()).isNull();
     assertThat(created.projects()).containsExactly("교과서 개발", "전자책");
     verify(contactRepository).save(org.mockito.ArgumentMatchers.argThat(c -> c.getSortOrder() == 4));
   }
@@ -58,7 +60,7 @@ class ExternalContactServiceTest {
   // 전화번호에 허용하지 않는 글자가 있으면 거부
   @Test
   void create_invalidPhone_throwsInvalidInput() {
-    assertThatThrownBy(() -> service().create(new ContactRequest("홍길동", null, null, "전화 없음", null), 1L))
+    assertThatThrownBy(() -> service().create(new ContactRequest("홍길동", null, null, "전화 없음", null, null, null), 1L))
       .isInstanceOf(BusinessException.class)
       .extracting(e -> ((BusinessException) e).getErrorCode())
       .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -68,16 +70,19 @@ class ExternalContactServiceTest {
   @Test
   void update_replacesProjects() {
     ExternalContact existing = ExternalContact.create(
-      new ContactValues("홍길동", null, null, null, new ArrayList<>(List.of("예전 프로젝트"))), 0, 1L);
+      new ContactValues("홍길동", null, null, null, null, new ArrayList<>(List.of("예전 프로젝트")), null), 0, 1L);
     ReflectionTestUtils.setField(existing, "id", 7L);
     when(contactRepository.findById(7L)).thenReturn(Optional.of(existing));
 
     ContactResponse updated = service().update(7L,
-      new ContactRequest("홍길동", "가나출판", "hong@example.com", "02-123-4567", List.of("새 프로젝트")));
+      new ContactRequest("홍길동", "가나출판", "hong@example.com", "02-123-4567", "0311234567",
+        List.of("새 프로젝트"), " 오전에만 통화 가능 "));
 
     assertThat(updated.projects()).containsExactly("새 프로젝트");
     assertThat(updated.email()).isEqualTo("hong@example.com");
     assertThat(updated.phone()).isEqualTo("02-123-4567");
+    assertThat(updated.phone2()).isEqualTo("031-123-4567");
+    assertThat(updated.memo()).isEqualTo("오전에만 통화 가능");
   }
 
   // 끌어 옮긴 연락처를 원하는 위치에 넣고 0부터 다시 번호를 매김

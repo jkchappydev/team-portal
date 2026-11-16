@@ -8,14 +8,14 @@ import type { ContactDto } from "../api/contacts";
 import { useReorderAnimation } from "../layout/reorderAnimation";
 import { ContactDialog } from "./ContactDialog";
 
-// 검색어가 이름·업체·이메일·전화번호·연관 프로젝트 중 하나에 들어 있으면 표시
+// 검색어가 이름·업체·이메일·전화번호 1·2·연관 프로젝트·메모 중 하나에 들어 있으면 표시
 function matches(contact: ContactDto, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const digits = q.replace(/\D/g, "");
-  return [contact.name, contact.company, contact.email, ...contact.projects]
+  return [contact.name, contact.company, contact.email, contact.memo, ...contact.projects]
     .some((value) => value?.toLowerCase().includes(q))
-    || (digits.length > 0 && (contact.phone ?? "").replace(/\D/g, "").includes(digits));
+    || (digits.length > 0 && [contact.phone, contact.phone2].some((phone) => (phone ?? "").replace(/\D/g, "").includes(digits)));
 }
 
 type SortKey = "name" | "company" | "projects";
@@ -143,9 +143,14 @@ function ContactRow({ contact, reorder, canDrag, onEdit, onDelete }: {
           : <Text size="sm">-</Text>}
       </Table.Td>
       <Table.Td>
-        {contact.phone
-          ? <Anchor size="sm" href={`tel:${contact.phone}`} draggable={false} c="inherit">{contact.phone}</Anchor>
-          : <Text size="sm">-</Text>}
+        {/* 전화번호 1·2를 위아래로 */}
+        {contact.phone || contact.phone2 ? (
+          <Stack gap={2}>
+            {[contact.phone, contact.phone2].filter((phone): phone is string => !!phone).map((phone) => (
+              <Anchor key={phone} size="sm" href={`tel:${phone}`} draggable={false} c="inherit">{phone}</Anchor>
+            ))}
+          </Stack>
+        ) : <Text size="sm">-</Text>}
       </Table.Td>
       <Table.Td>
         {contact.projects.length > 0 ? (
@@ -153,6 +158,12 @@ function ContactRow({ contact, reorder, canDrag, onEdit, onDelete }: {
             {contact.projects.map((project) => <Badge key={project} variant="light" size="sm" style={{ textTransform: "none" }}>{project}</Badge>)}
           </Group>
         ) : <Text size="sm">-</Text>}
+      </Table.Td>
+      <Table.Td>
+        {/* 긴 메모는 두 줄까지 보이고 마우스를 올리면 전체 */}
+        {contact.memo
+          ? <Text size="sm" c="dimmed" lineClamp={2} title={contact.memo} style={{ whiteSpace: "pre-line" }}>{contact.memo}</Text>
+          : <Text size="sm">-</Text>}
       </Table.Td>
       <Table.Td ta="right">
         <Menu position="bottom-end" withinPortal>
@@ -200,7 +211,7 @@ export function ContactsPage() {
   });
 
   return (
-    <Stack maw={1100} gap="sm">
+    <Stack maw={1300} gap="sm">
       <Group justify="space-between">
         <Group gap="xs">
           <Title order={3}>외부 연락처</Title>
@@ -209,7 +220,7 @@ export function ContactsPage() {
         <Button onClick={() => setDialog({ editing: null })}>+ 연락처 추가</Button>
       </Group>
       <Group justify="space-between">
-        <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트 검색" value={query} w={320}
+        <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
           onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
         {canDrag && contacts.length > 1 && <Text size="xs" c="dimmed">드래그로 순서를 변경할 수 있습니다.</Text>}
       </Group>
@@ -224,6 +235,7 @@ export function ContactsPage() {
               <Table.Th w={230}>이메일</Table.Th>
               <Table.Th w={140}>전화번호</Table.Th>
               <Table.Th>{header("projects", "연관 프로젝트")}</Table.Th>
+              <Table.Th w={220}>메모</Table.Th>
               <Table.Th w={40} />
             </Table.Tr>
           </Table.Thead>
@@ -234,7 +246,7 @@ export function ContactsPage() {
             ))}
             {!isLoading && visible.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text size="sm" c="dimmed" ta="center" py="md">
                     {searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}
                   </Text>
