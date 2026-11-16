@@ -68,11 +68,7 @@ export interface TrashDto {
   items: TrashItemDto[];
 }
 
-export function listDocuments(spaceId: number): Promise<DocumentSummaryDto[]> {
-  return apiFetch<DocumentSummaryDto[]>(`/api/spaces/${spaceId}/documents`);
-}
-
-// kind가 없으면 페이지 (파일은 uploadFileNode로만 생성)
+// kind가 없으면 페이지 (파일 항목은 더 만들지 않음, 본문 /페이지·/일정이 사용)
 export function createDocument(spaceId: number, parentId?: number | null, title?: string,
   kind?: Exclude<DocumentKind, "FILE">): Promise<DocumentSummaryDto> {
   return apiFetch<DocumentSummaryDto>(`/api/spaces/${spaceId}/documents`, {
@@ -89,24 +85,6 @@ export function renameDocument(id: number, title: string): Promise<DocumentDetai
   return apiFetch<DocumentDetailDto>(`/api/documents/${id}/title`, {
     method: "PATCH",
     body: JSON.stringify({ title }),
-  });
-}
-
-// 사이드바 트리에 파일 항목 올리기 (parentId 없으면 최상위, index 없으면 맨 아래)
-export function uploadFileNode(spaceId: number, file: File, parentId: number | null, index?: number): Promise<DocumentSummaryDto> {
-  const form = new FormData();
-  form.append("file", file);
-  if (parentId !== null) form.append("parentId", String(parentId));
-  if (index !== undefined) form.append("index", String(index));
-  return apiFetch<DocumentSummaryDto>(`/api/spaces/${spaceId}/files`, { method: "POST", body: form });
-}
-
-// parentId가 null이면 최상위로 이동 (하위 페이지는 함께 따라옴)
-// index는 새 상위 페이지 안에서 들어갈 위치 (0이 맨 위, 없으면 맨 아래)
-export function moveDocument(id: number, parentId: number | null, index?: number): Promise<DocumentDetailDto> {
-  return apiFetch<DocumentDetailDto>(`/api/documents/${id}/parent`, {
-    method: "PATCH",
-    body: JSON.stringify({ parentId, index }),
   });
 }
 
@@ -155,4 +133,9 @@ export interface RecentDocumentDto {
 // 최근 만든 페이지·파일 10개 (최신순)
 export function listRecentDocuments(): Promise<RecentDocumentDto[]> {
   return apiFetch<RecentDocumentDto[]>("/api/documents/recent");
+}
+
+// 예전 하위 페이지 트리 항목을 본문에 페이지 블록으로 붙일 목록 (문서마다 처음 한 번만 ID 목록, 이후 빈 목록)
+export function claimPageBlockBackfill(documentId: number): Promise<number[]> {
+  return apiFetch<number[]>(`/api/documents/${documentId}/page-block-backfill`, { method: "POST" });
 }

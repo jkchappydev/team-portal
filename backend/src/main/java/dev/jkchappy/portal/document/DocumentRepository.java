@@ -66,4 +66,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     + "where d.deleted_at is null and s.deleted_at is null and d.kind <> 'WBS' "
     + "order by d.created_at desc, d.id desc limit :limit", nativeQuery = true)
   List<Document> findRecentlyCreated(@Param("limit") int limit);
+
+  // 기존 하위 항목을 본문에 페이지 블록으로 붙일 대상에서 이 문서를 빼고 뺀 행 수를 돌려줌 (1이면 처음 가져감)
+  // 동시에 두 번 불려도 한 쪽만 1을 받음
+  @Modifying
+  @Query(value = "delete from page_block_backfill where document_id = :id", nativeQuery = true)
+  int claimPageBlockBackfill(@Param("id") Long id);
 }

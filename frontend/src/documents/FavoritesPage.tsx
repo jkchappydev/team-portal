@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { FAVORITES_KEY, favoritePath, listFavorites, moveFavorite } from "../api/favorites";
 import type { FavoriteDto } from "../api/favorites";
-import { DragHandleIcon } from "./ChildPages";
+import { DragHandleIcon } from "./DragHandleIcon";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
 import { PageIcon } from "./PageIconView";
 import { useReorderAnimation } from "../layout/reorderAnimation";

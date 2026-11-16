@@ -63,6 +63,18 @@ class DocumentControllerTest {
       .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
   }
 
+  // 본문을 처음 연 사람이 기존 하위 항목 ID를 가져가 페이지 블록으로 붙임
+  @Test
+  void claimPageBlockBackfill_returnsChildIds() throws Exception {
+    when(documentService.claimPageBlockBackfill(7L)).thenReturn(List.of(11L, 12L));
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+        .post("/api/documents/7/page-block-backfill").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data[0]").value(11))
+      .andExpect(jsonPath("$.data[1]").value(12));
+  }
+
   @Test
   void renameDocument_blankTitle_returns400() throws Exception {
     mockMvc.perform(patch("/api/documents/1/title")

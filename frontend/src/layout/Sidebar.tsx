@@ -94,11 +94,11 @@ export function Sidebar({ user }: Props) {
             {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
           </Stack>
           <Group justify="space-between" mt="sm">
-            <Text size="xs" c="dimmed">페이지</Text>
-            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 페이지</Button>
+            <Text size="xs" c="dimmed">프로젝트</Text>
+            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 프로젝트</Button>
           </Group>
-          {create.error && <Alert color="red" p="xs">페이지를 만들지 못했습니다.</Alert>}
-          {/* 링크는 페이지 목록 바로 아래에 붙어 하위 페이지가 펼쳐지면 함께 밀려남 */}
+          {create.error && <Alert color="red" p="xs">프로젝트를 만들지 못했습니다.</Alert>}
+          {/* 링크는 프로젝트 목록 바로 아래에 붙음 */}
           <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
           {/* 팀이 함께 쓰는 외부 주소 (새 탭으로 열림) */}
           {user && <LinkList />}

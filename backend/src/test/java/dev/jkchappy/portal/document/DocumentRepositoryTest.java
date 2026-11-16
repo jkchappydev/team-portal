@@ -96,6 +96,57 @@ class DocumentRepositoryTest {
       .containsExactly(newer.getId(), older.getId());
   }
 
+  @Autowired
+  private jakarta.persistence.EntityManager entityManager;
+
+  // V35의 채우기 SQL을 지금 데이터에 다시 실행 (테이블은 마이그레이션으로 이미 있음)
+  private void runBackfillSeed() throws Exception {
+    String sql = new String(getClass().getResourceAsStream("/db/migration/V35__create_page_block_backfill.sql")
+      .readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    for (String statement : sql.split(";")) {
+      String body = statement.lines().filter(l -> !l.trim().startsWith("--")).reduce("", (a, b) -> a + "\n" + b).trim();
+      if (body.toUpperCase().startsWith("INSERT")) {
+        entityManager.createNativeQuery(body).executeUpdate();
+      }
+    }
+  }
+
+  // 페이지 블록 자동 삽입 대상: 살아 있는 PAGE·FILE 하위가 있는 페이지, 최상위 항목이 있는 프로젝트의 본문
+  // 삭제된 하위·WBS만 있는 상위와 삭제된 프로젝트는 제외, 가져가기는 한 번만 1을 돌려줌
+  @Test
+  void pageBlockBackfill_seedsParentsWithLiveChildren_andClaimsOnce() throws Exception {
+    Space space = spaceRepository.save(Space.create("개발", null, 1L));
+    Document home = documentRepository.saveAndFlush(Document.create(space.getId(), "개발", 1L));
+    space.assignHomeDocument(home.getId());
+    spaceRepository.saveAndFlush(space);
+    Document top = documentRepository.saveAndFlush(Document.create(space.getId(), "배포 절차", 1L));
+    Document child = Document.create(space.getId(), "하위", 1L);
+    child.placeUnder(top.getId());
+    documentRepository.saveAndFlush(child);
+    Document onlyWbs = documentRepository.saveAndFlush(Document.create(space.getId(), "일정 모음", 1L));
+    Document wbs = Document.createWbs(space.getId(), "일정", 1L);
+    wbs.placeUnder(onlyWbs.getId());
+    documentRepository.saveAndFlush(wbs);
+    Document onlyDeleted = documentRepository.saveAndFlush(Document.create(space.getId(), "지운 하위만", 1L));
+    Document gone = Document.create(space.getId(), "지운 하위", 1L);
+    gone.placeUnder(onlyDeleted.getId());
+    gone.softDelete();
+    documentRepository.saveAndFlush(gone);
+    Space empty = spaceRepository.save(Space.create("빈 프로젝트", null, 1L));
+    Document emptyHome = documentRepository.saveAndFlush(Document.create(empty.getId(), "빈 프로젝트", 1L));
+    empty.assignHomeDocument(emptyHome.getId());
+    spaceRepository.saveAndFlush(empty);
+
+    runBackfillSeed();
+
+    assertThat(documentRepository.claimPageBlockBackfill(home.getId())).isEqualTo(1);
+    assertThat(documentRepository.claimPageBlockBackfill(home.getId())).isZero();
+    assertThat(documentRepository.claimPageBlockBackfill(top.getId())).isEqualTo(1);
+    assertThat(documentRepository.claimPageBlockBackfill(onlyWbs.getId())).isZero();
+    assertThat(documentRepository.claimPageBlockBackfill(onlyDeleted.getId())).isZero();
+    assertThat(documentRepository.claimPageBlockBackfill(emptyHome.getId())).isZero();
+  }
+
   private Document createdAt(Document doc, Instant at) {
     ReflectionTestUtils.setField(doc, "createdAt", at);
     return documentRepository.saveAndFlush(doc);

@@ -62,6 +62,61 @@ class DocumentServiceTest {
     return doc;
   }
 
+  private Document child(Long id, Long spaceId, Long parentId, Document base) {
+    ReflectionTestUtils.setField(base, "id", id);
+    base.placeUnder(parentId);
+    return base;
+  }
+
+  // 페이지 블록 자동 삽입: 처음 가져갈 때만 하위 PAGE·FILE ID를 표시 순서대로 (WBS 제외), 이후에는 빈 목록
+  @Test
+  void claimPageBlockBackfill_returnsChildrenOnce() {
+    Space space = space(10L);
+    Document page = document(5L, 10L);
+    Document wbs = child(13L, 10L, 5L, Document.createWbs(10L, "일정", 1L));
+    List<Document> live = List.of(page,
+      child(11L, 10L, 5L, Document.create(10L, "첫째", 1L)),
+      wbs,
+      child(12L, 10L, 5L, Document.createFile(10L, "a.pdf", 1L)),
+      child(14L, 10L, 99L, Document.create(10L, "다른 상위", 1L)));
+    when(documentRepository.findById(5L)).thenReturn(Optional.of(page));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(documentRepository.claimPageBlockBackfill(5L)).thenReturn(1, 0);
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(10L)).thenReturn(live);
+
+    assertThat(service().claimPageBlockBackfill(5L)).containsExactly(11L, 12L);
+    assertThat(service().claimPageBlockBackfill(5L)).isEmpty();
+  }
+
+  // 프로젝트 본문(home)에서 가져가면 본문 자신을 뺀 프로젝트 최상위 항목
+  @Test
+  void claimPageBlockBackfill_home_returnsTopLevelWithoutHome() {
+    Space space = space(10L);
+    Document home = document(1L, 10L);
+    space.assignHomeDocument(1L);
+    Document top = document(2L, 10L);
+    Document nested = child(3L, 10L, 2L, Document.create(10L, "하위", 1L));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(home));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(documentRepository.claimPageBlockBackfill(1L)).thenReturn(1);
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(10L))
+      .thenReturn(List.of(home, top, nested));
+
+    assertThat(service().claimPageBlockBackfill(1L)).containsExactly(2L);
+  }
+
+  @Test
+  void claimPageBlockBackfill_deletedDocument_throwsNotFound() {
+    Document doc = document(1L, 10L);
+    doc.softDelete();
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+
+    assertThatThrownBy(() -> service().claimPageBlockBackfill(1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+    verify(documentRepository, never()).claimPageBlockBackfill(any());
+  }
+
   @Test
   void getLiveDocument_deletedDocument_throwsNotFound() {
     Document doc = document(1L, 10L);

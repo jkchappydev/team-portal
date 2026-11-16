@@ -24,8 +24,6 @@ interface Props {
   menuItems?: ReactNode;
   onRename: (title: string) => void;
   renameError?: string | null;
-  // 본문 아래 영역 (프로젝트의 하위 페이지 목록)
-  footer?: ReactNode;
   // 아이콘 변경 (없으면 아이콘 영역을 표시하지 않음, null이면 제거)
   onChangeIcon?: (icon: string | null) => void;
 }
@@ -44,7 +42,7 @@ function SmileIcon() {
 }
 
 // 노션처럼 큰 제목 + 바로 쓰는 편집기로 구성한 페이지 화면
-export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, footer, onChangeIcon }: Props) {
+export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, onChangeIcon }: Props) {
   // 편집 중인 제목 (null이면 서버 제목 표시)
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -146,11 +144,9 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
       <Box className="page-editor">
         <Suspense fallback={<Loader size="sm" />}>
           <CollaborativeEditor key={`${doc.id}-${user.id}`} documentId={doc.id} user={user}
-            scheduleSpaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} onViewersChange={setViewers} />
+            spaceId={doc.kind === "PAGE" ? doc.spaceId : undefined} onViewersChange={setViewers} />
         </Suspense>
       </Box>
-      {/* 하위 페이지 목록은 인쇄하지 않음 */}
-      <Box className="print-hide">{footer}</Box>
     </Box>
   );
 }

@@ -232,6 +232,22 @@ public class DocumentService {
     return getDetail(id);
   }
 
+  // 기존 하위 항목을 본문 페이지 블록으로 붙일 목록을 한 번만 가져감 (처음이면 하위 PAGE·FILE ID를 표시 순서대로, 이후 빈 목록)
+  // 프로젝트 본문(home)이면 프로젝트 최상위 항목, WBS는 이미 본문에 일정 블록이 있어 제외
+  @Transactional
+  public List<Long> claimPageBlockBackfill(Long id) {
+    Document doc = getLiveDocument(id);
+    if (documentRepository.claimPageBlockBackfill(id) == 0) {
+      return List.of();
+    }
+    Space space = getLiveSpace(doc.getSpaceId());
+    Long parentId = space.isHomeDocument(id) ? null : id;
+    return siblingsOf(doc.getSpaceId(), parentId, null).stream()
+      .filter(d -> d.isPage() || d.isFile())
+      .map(Document::getId)
+      .toList();
+  }
+
   // 같은 상위 페이지 아래의 살아 있는 페이지를 표시 순서대로 (프로젝트 본문과 excludedId 제외)
   private List<Document> siblingsOf(Long spaceId, Long parentId, Long excludedId) {
     Space space = getLiveSpace(spaceId);

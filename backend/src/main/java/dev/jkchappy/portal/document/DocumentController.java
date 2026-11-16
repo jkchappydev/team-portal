@@ -59,6 +59,12 @@ public class DocumentController {
     return ApiResponse.ok(documentService.getDetail(id));
   }
 
+  // 기존 하위 항목을 본문 맨 아래에 페이지 블록으로 붙일 목록 (문서마다 처음 한 번만, 이후 빈 목록)
+  @PostMapping("/api/documents/{id}/page-block-backfill")
+  public ApiResponse<List<Long>> claimPageBlockBackfill(@PathVariable Long id) {
+    return ApiResponse.ok(documentService.claimPageBlockBackfill(id));
+  }
+
   @PatchMapping("/api/documents/{id}/title")
   public ApiResponse<DocumentDetail> rename(@PathVariable Long id,
     @Valid @RequestBody DocumentTitleRequest request, @CurrentUser Long userId) {

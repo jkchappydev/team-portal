@@ -9,7 +9,6 @@ import type { SpaceDto } from "../api/spaces";
 import { pathAfterSpaceDeleted } from "./spaceNavigation";
 import { useCurrentUser } from "../user/currentUser";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
-import { ChildPages } from "./ChildPages";
 import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { PrintMenuItem } from "./PrintMenuItem";
 import { DeleteSpaceModal } from "./DeleteSpaceModal";
@@ -21,7 +20,7 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-// 프로젝트 화면: 프로젝트 본문 페이지를 노션처럼 바로 편집하고 아래에 하위 페이지 목록
+// 프로젝트 화면: 프로젝트 본문 페이지를 노션처럼 바로 편집 (안의 페이지는 본문 /페이지 블록)
 export function SpacePage() {
   const spaceId = Number(useParams().spaceId);
   const navigate = useNavigate();
@@ -76,7 +75,7 @@ export function SpacePage() {
   });
 
   if (spacesError) {
-    return <Alert color="red">페이지 정보를 불러오지 못했습니다.</Alert>;
+    return <Alert color="red">프로젝트 정보를 불러오지 못했습니다.</Alert>;
   }
   if (!spacesPending && !space) {
     return <Alert color="gray">삭제되었거나 없는 페이지입니다.</Alert>;
@@ -100,7 +99,7 @@ export function SpacePage() {
             <PrintMenuItem />
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
-            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>페이지 삭제</Menu.Item>
+            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>프로젝트 삭제</Menu.Item>
           </>
         }
         onRename={(title) => rename.mutate(title)}
@@ -110,7 +109,6 @@ export function SpacePage() {
               : null
         }
         onChangeIcon={(icon) => changeIcon.mutate(icon)}
-        footer={<ChildPages spaceId={spaceId} parentId={null} />}
       />
       <ExportModal opened={exporting} documentId={home.id} title={space.name} onClose={() => setExporting(false)} />
       <HistoryModal opened={showingHistory} documentId={home.id} title={space.name} onClose={() => setShowingHistory(false)} />
@@ -118,7 +116,7 @@ export function SpacePage() {
         opened={confirmDelete}
         name={space.name}
         pending={remove.isPending}
-        error={remove.error ? errorMessage(remove.error, "페이지를 삭제하지 못했습니다.") : null}
+        error={remove.error ? errorMessage(remove.error, "프로젝트를 삭제하지 못했습니다.") : null}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate()}
       />

@@ -28,7 +28,10 @@ import {
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { createDocument } from "../api/documents";
+import { claimPageBlockBackfill, createDocument } from "../api/documents";
+import { appendMissingPageBlocks } from "./editor/pageCommand";
+import type { PageEditor } from "./editor/pageCommand";
+import { pageSlashItem } from "./editor/pageSlashItem";
 import { placeScheduleBlock } from "./editor/scheduleCommand";
 import type { ScheduleEditor } from "./editor/scheduleCommand";
 import { editorSchema } from "./editor/schema";
@@ -54,8 +57,8 @@ import { userColor } from "./userColor";
 interface Props {
   documentId: number;
   user: MemberDto;
-  // 슬래시 메뉴 "/일정"으로 이 페이지 아래에 WBS를 만들 최상위 페이지 (없으면 메뉴에서 제외)
-  scheduleSpaceId?: number;
+  // 이 문서가 속한 프로젝트: 슬래시 메뉴 "/페이지"·"/일정"으로 이 아래에 만들 때 사용 (없으면 두 메뉴 제외, 기존 하위 항목 자동 삽입도 안 함)
+  spaceId?: number;
   // 지금 이 페이지를 보고 있는 사람(나 포함) 목록이 바뀔 때 알림
   onViewersChange?: (viewers: Viewer[]) => void;
 }
@@ -67,7 +70,7 @@ interface Session {
 
 
 // 문서가 바뀌면 상위에서 key로 다시 마운트하므로 상태 초기화는 마운트 단위로 처리
-export default function CollaborativeEditor({ documentId, user, scheduleSpaceId, onViewersChange }: Props) {
+export default function CollaborativeEditor({ documentId, user, spaceId, onViewersChange }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [connected, setConnected] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
@@ -170,7 +173,7 @@ export default function CollaborativeEditor({ documentId, user, scheduleSpaceId,
           documentId={documentId}
           user={user}
           editable={editable}
-          scheduleSpaceId={scheduleSpaceId}
+          spaceId={spaceId}
         />
       ) : authFailed ? null : (
         <Group gap="xs" p="md">
@@ -217,10 +220,10 @@ interface EditorViewProps {
   documentId: number;
   user: MemberDto;
   editable: boolean;
-  scheduleSpaceId?: number;
+  spaceId?: number;
 }
 
-function EditorView({ session, documentId, user, editable, scheduleSpaceId }: EditorViewProps) {
+function EditorView({ session, documentId, user, editable, spaceId }: EditorViewProps) {
   // 편집기 테마를 앱의 라이트/다크 설정에 맞춤
   const colorScheme = useComputedColorScheme("light");
   const editor = useCreateBlockNote(
@@ -327,18 +330,44 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
     group: "기타",
     icon: <span aria-hidden>📊</span>,
     onItemClick: () => {
-      if (scheduleSpaceId === undefined) return;
+      if (spaceId === undefined) return;
       const block = editor.getTextCursorPosition().block;
       setScheduleError(null);
-      createDocument(scheduleSpaceId, documentId, "일정", "WBS")
+      createDocument(spaceId, documentId, "일정", "WBS")
         .then((created) => {
-          void queryClient.invalidateQueries({ queryKey: ["documents", scheduleSpaceId] });
+          void queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
           void queryClient.invalidateQueries({ queryKey: ["spaces"] });
           placeScheduleBlock(editor as unknown as ScheduleEditor, block, created.id);
         })
         .catch((error: unknown) => setScheduleError(error instanceof ApiError ? error.message : "일정을 만들지 못했습니다."));
     },
   };
+
+  // "/페이지": 이 문서 아래에 새 페이지를 만들고 슬래시를 친 자리에 페이지 블록을 넣음 (오류는 일정과 같은 안내 칸)
+  const pageItem = spaceId === undefined ? null : pageSlashItem({
+    editor: editor as unknown as Parameters<typeof pageSlashItem>[0]["editor"],
+    spaceId,
+    documentId,
+    onCreated: () => {
+      setScheduleError(null);
+      void queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+    onError: setScheduleError,
+  });
+
+  // 예전 하위 페이지 트리의 항목을 본문 맨 끝에 페이지 블록으로 한 번만 붙임 (서버 목록은 처음 가져간 한 명만 받음)
+  // 읽기 전용이면 가져가지 않아 다음에 편집 가능한 사람이 열 때 붙음
+  const backfilled = useRef(false);
+  useEffect(() => {
+    if (!editable || spaceId === undefined || backfilled.current) return;
+    backfilled.current = true;
+    claimPageBlockBackfill(documentId)
+      .then((ids) => {
+        if (ids.length > 0) appendMissingPageBlocks(editor as unknown as PageEditor, ids);
+      })
+      .catch((error: unknown) => console.warn("기존 하위 페이지 블록을 붙이지 못했습니다.", error));
+  }, [editable, spaceId, documentId, editor]);
 
   const [dropError, setDropError] = useState<string | null>(null);
   const hasFiles = (e: DragEvent) => editable && Array.from(e.dataTransfer.types).includes("Files");
@@ -395,14 +424,14 @@ function EditorView({ session, documentId, user, editable, scheduleSpaceId }: Ed
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />
-        {/* 기본 슬래시 메뉴에 "/콜아웃"(인용 아래)과 "/일정" 추가 */}
+        {/* 기본 슬래시 메뉴에 "/콜아웃"(인용 아래)과 "/페이지"·"/일정" 추가 */}
         <SuggestionMenuController
           triggerCharacter="/"
           shouldOpen={isOutsideTable}
           getItems={async (query) => filterSuggestionItems(
             [
               ...withCalloutItem(getDefaultReactSlashMenuItems(editor), calloutItem, ko.slash_menu.quote.title),
-              ...(scheduleSpaceId === undefined ? [] : [scheduleItem]),
+              ...(pageItem === null ? [] : [pageItem, scheduleItem]),
             ],
             query,
           )}

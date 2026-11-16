@@ -7,7 +7,6 @@ import { changeDocumentIcon, deleteDocument, getDocument, renameDocument } from 
 import { listSpaces } from "../api/spaces";
 import { useCurrentUser } from "../user/currentUser";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
-import { ChildPages } from "./ChildPages";
 import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { PrintMenuItem } from "./PrintMenuItem";
 import { DeletePageModal } from "./DeletePageModal";
@@ -154,7 +153,6 @@ export function DocumentPage() {
               : null
         }
         onChangeIcon={(icon) => changeIcon.mutate(icon)}
-        footer={<ChildPages spaceId={doc.spaceId} parentId={doc.id} />}
       />
       <ExportModal opened={exporting} documentId={doc.id} title={doc.title} onClose={() => setExporting(false)} />
       <HistoryModal opened={showingHistory} documentId={doc.id} title={doc.title} onClose={() => setShowingHistory(false)} />

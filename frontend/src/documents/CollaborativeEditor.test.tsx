@@ -3,6 +3,7 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { claimPageBlockBackfill } from "../api/documents";
 import CollaborativeEditor from "./CollaborativeEditor";
 
 type Handler = (payload: unknown) => void;
@@ -25,7 +26,11 @@ const registry = vi.hoisted(() => ({
   }>,
   docs: [] as Array<{ destroyed: boolean }>,
   rendered: null as { isEditable: boolean } | null,
+  // 편집기에 넣은 블록 기록 (기존 하위 페이지 자동 삽입 확인용)
+  inserted: [] as unknown[][],
 }));
+
+vi.mock("../api/documents", () => ({ createDocument: vi.fn(), claimPageBlockBackfill: vi.fn() }));
 
 vi.mock("@hocuspocus/provider", () => {
   class HocuspocusProvider {
@@ -105,7 +110,11 @@ vi.mock("@blocknote/react", async () => {
   return {
     // 마운트 동안 같은 편집기 인스턴스 유지
     // 되돌리기 기록 복구가 읽는 편집기 상태·화면 연결 알림은 빈 값으로 둠
-    useCreateBlockNote: () => useState(() => ({ isEditable: true, prosemirrorState: {}, onMount: () => () => {}, onChange: () => () => {} }))[0],
+    useCreateBlockNote: () => useState(() => ({
+      isEditable: true, prosemirrorState: {}, onMount: () => () => {}, onChange: () => () => {},
+      document: [{ id: "last" }],
+      insertBlocks: (blocks: unknown[]) => registry.inserted.push(blocks),
+    }))[0],
     // 노션식 블록 메뉴 연결부는 화면에 그리지 않음
     SideMenuController: () => null,
     SideMenu: () => null,
@@ -136,12 +145,12 @@ vi.mock("@blocknote/mantine", () => ({
 
 const user = { id: 3, name: "홍길동", active: true };
 
-function renderEditor(onViewersChange?: (viewers: unknown[]) => void) {
+function renderEditor(onViewersChange?: (viewers: unknown[]) => void, spaceId?: number) {
   return render(
     <StrictMode>
       <MantineProvider>
         <QueryClientProvider client={new QueryClient()}>
-          <CollaborativeEditor documentId={42} user={user} onViewersChange={onViewersChange} />
+          <CollaborativeEditor documentId={42} user={user} spaceId={spaceId} onViewersChange={onViewersChange} />
         </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,
@@ -179,6 +188,8 @@ describe("CollaborativeEditor 연결 수명주기", () => {
     registry.providers.length = 0;
     registry.docs.length = 0;
     registry.rendered = null;
+    registry.inserted.length = 0;
+    vi.mocked(claimPageBlockBackfill).mockReset();
   });
 
   afterEach(() => {
@@ -299,5 +310,32 @@ describe("CollaborativeEditor 연결 수명주기", () => {
 
     unmount();
     expect(onViewersChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it("편집할 수 있게 열리면 기존 하위 항목 목록을 한 번만 가져가 본문 맨 끝에 페이지 블록으로 붙인다", async () => {
+    vi.mocked(claimPageBlockBackfill).mockResolvedValue([11, 12]);
+    renderEditor(undefined, 7);
+    const provider = aliveProvider();
+    act(() => {
+      provider.emit("status", { status: "connected" });
+      provider.emit("synced", { state: true });
+    });
+
+    await vi.waitFor(() => expect(registry.inserted).toHaveLength(1));
+    expect(claimPageBlockBackfill).toHaveBeenCalledTimes(1);
+    expect(claimPageBlockBackfill).toHaveBeenCalledWith(42);
+    expect(registry.inserted[0]).toEqual([
+      { type: "page", props: { documentId: 11 } },
+      { type: "page", props: { documentId: 12 } },
+    ]);
+  });
+
+  it("읽기 전용(연결 끊김)으로 열리면 목록을 가져가지 않는다", () => {
+    renderEditor(undefined, 7);
+    const provider = aliveProvider();
+    act(() => provider.emit("synced", { state: true }));
+
+    expect(registry.rendered!.isEditable).toBe(false);
+    expect(claimPageBlockBackfill).not.toHaveBeenCalled();
   });
 });
