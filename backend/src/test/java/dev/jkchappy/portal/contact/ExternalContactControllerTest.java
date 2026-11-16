@@ -4,7 +4,6 @@ import static dev.jkchappy.portal.support.ControllerTestSecurity.loginAs;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,6 +62,17 @@ class ExternalContactControllerTest {
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
   }
 
+  // 색은 #RRGGBB 형식만 허용
+  @Test
+  void create_invalidColor_returns400() throws Exception {
+    mockMvc.perform(post("/api/contacts")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"name\":\"홍길동\",\"color\":\"blue\"}"))
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+  }
+
   // 이메일 형식이 아니면 거부
   @Test
   void create_invalidEmail_returns400() throws Exception {
@@ -72,14 +82,5 @@ class ExternalContactControllerTest {
         .content("{\"name\":\"홍길동\",\"email\":\"메일 아님\"}"))
       .andExpect(status().isBadRequest())
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
-  }
-
-  @Test
-  void move_negativeIndex_returns400() throws Exception {
-    mockMvc.perform(patch("/api/contacts/1/position")
-        .with(loginAs(1L))
-        .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"index\":-1}"))
-      .andExpect(status().isBadRequest());
   }
 }

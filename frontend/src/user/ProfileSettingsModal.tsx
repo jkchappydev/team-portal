@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import { ColorSchemeToggle } from "../layout/ColorSchemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -102,6 +103,8 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // 이미지 파일을 끌고 프로필 이미지 칸 위에 올라와 있는 동안 놓을 자리 표시
+  const [dragging, setDragging] = useState(false);
   // 화면 테마는 이 브라우저에만 저장되며 고르면 바로 적용
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
@@ -121,12 +124,35 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
 
   const onPickFile = (file: File | undefined) => {
     if (!file) return;
+    if (!IMAGE_TYPES.split(",").includes(file.type)) {
+      setSaved(false);
+      setError("PNG, JPG, GIF, WEBP 이미지만 올릴 수 있습니다.");
+      return;
+    }
     if (file.size > MAX_IMAGE_BYTES) {
       setSaved(false);
       setError("프로필 이미지는 2MB까지 올릴 수 있습니다.");
       return;
     }
     save.mutate(() => uploadProfileImage(file));
+  };
+
+  // 탐색기에서 끌어 온 이미지 파일을 놓으면 고른 것과 같이 바로 올림
+  const dragOver = (e: DragEvent) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragging(true);
+  };
+  const dragLeave = (e: DragEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+  };
+  const drop = (e: DragEvent) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    setDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    onPickFile(files.find((f) => f.type.startsWith("image/")) ?? files[0]);
   };
 
   return (
@@ -150,7 +176,14 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
         </Stack>
       </Group>
 
-      <Stack gap="xs">
+      {/* 이미지 파일을 이 칸에 끌어다 놓아도 올라감 (끄는 동안 점선 테두리) */}
+      <Stack gap="xs" aria-label="프로필 이미지 놓는 곳" onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}
+        p={6} m={-6} style={{
+          borderRadius: 8,
+          background: dragging ? "var(--mantine-primary-color-light)" : undefined,
+          outline: dragging ? "2px dashed var(--mantine-primary-color-filled)" : "2px dashed transparent",
+          outlineOffset: -2,
+        }}>
         <Text size="sm" fw={500}>프로필 이미지</Text>
         <Group gap="xs">
           <Button size="xs" variant="light" loading={save.isPending} onClick={() => fileRef.current?.click()}>
@@ -163,7 +196,7 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
             </Button>
           )}
         </Group>
-        <Text size="xs" c="dimmed">2MB 이하 PNG, JPG, GIF, WEBP. 이미지가 없으면 이름과 색으로 보입니다.</Text>
+        <Text size="xs" c="dimmed">{dragging ? "여기에 놓으면 바로 올라갑니다." : "2MB 이하 PNG, JPG, GIF, WEBP. 끌어다 놓아도 됩니다. 이미지가 없으면 이름과 색으로 보입니다."}</Text>
         <input
           ref={fileRef}
           type="file"
@@ -178,13 +211,13 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
       </Stack>
 
       <Stack gap="xs">
-        {/* 랜덤 버튼은 제목 오른쪽 */}
+        {/* 자동 버튼(무작위로 한 색 고름)은 제목 오른쪽 */}
         <Group gap="xs">
           <Text size="sm" fw={500}>색</Text>
-          <Tooltip label="아래 색 중 하나를 무작위로 고름" withArrow>
+          <Tooltip label="아래 색 중 하나를 자동으로 골라 바꿈" withArrow>
             <Button size="compact-xs" variant="light" color="gray" disabled={save.isPending}
               onClick={() => { const next = randomColor(color); save.mutate(() => changeProfileColor(next)); }}>
-              랜덤
+              자동
             </Button>
           </Tooltip>
         </Group>

@@ -98,12 +98,12 @@ describe("ProfileSettingsModal", () => {
     expect(await screen.findByText("저장했습니다.")).toBeTruthy();
   });
 
-  it("랜덤을 누르면 지금과 다른 색 하나를 골라 바로 저장한다", async () => {
+  it("자동을 누르면 지금과 다른 색 하나를 골라 바로 저장한다", async () => {
     api.changeProfileColor.mockResolvedValue({ profileColor: "#e03131", profileImageUrl: null });
     renderModal();
     fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "랜덤" }));
+    fireEvent.click(screen.getByRole("button", { name: "자동" }));
 
     await waitFor(() => expect(api.changeProfileColor).toHaveBeenCalled());
     expect(PROFILE_COLORS).toContain(api.changeProfileColor.mock.calls[0][0]);
@@ -144,5 +144,22 @@ describe("ProfileSettingsModal", () => {
       department: "개발팀", jobRank: "SENIOR", phone: "010-9999-8888", extension: "12",
     }));
     expect(await screen.findByText("저장했습니다.")).toBeTruthy();
+  });
+
+  it("이미지 파일을 프로필 이미지 칸에 끌어다 놓으면 바로 올리고, 이미지가 아니면 안내한다", async () => {
+    api.uploadProfileImage.mockResolvedValue({ profileColor: null, profileImageUrl: "/api/members/3/profile-image?v=2" });
+    renderModal();
+    const zone = screen.getByLabelText("프로필 이미지 놓는 곳");
+    const transfer = (files: File[]) => ({ types: ["Files"], files, getData: () => "", dropEffect: "none" });
+
+    fireEvent.drop(zone, { dataTransfer: transfer([new File(["x"], "memo.txt", { type: "text/plain" })]) });
+    expect(await screen.findByText("PNG, JPG, GIF, WEBP 이미지만 올릴 수 있습니다.")).toBeTruthy();
+    expect(api.uploadProfileImage).not.toHaveBeenCalled();
+
+    const photo = new File(["png"], "me.png", { type: "image/png" });
+    fireEvent.dragOver(zone, { dataTransfer: transfer([photo]) });
+    expect(await screen.findByText("여기에 놓으면 바로 올라갑니다.")).toBeTruthy();
+    fireEvent.drop(zone, { dataTransfer: transfer([photo]) });
+    await waitFor(() => expect(api.uploadProfileImage).toHaveBeenCalledWith(photo));
   });
 });

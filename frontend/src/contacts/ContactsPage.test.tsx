@@ -10,12 +10,11 @@ vi.mock("../api/contacts", () => ({
   listContacts: vi.fn(),
   createContact: vi.fn(),
   updateContact: vi.fn(),
-  moveContact: vi.fn(),
   deleteContact: vi.fn(),
 }));
 
-const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", phone2: "02-555-1234", projects: ["교과서 개발"], memo: "오전에만 통화 가능" };
-const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, phone2: null, projects: [], memo: null };
+const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", phone2: "02-555-1234", project: "교과서 개발, 전자책", memo: "오전에만 통화 가능", color: "#2f9e44" };
+const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, phone2: null, project: null, memo: null, color: null };
 
 describe("ContactsPage", () => {
   beforeAll(() => {
@@ -39,26 +38,23 @@ describe("ContactsPage", () => {
     render(<MantineProvider><QueryClientProvider client={client}><ContactsPage /></QueryClientProvider></MantineProvider>);
   }
 
-  it("업체·이메일·전화번호·연관 프로젝트를 표로 보여주고 이메일·전화는 바로 걸 수 있다", async () => {
+  it("업체·이메일·전화번호·연관 프로젝트를 명함 카드로 보여주고 이메일·전화는 바로 걸 수 있다", async () => {
     renderPage();
     expect(await screen.findByText("홍길동")).toBeTruthy();
     expect(screen.getByText("가나출판")).toBeTruthy();
     expect(screen.getByText("hong@example.com").closest("a")!.getAttribute("href")).toBe("mailto:hong@example.com");
     expect(screen.getByText("010-1234-5678").closest("a")!.getAttribute("href")).toBe("tel:010-1234-5678");
-    expect(screen.getByText("교과서 개발")).toBeTruthy();
-    // 전화번호 2와 메모도 표에 보임
+    expect(screen.getByText("교과서 개발, 전자책")).toBeTruthy();
+    // 전화번호 2와 메모도 카드에 보임
     expect(screen.getByText("02-555-1234").closest("a")!.getAttribute("href")).toBe("tel:02-555-1234");
     expect(screen.getByText("오전에만 통화 가능")).toBeTruthy();
-    // 처음에는 이름 가나다순이라 끌기 손잡이가 없음
-    expect(screen.queryByLabelText("홍길동 순서 변경")).toBeNull();
   });
 
-  it("검색하면 업체·프로젝트·전화번호 숫자로 거르고 순서 변경 손잡이를 숨긴다", async () => {
+  it("검색하면 업체·프로젝트·전화번호 숫자로 거른다", async () => {
     renderPage();
     await screen.findByText("홍길동");
     fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "교과서" } });
     expect(screen.queryByText("김철수")).toBeNull();
-    expect(screen.queryByLabelText("홍길동 순서 변경")).toBeNull();
     fireEvent.change(screen.getByLabelText("연락처 검색"), { target: { value: "01012345678" } });
     expect(screen.getByText("홍길동")).toBeTruthy();
     // 전화번호 2 숫자와 메모로도 찾음
@@ -71,7 +67,7 @@ describe("ContactsPage", () => {
     expect(screen.getByText("검색 결과가 없습니다.")).toBeTruthy();
   });
 
-  it("연락처를 추가하면 빈 항목은 null, 연관 프로젝트는 목록으로 보낸다", async () => {
+  it("연락처를 추가하면 빈 항목은 null, 연관 프로젝트는 입력한 글 그대로 보낸다", async () => {
     vi.mocked(createContact).mockResolvedValue({ ...kim, id: 3, name: "이영희" });
     renderPage();
     await screen.findByText("홍길동");
@@ -80,14 +76,13 @@ describe("ContactsPage", () => {
     fireEvent.change(screen.getByLabelText("전화번호 1"), { target: { value: "0212345678" } });
     fireEvent.change(screen.getByLabelText("전화번호 2"), { target: { value: "0311234567" } });
     fireEvent.change(screen.getByLabelText("메모"), { target: { value: " 평일 오후 연락 " } });
-    const projects = screen.getByLabelText("연관 프로젝트", { selector: "input" });
-    // 사용자가 칸을 눌러 입력한 경우만 받으므로 먼저 포커스
-    projects.focus();
-    fireEvent.change(projects, { target: { value: "전자책" } });
+    fireEvent.change(screen.getByLabelText("연관 프로젝트"), { target: { value: " 전자책, 교과서 개발 " } });
+    // 색을 고름 (다시 누르면 자동으로 돌아가므로 한 번만)
+    fireEvent.click(screen.getByLabelText("색 #1971c2"));
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     await waitFor(() => expect(createContact).toHaveBeenCalledWith({
-      name: "이영희", company: null, email: null, phone: "02-1234-5678", phone2: "031-123-4567", projects: ["전자책"], memo: "평일 오후 연락",
+      name: "이영희", company: null, email: null, phone: "02-1234-5678", phone2: "031-123-4567", project: "전자책, 교과서 개발", memo: "평일 오후 연락", color: "#1971c2",
     }));
   });
 
@@ -100,26 +95,26 @@ describe("ContactsPage", () => {
     expect((await screen.findByDisplayValue("hong@example.com"))).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
     await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, expect.objectContaining({
-      name: "홍길동", company: "가나출판", projects: ["교과서 개발"],
+      name: "홍길동", company: "가나출판", project: "교과서 개발, 전자책", color: "#2f9e44",
     })));
   });
 
-  it("처음에는 이름 가나다순이고, 머리글을 누르면 내림차순 → 저장 순서(끌기 가능) → 오름차순으로 바뀐다", async () => {
+  it("처음에는 이름 가나다순이고, 정렬 버튼을 누를 때마다 오름차순·내림차순이 번갈아 바뀐다", async () => {
     renderPage();
     await screen.findByText("홍길동");
-    const names = () => screen.getAllByRole("row").slice(1).map((row) => row.querySelector("td p")?.textContent);
+    // 카드 순서 (카드마다 ⋯ 메뉴 버튼 이름에 연락처 이름이 들어 있음)
+    const names = () => screen.getAllByLabelText(/ 메뉴$/).map((button) => button.getAttribute("aria-label")!.replace(" 메뉴", ""));
     expect(names()).toEqual(["김철수", "홍길동"]);
-    expect(screen.queryByLabelText("홍길동 순서 변경")).toBeNull();
+    expect(screen.queryByText("드래그로 순서를 변경할 수 있습니다.")).toBeNull();
     fireEvent.click(screen.getByLabelText("이름 정렬"));
     expect(names()).toEqual(["홍길동", "김철수"]);
-    // 한 번 더 누르면 끌어서 정한 저장 순서 (손잡이 표시)
     fireEvent.click(screen.getByLabelText("이름 정렬"));
+    expect(names()).toEqual(["김철수", "홍길동"]);
+    // 업체 정렬: 가나출판 → 다라인쇄, 다시 누르면 반대
+    fireEvent.click(screen.getByLabelText("업체 정렬"));
     expect(names()).toEqual(["홍길동", "김철수"]);
-    expect(screen.getByLabelText("홍길동 순서 변경").getAttribute("draggable")).toBe("true");
-    // 연관 프로젝트가 없는 줄은 내림차순에서도 맨 아래
-    fireEvent.click(screen.getByLabelText("연관 프로젝트 정렬"));
-    fireEvent.click(screen.getByLabelText("연관 프로젝트 정렬"));
-    expect(names()).toEqual(["홍길동", "김철수"]);
+    fireEvent.click(screen.getByLabelText("업체 정렬"));
+    expect(names()).toEqual(["김철수", "홍길동"]);
   });
 
   it("삭제는 확인 창을 거친다", async () => {

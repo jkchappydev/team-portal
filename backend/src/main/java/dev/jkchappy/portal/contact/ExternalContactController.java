@@ -1,7 +1,6 @@
 package dev.jkchappy.portal.contact;
 
 import dev.jkchappy.portal.common.ApiResponse;
-import dev.jkchappy.portal.contact.dto.ContactPositionRequest;
 import dev.jkchappy.portal.contact.dto.ContactRequest;
 import dev.jkchappy.portal.contact.dto.ContactResponse;
 import dev.jkchappy.portal.member.CurrentUser;
@@ -10,7 +9,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,14 +38,6 @@ public class ExternalContactController {
   public ApiResponse<ContactResponse> update(@PathVariable Long id, @Valid @RequestBody ContactRequest request,
     @CurrentUser Long userId) {
     return ApiResponse.ok(contactService.update(id, request));
-  }
-
-  // 목록에서 끌어 옮긴 연락처 순서 변경
-  @PatchMapping("/{id}/position")
-  public ApiResponse<Void> move(@PathVariable Long id, @Valid @RequestBody ContactPositionRequest request,
-    @CurrentUser Long userId) {
-    contactService.move(id, request.index());
-    return ApiResponse.ok(null);
   }
 
   @DeleteMapping("/{id}")

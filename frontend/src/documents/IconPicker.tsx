@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ClipboardEvent, ReactNode } from "react";
+import type { ClipboardEvent, DragEvent, ReactNode } from "react";
 import { Alert, Box, Button, Group, Popover, Tabs, Text, UnstyledButton } from "@mantine/core";
 import { EmojiPicker } from "frimousse";
 import { ko } from "@blocknote/core/locales";
@@ -92,12 +92,14 @@ export function IconPicker({ target, hasIcon, onSelect, documentId }: Props) {
   );
 }
 
-// 이미지 파일을 고르거나 Ctrl+V로 이미지·https 이미지 주소를 붙여넣고 저장
+// 이미지 파일을 고르거나 끌어다 놓거나 Ctrl+V로 이미지·https 이미지 주소를 붙여넣고 저장
 function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDone: (icon: string) => void; onCancel: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // 파일·이미지를 끌고 탭 위에 올라와 있는 동안 놓을 자리 표시
+  const [dragging, setDragging] = useState(false);
 
   const pickFile = (file: File | undefined) => {
     if (!file) return;
@@ -113,6 +115,16 @@ function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDo
     setPending({ kind: "file", file, preview: URL.createObjectURL(file) });
   };
 
+  // 붙여넣거나 끌어 온 글자는 https 이미지 주소만 그대로 아이콘으로 씀
+  const pickUrl = (text: string) => {
+    if (!/^https:\/\/\S+$/.test(text) || text.length > 512) {
+      setError("https로 시작하는 이미지 주소만 붙여넣을 수 있습니다.");
+      return;
+    }
+    setError(null);
+    setPending({ kind: "url", url: text });
+  };
+
   const paste = (e: ClipboardEvent) => {
     const file = Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"));
     if (file) {
@@ -123,12 +135,33 @@ function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDo
     const text = e.clipboardData.getData("text").trim();
     if (!text) return;
     e.preventDefault();
-    if (!/^https:\/\/\S+$/.test(text) || text.length > 512) {
-      setError("https로 시작하는 이미지 주소만 붙여넣을 수 있습니다.");
+    pickUrl(text);
+  };
+
+  // 탐색기에서 끌어 온 파일, 또는 다른 웹페이지에서 끌어 온 이미지(주소)를 받음
+  const canDrop = (e: DragEvent) => ["Files", "text/uri-list", "text/plain"].some((type) => e.dataTransfer.types.includes(type));
+  const dragOver = (e: DragEvent) => {
+    if (!canDrop(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragging(true);
+  };
+  const dragLeave = (e: DragEvent<HTMLElement>) => {
+    // 탭 안쪽 요소로 옮겨 갈 때는 표시 유지
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+  };
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      pickFile(files.find((f) => f.type.startsWith("image/")) ?? files[0]);
       return;
     }
-    setError(null);
-    setPending({ kind: "url", url: text });
+    // uri-list는 여러 줄일 수 있고 #으로 시작하는 줄은 주석
+    const url = e.dataTransfer.getData("text/uri-list").split(/\r?\n/).find((line) => line && !line.startsWith("#"))
+      ?? e.dataTransfer.getData("text/plain");
+    if (url?.trim()) pickUrl(url.trim());
   };
 
   const save = async () => {
@@ -150,7 +183,8 @@ function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDo
 
   return (
     // 탭 안 어디서든 Ctrl+V로 붙여넣을 수 있도록 포커스를 받는 영역
-    <Box p="sm" tabIndex={0} onPaste={paste} data-autofocus style={{ outline: "none" }} aria-label="아이콘 이미지 업로드">
+    <Box p="sm" tabIndex={0} onPaste={paste} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}
+      data-autofocus style={{ outline: "none" }} aria-label="아이콘 이미지 업로드">
       <input ref={fileInput} type="file" accept={ICON_IMAGE_TYPES.join(",")} hidden aria-label="아이콘 이미지 파일"
         onChange={(e) => {
           pickFile(e.currentTarget.files?.[0]);
@@ -160,7 +194,13 @@ function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDo
         onClick={() => fileInput.current?.click()}
         w="100%"
         p="md"
-        style={{ borderRadius: 8, background: "var(--mantine-color-gray-0)", textAlign: "center" }}
+        // 끌고 올라와 있으면 점선 테두리로 놓을 자리 표시
+        style={{
+          borderRadius: 8, textAlign: "center",
+          background: dragging ? "var(--mantine-primary-color-light)" : "var(--mantine-color-gray-0)",
+          outline: dragging ? "2px dashed var(--mantine-primary-color-filled)" : "2px dashed transparent",
+          outlineOffset: -2,
+        }}
       >
         {pending ? (
           <Group justify="center" gap="sm">
@@ -169,10 +209,10 @@ function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDo
             <Text size="sm" c="dimmed">다른 이미지 선택</Text>
           </Group>
         ) : (
-          <Text size="sm">🖼️ 이미지 업로드</Text>
+          <Text size="sm">{dragging ? "여기에 놓으세요" : "🖼️ 이미지 업로드"}</Text>
         )}
       </UnstyledButton>
-      <Text size="xs" c="dimmed" ta="center" mt="xs">또는 Ctrl+V 단축키로 이미지나 링크를 붙여넣으세요.</Text>
+      <Text size="xs" c="dimmed" ta="center" mt="xs">이미지를 끌어다 놓거나 Ctrl+V 단축키로 이미지나 링크를 붙여넣으세요.</Text>
       {error && <Alert color="red" mt="xs" p="xs">{error}</Alert>}
       <Group justify="space-between" mt="sm">
         <Button size="xs" variant="subtle" color="gray" onClick={onCancel}>취소</Button>

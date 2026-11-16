@@ -124,4 +124,40 @@ describe("IconPicker", () => {
     expect(await screen.findByText("5MB 이하 이미지만 올릴 수 있습니다.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "저장", hidden: true }).hasAttribute("disabled")).toBe(true);
   });
+
+  it("탐색기에서 끌어다 놓은 이미지 파일을 올리고, 웹페이지에서 끌어 온 https 이미지 주소는 그대로 쓴다", async () => {
+    vi.mocked(uploadAttachment).mockResolvedValue({ id: 43, originalName: "drop.png", contentType: "image/png", size: 10, uploadedByName: null, createdAt: "", url: "" });
+    const onSelect = vi.fn();
+    renderPicker(false, onSelect, 7);
+    fireEvent.click(screen.getByText("아이콘 추가"));
+    fireEvent.click(await screen.findByRole("tab", { name: "업로드", hidden: true }));
+    const area = await screen.findByLabelText("아이콘 이미지 업로드");
+    const file = new File(["x"], "drop.png", { type: "image/png" });
+    const transfer = (data: { files?: File[]; uriList?: string }) => ({
+      types: data.files ? ["Files"] : ["text/uri-list"],
+      files: data.files ?? [],
+      getData: (type: string) => (type === "text/uri-list" ? data.uriList ?? "" : ""),
+      dropEffect: "none",
+    });
+    // 끌고 올라오면 놓을 자리 안내
+    fireEvent.dragOver(area, { dataTransfer: transfer({ files: [file] }) });
+    expect(await screen.findByText("여기에 놓으세요")).toBeTruthy();
+    fireEvent.drop(area, { dataTransfer: transfer({ files: [file] }) });
+    fireEvent.click(await screen.findByRole("button", { name: "저장", hidden: true }));
+    await waitFor(() => expect(uploadAttachment).toHaveBeenCalledWith(7, file, true));
+    expect(onSelect).toHaveBeenCalledWith("att:43");
+  });
+
+  it("끌어 온 주소는 https 이미지 주소만 받고, 이미지가 아닌 파일은 거부한다", async () => {
+    const onSelect = vi.fn();
+    renderPicker(false, onSelect, 7);
+    fireEvent.click(screen.getByText("아이콘 추가"));
+    fireEvent.click(await screen.findByRole("tab", { name: "업로드", hidden: true }));
+    const area = await screen.findByLabelText("아이콘 이미지 업로드");
+    fireEvent.drop(area, { dataTransfer: { types: ["Files"], files: [new File(["x"], "a.txt", { type: "text/plain" })], getData: () => "" } });
+    expect(await screen.findByText("PNG, JPG, GIF, WEBP 이미지만 올릴 수 있습니다.")).toBeTruthy();
+    fireEvent.drop(area, { dataTransfer: { types: ["text/uri-list"], files: [], getData: (t: string) => (t === "text/uri-list" ? "# 주석\nhttps://example.com/logo.png" : "") } });
+    fireEvent.click(await screen.findByRole("button", { name: "저장", hidden: true }));
+    expect(onSelect).toHaveBeenCalledWith("https://example.com/logo.png");
+  });
 });

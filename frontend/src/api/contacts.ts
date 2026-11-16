@@ -10,9 +10,11 @@ export interface ContactDto {
   // 전화번호 1
   phone: string | null;
   phone2: string | null;
-  // 연관 프로젝트 이름 (없으면 빈 목록)
-  projects: string[];
+  // 연관 프로젝트 (정해진 이름이 없어 자유 입력 글)
+  project: string | null;
   memo: string | null;
+  // 카드 이름 동그라미 색 (#RRGGBB, null이면 자동 색)
+  color: string | null;
 }
 
 export interface ContactRequest {
@@ -21,8 +23,10 @@ export interface ContactRequest {
   email: string | null;
   phone: string | null;
   phone2: string | null;
-  projects: string[];
+  project: string | null;
   memo: string | null;
+  // 카드 이름 동그라미 색 (#RRGGBB, null이면 자동 색)
+  color: string | null;
 }
 
 export const CONTACTS_KEY = ["contacts"];
@@ -39,11 +43,7 @@ export function updateContact(id: number, body: ContactRequest): Promise<Contact
   return apiFetch<ContactDto>(`/api/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) });
 }
 
-// 끌어 옮긴 연락처를 index 위치로 (0이 맨 위)
-export function moveContact(id: number, index: number): Promise<void> {
-  return apiFetch<void>(`/api/contacts/${id}/position`, { method: "PATCH", body: JSON.stringify({ index }) });
-}
-
 export function deleteContact(id: number): Promise<void> {
   return apiFetch<void>(`/api/contacts/${id}`, { method: "DELETE" });
 }
+

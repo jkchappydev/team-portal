@@ -1,19 +1,12 @@
 package dev.jkchappy.portal.contact;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,12 +41,13 @@ public class ExternalContact {
   @Column(length = 1000)
   private String memo;
 
-  // 연관 프로젝트 이름 (입력한 순서대로)
-  @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(name = "external_contact_project", joinColumns = @JoinColumn(name = "contact_id"))
-  @OrderColumn(name = "position")
-  @Column(name = "name", nullable = false, length = 100)
-  private List<String> projects = new ArrayList<>();
+  // 카드 이름 동그라미 색 (#RRGGBB, null이면 화면에서 자동 색)
+  @Column(length = 7)
+  private String color;
+
+  // 연관 프로젝트 (정해진 이름이 없어 자유 입력 글)
+  @Column(length = 500)
+  private String project;
 
   // 목록 표시 순서 (작을수록 위)
   @Column(name = "sort_order", nullable = false)
@@ -94,12 +88,12 @@ public class ExternalContact {
     this.phone = values.phone();
     this.phone2 = values.phone2();
     this.memo = values.memo();
-    this.projects.clear();
-    this.projects.addAll(values.projects());
+    this.color = values.color();
+    this.project = values.project();
   }
 
   // 정리를 마친 입력값
   public record ContactValues(String name, String company, String email, String phone, String phone2,
-    List<String> projects, String memo) {
+    String project, String memo, String color) {
   }
 }

@@ -23,16 +23,16 @@ class ExternalContactRepositoryTest {
   @Autowired
   private EntityManager entityManager;
 
-  private ExternalContact save(String name, int sortOrder, List<String> projects) {
+  private ExternalContact save(String name, int sortOrder, String project) {
     return contactRepository.save(ExternalContact.create(
-      new ContactValues(name, "가나출판", null, null, null, projects, null), sortOrder, 1L));
+      new ContactValues(name, "가나출판", null, "010-1234-5678", "02-123-4567", project, "오전 통화", "#2f9e44"), sortOrder, 1L));
   }
 
-  // 표시 순서대로 조회하고 연관 프로젝트는 입력한 순서 그대로 다시 읽힘
+  // 표시 순서대로 조회하고 전화번호 2·연관 프로젝트·메모도 그대로 다시 읽힘
   @Test
-  void findAll_ordersBySortOrderAndKeepsProjectOrder() {
-    save("나중", 1, List.of());
-    ExternalContact first = save("먼저", 0, List.of("전자책", "교과서 개발"));
+  void findAll_ordersBySortOrderAndKeepsValues() {
+    save("나중", 1, null);
+    ExternalContact first = save("먼저", 0, "전자책, 교과서 개발");
     entityManager.flush();
     entityManager.clear();
 
@@ -40,19 +40,9 @@ class ExternalContactRepositoryTest {
 
     assertThat(contacts).extracting(ExternalContact::getName).containsExactly("먼저", "나중");
     assertThat(contacts.getFirst().getId()).isEqualTo(first.getId());
-    assertThat(contacts.getFirst().getProjects()).containsExactly("전자책", "교과서 개발");
-  }
-
-  // 연락처를 지우면 연관 프로젝트도 함께 지워짐
-  @Test
-  void delete_removesProjects() {
-    ExternalContact contact = save("홍길동", 0, List.of("전자책"));
-    entityManager.flush();
-    contactRepository.delete(contact);
-    entityManager.flush();
-
-    Number left = (Number) entityManager
-      .createNativeQuery("select count(*) from external_contact_project").getSingleResult();
-    assertThat(left.longValue()).isZero();
+    assertThat(contacts.getFirst().getProject()).isEqualTo("전자책, 교과서 개발");
+    assertThat(contacts.getFirst().getPhone2()).isEqualTo("02-123-4567");
+    assertThat(contacts.getFirst().getMemo()).isEqualTo("오전 통화");
+    assertThat(contacts.getFirst().getColor()).isEqualTo("#2f9e44");
   }
 }

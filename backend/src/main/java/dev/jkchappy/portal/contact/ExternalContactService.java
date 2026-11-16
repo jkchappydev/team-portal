@@ -6,8 +6,6 @@ import dev.jkchappy.portal.contact.ExternalContact.ContactValues;
 import dev.jkchappy.portal.contact.dto.ContactRequest;
 import dev.jkchappy.portal.contact.dto.ContactResponse;
 import dev.jkchappy.portal.member.MemberService;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,30 +38,16 @@ public class ExternalContactService {
     return ContactResponse.from(contact);
   }
 
-  // 끌어 옮긴 연락처를 index 위치에 끼워 넣고 0부터 다시 번호를 매김
-  @Transactional
-  public void move(Long id, int index) {
-    ExternalContact target = getContact(id);
-    List<ExternalContact> contacts = new ArrayList<>(contactRepository.findAllByOrderBySortOrderAscIdAsc()
-      .stream().filter(c -> !c.getId().equals(id)).toList());
-    contacts.add(Math.clamp(index, 0, contacts.size()), target);
-    for (int i = 0; i < contacts.size(); i++) {
-      contacts.get(i).changeSortOrder(i);
-    }
-  }
-
   @Transactional
   public void delete(Long id) {
     contactRepository.delete(getContact(id));
   }
 
-  // 앞뒤 공백 제거, 빈 값은 null, 연관 프로젝트는 빈 이름·중복 제거
+  // 앞뒤 공백 제거, 빈 값은 null
   static ContactValues normalize(ContactRequest request) {
-    List<String> projects = request.projects() == null ? List.of()
-      : new ArrayList<>(new LinkedHashSet<>(request.projects().stream()
-        .filter(p -> p != null && !p.isBlank()).map(String::trim).toList()));
     return new ContactValues(request.name().trim(), blankToNull(request.company()), blankToNull(request.email()),
-      normalizePhone(request.phone()), normalizePhone(request.phone2()), projects, blankToNull(request.memo()));
+      normalizePhone(request.phone()), normalizePhone(request.phone2()), blankToNull(request.project()),
+      blankToNull(request.memo()), blankToNull(request.color()));
   }
 
   // 선택 값, 숫자·하이픈·괄호·+·공백만 허용 (국내 번호는 팀원 전화번호와 같은 규칙으로 하이픈을 맞춤)

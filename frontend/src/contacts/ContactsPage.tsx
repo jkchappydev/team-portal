@@ -1,51 +1,49 @@
-import { useRef, useState, type DragEvent } from "react";
+import { useState, type ReactNode } from "react";
 import {
-  ActionIcon, Alert, Anchor, Badge, Button, Group, Menu, Modal, Paper, Stack, Table, Text, TextInput, Title, UnstyledButton,
+  ActionIcon, Alert, Anchor, Avatar, Box, Button, Group, Menu, Modal, Paper, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CONTACTS_KEY, deleteContact, listContacts, moveContact } from "../api/contacts";
+import { CONTACTS_KEY, deleteContact, listContacts } from "../api/contacts";
 import type { ContactDto } from "../api/contacts";
-import { useReorderAnimation } from "../layout/reorderAnimation";
 import { ContactDialog } from "./ContactDialog";
+import { contactColor } from "./contactColor";
 
 // 검색어가 이름·업체·이메일·전화번호 1·2·연관 프로젝트·메모 중 하나에 들어 있으면 표시
 function matches(contact: ContactDto, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const digits = q.replace(/\D/g, "");
-  return [contact.name, contact.company, contact.email, contact.memo, ...contact.projects]
+  return [contact.name, contact.company, contact.email, contact.project, contact.memo]
     .some((value) => value?.toLowerCase().includes(q))
     || (digits.length > 0 && [contact.phone, contact.phone2].some((phone) => (phone ?? "").replace(/\D/g, "").includes(digits)));
 }
 
-type SortKey = "name" | "company" | "projects";
-type SortState = { key: SortKey; direction: "asc" | "desc" } | null;
+type SortKey = "name" | "company";
+type SortState = { key: SortKey; direction: "asc" | "desc" };
 
-// 머리글을 누를 때마다 오름차순 → 내림차순 → 정렬 해제(저장한 순서)
+// 같은 버튼을 다시 누르면 오름차순·내림차순을 번갈아, 다른 버튼은 오름차순부터
 function nextSort(current: SortState, key: SortKey): SortState {
-  if (current?.key !== key) return { key, direction: "asc" };
-  return current.direction === "asc" ? { key, direction: "desc" } : null;
+  if (current.key !== key) return { key, direction: "asc" };
+  return { key, direction: current.direction === "asc" ? "desc" : "asc" };
 }
 
-// 가나다순 정렬, 연관 프로젝트는 첫 프로젝트 이름 기준, 빈 값은 방향과 관계없이 맨 아래
+// 가나다순 정렬, 빈 값은 방향과 관계없이 맨 뒤
 function sortContacts(contacts: ContactDto[], sort: SortState): ContactDto[] {
-  if (!sort) return contacts;
-  const valueOf = (c: ContactDto) => (sort.key === "projects" ? c.projects[0] : c[sort.key]) ?? "";
   return [...contacts].sort((a, b) => {
-    const x = valueOf(a);
-    const y = valueOf(b);
+    const x = a[sort.key] ?? "";
+    const y = b[sort.key] ?? "";
     if (!x || !y) return x ? -1 : y ? 1 : 0;
     const order = x.localeCompare(y, "ko", { numeric: true });
     return sort.direction === "asc" ? order : -order;
   });
 }
 
-// 눌러서 정렬하는 표 머리글 (정렬 중인 열에 화살표 표시)
-function SortHeader({ label, direction, onClick }: { label: string; direction: "asc" | "desc" | null; onClick: () => void }) {
+// 눌러서 정렬하는 버튼 (정렬 중인 기준에 방향 표시)
+function SortButton({ label, direction, onClick }: { label: string; direction: "asc" | "desc" | null; onClick: () => void }) {
   return (
-    <UnstyledButton onClick={onClick} fw={700} fz="sm" aria-label={`${label} 정렬`} className="sort-header"
+    <UnstyledButton onClick={onClick} fz="sm" fw={600} aria-label={`${label} 정렬`} className="sort-header"
       data-active={direction ? true : undefined}
-      aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none"}>
+      aria-pressed={direction !== null}>
       {label}
       <SortIcon direction={direction} />
     </UnstyledButton>
@@ -63,109 +61,64 @@ function SortIcon({ direction }: { direction: "asc" | "desc" | null }) {
   );
 }
 
-// 끌어서 순서 바꾸기 (팀원 목록과 같은 줄 사이 가로선 표시, 검색 중에는 끔)
-function useContactReorder(ids: number[], enabled: boolean) {
-  const [target, setTarget] = useState<{ id: number; after: boolean } | null>(null);
-  const dragging = useRef<number | null>(null);
-  const queryClient = useQueryClient();
-  const move = useMutation({
-    mutationFn: ({ id, index }: { id: number; index: number }) => moveContact(id, index),
-    // 화면 순서를 먼저 바꾸고 서버 반영 후 다시 조회 (실패 시 서버 순서로 복구)
-    onMutate: ({ id, index }) => {
-      const current = queryClient.getQueryData<ContactDto[]>(CONTACTS_KEY) ?? [];
-      const moving = current.find((c) => c.id === id);
-      if (!moving) return;
-      const others = current.filter((c) => c.id !== id);
-      others.splice(index, 0, moving);
-      queryClient.setQueryData(CONTACTS_KEY, others);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CONTACTS_KEY }),
-  });
-  const afterHalf = (event: DragEvent<HTMLElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return event.clientY >= rect.top + rect.height / 2;
-  };
-  const start = (event: DragEvent<HTMLElement>, id: number) => {
-    if (!enabled) { event.preventDefault(); return; }
-    dragging.current = id;
-    event.dataTransfer.clearData();
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", String(id));
-  };
-  const over = (event: DragEvent<HTMLElement>, id: number) => {
-    if (!enabled || dragging.current === null) return;
-    event.preventDefault();
-    setTarget({ id, after: afterHalf(event) });
-  };
-  const drop = (event: DragEvent<HTMLElement>, id: number) => {
-    if (!enabled || dragging.current === null) return;
-    event.preventDefault();
-    const moving = dragging.current;
-    const remaining = ids.filter((value) => value !== moving);
-    const at = remaining.indexOf(id);
-    if (at >= 0) {
-      const index = at + (afterHalf(event) ? 1 : 0);
-      if (index !== ids.indexOf(moving)) move.mutate({ id: moving, index });
-    }
-    dragging.current = null;
-    setTarget(null);
-  };
-  const end = () => { dragging.current = null; setTarget(null); };
-  return { start, over, drop, end, target, error: move.error };
+// 카드 안 연락 수단 아이콘 (메일·전화)
+function MailIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
 }
 
-// 연락처 한 줄 (수정·삭제는 ⋯ 메뉴)
-function ContactRow({ contact, reorder, canDrag, onEdit, onDelete }: {
+function PhoneIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+    </svg>
+  );
+}
+
+// 카드 안 한 줄 (아이콘 + 내용)
+function InfoLine({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <Group gap={8} wrap="nowrap" align="flex-start">
+      {/* 아이콘 칸 높이를 글자 한 줄 높이와 같게 두고 가운데 정렬 (이메일이 두 줄이 돼도 첫 줄에 맞춤) */}
+      <Box c="dimmed" style={{
+        display: "flex", alignItems: "center", flex: "none",
+        height: "calc(var(--mantine-font-size-sm) * var(--mantine-line-height-sm))",
+      }}>{icon}</Box>
+      {/* 글자 칸도 같은 글자 크기·줄 높이로 (기본 16px 줄 높이가 남아 24.8px로 커지면 아이콘이 위로 쏠림) */}
+      <Box style={{ minWidth: 0, fontSize: "var(--mantine-font-size-sm)", lineHeight: "var(--mantine-line-height-sm)" }}>{children}</Box>
+    </Group>
+  );
+}
+
+// 연락처 한 장 (명함 모양, 수정·삭제는 ⋯ 메뉴)
+function ContactCard({ contact, onEdit, onDelete }: {
   contact: ContactDto;
-  reorder: ReturnType<typeof useContactReorder>;
-  canDrag: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const phones = [contact.phone, contact.phone2].filter((phone): phone is string => !!phone);
   return (
-    <Table.Tr
-      data-flip-id={`contact-${contact.id}`}
-      data-member-drop={reorder.target?.id === contact.id ? (reorder.target.after ? "after" : "before") : undefined}
-      onDragOver={(e) => reorder.over(e, contact.id)}
-      onDrop={(e) => reorder.drop(e, contact.id)}
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      className="contact-card"
     >
-      <Table.Td style={{ position: "relative" }}>
-        {canDrag && (
-          <button type="button" className="member-drag-handle" draggable aria-label={`${contact.name} 순서 변경`}
-            onDragStart={(e) => reorder.start(e, contact.id)} onDragEnd={reorder.end}>⠿</button>
-        )}
-        <Text size="sm" fw={500}>{contact.name}</Text>
-      </Table.Td>
-      <Table.Td><Text size="sm">{contact.company || "-"}</Text></Table.Td>
-      <Table.Td>
-        {contact.email
-          ? <Anchor size="sm" href={`mailto:${contact.email}`} draggable={false} style={{ wordBreak: "break-all" }}>{contact.email}</Anchor>
-          : <Text size="sm">-</Text>}
-      </Table.Td>
-      <Table.Td>
-        {/* 전화번호 1·2를 위아래로 */}
-        {contact.phone || contact.phone2 ? (
-          <Stack gap={2}>
-            {[contact.phone, contact.phone2].filter((phone): phone is string => !!phone).map((phone) => (
-              <Anchor key={phone} size="sm" href={`tel:${phone}`} draggable={false} c="inherit">{phone}</Anchor>
-            ))}
-          </Stack>
-        ) : <Text size="sm">-</Text>}
-      </Table.Td>
-      <Table.Td>
-        {contact.projects.length > 0 ? (
-          <Group gap={4}>
-            {contact.projects.map((project) => <Badge key={project} variant="light" size="sm" style={{ textTransform: "none" }}>{project}</Badge>)}
-          </Group>
-        ) : <Text size="sm">-</Text>}
-      </Table.Td>
-      <Table.Td>
-        {/* 긴 메모는 두 줄까지 보이고 마우스를 올리면 전체 */}
-        {contact.memo
-          ? <Text size="sm" c="dimmed" lineClamp={2} title={contact.memo} style={{ whiteSpace: "pre-line" }}>{contact.memo}</Text>
-          : <Text size="sm">-</Text>}
-      </Table.Td>
-      <Table.Td ta="right">
+      <Group justify="space-between" wrap="nowrap" align="flex-start" mb="sm">
+        <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+          {/* 고른 색 (없으면 연락처마다 정해진 자동 색) */}
+          <Avatar radius="xl" variant="filled" color={contactColor(contact)}>{contact.name.slice(0, 1)}</Avatar>
+          <div style={{ minWidth: 0 }}>
+            <Text fw={600} truncate>{contact.name}</Text>
+            <Text size="sm" c="dimmed" truncate>{contact.company || "업체 없음"}</Text>
+          </div>
+        </Group>
         <Menu position="bottom-end" withinPortal>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray" aria-label={`${contact.name} 메뉴`}>⋯</ActionIcon>
@@ -176,31 +129,55 @@ function ContactRow({ contact, reorder, canDrag, onEdit, onDelete }: {
             <Menu.Item color="red" onClick={onDelete}>연락처 삭제</Menu.Item>
           </Menu.Dropdown>
         </Menu>
-      </Table.Td>
-    </Table.Tr>
+      </Group>
+      <Stack gap={6}>
+        {/* 이메일·전화번호는 눌러서 바로 메일·전화 */}
+        {contact.email && (
+          <InfoLine icon={<MailIcon />}>
+            <Anchor size="sm" href={`mailto:${contact.email}`} draggable={false} style={{ wordBreak: "break-all" }}>{contact.email}</Anchor>
+          </InfoLine>
+        )}
+        {phones.map((phone) => (
+          <InfoLine key={phone} icon={<PhoneIcon />}>
+            <Anchor size="sm" href={`tel:${phone}`} draggable={false} c="inherit">{phone}</Anchor>
+          </InfoLine>
+        ))}
+        {!contact.email && phones.length === 0 && <Text size="sm" c="dimmed">연락처 정보 없음</Text>}
+      </Stack>
+      {(contact.project || contact.memo) && (
+        <Stack gap={6} mt="sm" pt="sm" className="contact-card-notes">
+          {contact.project && (
+            <div>
+              <Text size="xs" c="dimmed" fw={600}>연관 프로젝트</Text>
+              <Text size="sm" style={{ whiteSpace: "pre-line", wordBreak: "break-word" }}>{contact.project}</Text>
+            </div>
+          )}
+          {contact.memo && (
+            <div>
+              <Text size="xs" c="dimmed" fw={600}>메모</Text>
+              <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-line", wordBreak: "break-word" }}>{contact.memo}</Text>
+            </div>
+          )}
+        </Stack>
+      )}
+    </Paper>
   );
 }
 
-// 외부 연락처: 회사 밖 업체 담당자의 업체·이메일·전화번호·연관 프로젝트 (팀원 모두가 같이 보고 고침)
+// 외부 연락처: 회사 밖 업체 담당자를 명함 카드로 (팀원 모두가 같이 보고 고침)
 export function ContactsPage() {
   const queryClient = useQueryClient();
   const { data: contacts = [], error, isLoading } = useQuery({ queryKey: CONTACTS_KEY, queryFn: listContacts });
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<{ editing: ContactDto | null } | null>(null);
   const [deleting, setDeleting] = useState<ContactDto | null>(null);
-  // 처음에는 이름 가나다순 (머리글을 계속 누르면 끌어서 정한 저장 순서로도 볼 수 있음)
+  // 처음에는 이름 가나다순
   const [sort, setSort] = useState<SortState>({ key: "name", direction: "asc" });
   const searching = query.trim().length > 0;
   const visible = sortContacts(contacts.filter((c) => matches(c, query)), sort);
-  // 검색·정렬 중에는 보이는 순서가 저장 순서와 달라 끌어서 바꾸기를 끔
-  const canDrag = !searching && sort === null;
-  const reorder = useContactReorder(contacts.map((c) => c.id), canDrag);
-  const header = (key: SortKey, label: string) => (
-    <SortHeader label={label} direction={sort?.key === key ? sort.direction : null} onClick={() => setSort(nextSort(sort, key))} />
+  const sortButton = (key: SortKey, label: string) => (
+    <SortButton label={label} direction={sort.key === key ? sort.direction : null} onClick={() => setSort(nextSort(sort, key))} />
   );
-  // 순서를 바꾸면 줄들이 새 위치로 미끄러지게
-  const bodyRef = useRef<HTMLTableSectionElement>(null);
-  useReorderAnimation(bodyRef);
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteContact(id),
@@ -219,43 +196,28 @@ export function ContactsPage() {
         </Group>
         <Button onClick={() => setDialog({ editing: null })}>+ 연락처 추가</Button>
       </Group>
-      <Group justify="space-between">
+      <Group gap="lg">
         <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
           onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
-        {canDrag && contacts.length > 1 && <Text size="xs" c="dimmed">드래그로 순서를 변경할 수 있습니다.</Text>}
+        <Group gap="md">
+          {sortButton("name", "이름")}
+          {sortButton("company", "업체")}
+        </Group>
       </Group>
       {error && <Alert color="red">외부 연락처를 불러오지 못했습니다.</Alert>}
-      {reorder.error && <Alert color="red">연락처 순서를 저장하지 못했습니다.</Alert>}
-      <Paper withBorder radius="md" px="md" py="xs">
-        <Table verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th w={140}>{header("name", "이름")}</Table.Th>
-              <Table.Th w={170}>{header("company", "업체")}</Table.Th>
-              <Table.Th w={230}>이메일</Table.Th>
-              <Table.Th w={140}>전화번호</Table.Th>
-              <Table.Th>{header("projects", "연관 프로젝트")}</Table.Th>
-              <Table.Th w={220}>메모</Table.Th>
-              <Table.Th w={40} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody ref={bodyRef}>
-            {visible.map((contact) => (
-              <ContactRow key={contact.id} contact={contact} reorder={reorder} canDrag={canDrag}
-                onEdit={() => setDialog({ editing: contact })} onDelete={() => setDeleting(contact)} />
-            ))}
-            {!isLoading && visible.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={7}>
-                  <Text size="sm" c="dimmed" ta="center" py="md">
-                    {searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </Paper>
+      {!isLoading && visible.length === 0 ? (
+        <Paper withBorder radius="md" p="xl">
+          <Text size="sm" c="dimmed" ta="center">{searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}</Text>
+        </Paper>
+      ) : (
+        // 화면 폭에 맞춰 1~4장씩, 카드 높이는 같은 줄에서 맞춤
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="md" verticalSpacing="md">
+          {visible.map((contact) => (
+            <ContactCard key={contact.id} contact={contact}
+              onEdit={() => setDialog({ editing: contact })} onDelete={() => setDeleting(contact)} />
+          ))}
+        </SimpleGrid>
+      )}
 
       <ContactDialog opened={dialog !== null} editing={dialog?.editing ?? null} onClose={() => setDialog(null)} />
 

@@ -1317,3 +1317,9 @@ html.block-marquee-dragging .bn-side-menu {
 .sort-header[data-active] .sort-icon { color: var(--mantine-primary-color-filled); }
 .sort-header[data-active] .sort-icon path { opacity: 0.25; }
 .sort-header[data-active] .sort-icon path[data-on] { opacity: 1; }
+
+/* 외부 연락처 명함 카드: 마우스를 올리면 테두리 강조, 연관 프로젝트·메모는 구분선 아래 */
+.contact-card { position: relative; transition: border-color 0.12s ease; }
+.contact-card:hover { border-color: var(--mantine-color-blue-3); }
+[data-mantine-color-scheme="dark"] .contact-card:hover { border-color: var(--mantine-color-blue-8); }
+.contact-card-notes { border-top: 1px solid var(--mantine-color-default-border); }
