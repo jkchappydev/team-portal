@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
 import { editorSchema } from "./schema";
 import { liftCalloutTitle } from "./calloutBackspace";
@@ -7,6 +7,12 @@ const p = (text: string) => ({ type: "paragraph" as const, content: text });
 const text = (block: { content?: unknown }) =>
   Array.isArray(block.content) ? block.content.map((c: { text: string }) => c.text).join("") : "";
 
+// 만든 편집기는 테스트마다 해제 (DOM 감시 타이머가 테스트 환경 종료 뒤 돌면 document 없음 오류로 CI 실패)
+const mounted: { unmount: () => void }[] = [];
+afterEach(() => {
+  mounted.splice(0).forEach((editor) => editor.unmount());
+});
+
 function editorWith(children: unknown[], above: unknown = p("위")) {
   const editor = BlockNoteEditor.create({
     schema: editorSchema,
@@ -14,6 +20,7 @@ function editorWith(children: unknown[], above: unknown = p("위")) {
   });
   // 테스트에서는 편집 화면 없이 선택만 옮김
   editor.mount(document.createElement("div"));
+  mounted.push(editor);
   return editor;
 }
 

@@ -19,5 +19,7 @@ describe("+ 버튼 (새 줄 넣은 뒤 스타일 메뉴는 컴포넌트에서 �
     expect(editor.getTextCursorPosition().block.id).toBe(editor.document[1].id);
     addPlainBlockBelow(editor, callout.id);
     expect(editor.document.map((b) => b.type)).toEqual(["heading", "paragraph", "callout", "paragraph"]);
+    // 편집기 DOM 감시 타이머가 테스트 환경 종료 뒤 돌지 않도록 해제
+    editor.unmount();
   });
 });
