@@ -16,7 +16,7 @@ public final class WorkStatusLabelFormatter {
 
   public static String format(String memberName, WorkStatus ws) {
     WorkStatusType type = ws.getType();
-    String title = type == WorkStatusType.OTHER ? ws.getContent() : type.getDisplayName();
+    String title = type.getDisplayName();
 
     // 종류별로 괄호 안 항목 순서가 다름 (연차·공가는 달력에 날마다 보이므로 기간을 붙이지 않음)
     List<String> details = new ArrayList<>();
@@ -49,6 +49,8 @@ public final class WorkStatusLabelFormatter {
         addIfPresent(details, time(ws));
       }
       case OTHER -> {
+        // 공가처럼 내용(예: 생일반차)을 괄호 맨 앞에
+        addIfPresent(details, ws.getContent());
         addIfPresent(details, period(ws));
         addIfPresent(details, time(ws));
       }

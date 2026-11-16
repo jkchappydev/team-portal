@@ -101,12 +101,11 @@ public class AnnualLeaveService {
       String typeName = status.getHalfDayPeriod() == null
         ? status.getType().getDisplayName()
         : status.getHalfDayPeriod().getDisplayName() + " " + status.getType().getDisplayName();
-      // 공가 사유가 있으면 메모에 함께 표시 (예: 공가(예비군))
-      // 기타(예: 생일반차)도 공가처럼 메모에만 내용을 표시하고 연차에서 빼지 않음 (0일)
+      // 기타(예: 생일반차)도 공가처럼 메모에만 표시하고 연차에서 빼지 않음 (0일)
       boolean other = status.getType() == WorkStatusType.OTHER;
       boolean notCounted = official || other;
-      String label = other && status.getContent() != null ? status.getContent()
-        : official && status.getContent() != null ? typeName + "(" + status.getContent() + ")" : typeName;
+      // 공가·기타는 내용이 있으면 메모에 함께 표시 (예: 공가(예비군), 기타(생일반차))
+      String label = notCounted && status.getContent() != null ? typeName + "(" + status.getContent() + ")" : typeName;
       // 반차·반반차와 오전/오후 공가는 하루짜리
       boolean partDay = status.getType() == WorkStatusType.HALF_DAY || status.getType() == WorkStatusType.QUARTER_DAY
         || (official && status.getHalfDayPeriod() != null);

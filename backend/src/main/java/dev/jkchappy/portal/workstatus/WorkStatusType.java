@@ -12,7 +12,7 @@ public enum WorkStatusType {
   OFFICIAL_LEAVE("공가"),
   BUSINESS_TRIP("출장"),
   OUTSIDE_WORK("외근"),
-  OTHER(null);
+  OTHER("기타");
 
   private final String displayName;
 

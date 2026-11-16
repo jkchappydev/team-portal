@@ -83,19 +83,19 @@ class WorkStatusLabelFormatterTest {
   @Test
   void other_timeOnly() {
     assertThat(f(ws(WorkStatusType.OTHER, "2026-11-02", "2026-11-02", null,
-      LocalTime.of(9, 0), LocalTime.of(12, 0), null, "행사준비"))).isEqualTo("홍길동 행사준비(09:00~12:00)");
+      LocalTime.of(9, 0), LocalTime.of(12, 0), null, "행사준비"))).isEqualTo("홍길동 기타(행사준비, 09:00~12:00)");
   }
 
   @Test
   void other_noDetail() {
     assertThat(f(ws(WorkStatusType.OTHER, "2026-11-02", "2026-11-02", null, null, null, null,
-      "행사준비"))).isEqualTo("홍길동 행사준비");
+      "행사준비"))).isEqualTo("홍길동 기타(행사준비)");
   }
 
   @Test
   void other_rangeAndTime() {
     assertThat(f(ws(WorkStatusType.OTHER, "2026-11-02", "2026-11-03", null,
       LocalTime.of(9, 0), LocalTime.of(12, 0), null, "행사준비")))
-      .isEqualTo("홍길동 행사준비(11/2~3, 09:00~12:00)");
+      .isEqualTo("홍길동 기타(행사준비, 11/2~3, 09:00~12:00)");
   }
 }

@@ -108,7 +108,7 @@ class AnnualLeaveServiceTest {
       .containsExactlyInAnyOrder("오전 공가(민방위)", "오전 반차");
   }
 
-  // 기타(예: 생일반차)는 0일로 보고 메모에는 내용만 표시
+  // 기타(예: 생일반차)는 0일로 보고 메모에는 기타(내용)으로 표시
   @Test
   void findByYear_other_isNotCountedAndShowsContent() {
     Member member = member(1L, "홍길동");
@@ -127,7 +127,7 @@ class AnnualLeaveServiceTest {
     assertThat(result.usedDays()).isEqualByComparingTo("0.5");
     assertThat(result.remainingDays()).isEqualByComparingTo("14.5");
     assertThat(result.weeklyUsages().getFirst().dates()).extracting(d -> d.label())
-      .containsExactlyInAnyOrder("생일반차", "오전 반차");
+      .containsExactlyInAnyOrder("기타(생일반차)", "오전 반차");
   }
 
   // 11/6(금)~11/9(월) 연차는 주가 갈려 1주 1일, 2주 1일로 나뉨 (주말 제외)
