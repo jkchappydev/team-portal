@@ -1261,3 +1261,43 @@ input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="dat
 html.block-marquee-dragging .bn-side-menu {
   visibility: hidden;
 }
+
+/* 근무 상황표 달력: 마우스를 올린 날짜 칸과 칩 강조 (칸 배경은 인라인이라 덧씌우는 층과 안쪽 테두리로 표시) */
+.ws-day {
+  position: relative;
+  transition: box-shadow 0.12s ease;
+}
+.ws-day[data-in-month]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: light-dark(rgba(34, 139, 230, 0.06), rgba(77, 171, 247, 0.08));
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.ws-day[data-in-month]:hover {
+  box-shadow: inset 0 0 0 2px light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-7));
+}
+.ws-day[data-in-month]:hover::after {
+  opacity: 1;
+}
+/* 칩 위에 있을 때는 칸 강조를 끄고 칩만 강조 */
+.ws-day[data-in-month]:has(.ws-chip[data-editable]:hover) {
+  box-shadow: none;
+}
+.ws-day[data-in-month]:has(.ws-chip[data-editable]:hover)::after {
+  opacity: 0;
+}
+.ws-chip {
+  position: relative;
+  z-index: 1;
+  transition: filter 0.12s ease, box-shadow 0.12s ease;
+}
+.ws-chip[data-editable]:hover {
+  filter: brightness(0.94) saturate(1.2);
+  box-shadow: 0 0 0 1px currentColor;
+}
+[data-mantine-color-scheme="dark"] .ws-chip[data-editable]:hover {
+  filter: brightness(1.25);
+}

@@ -34,12 +34,11 @@ function accentColor(color: string): string {
     : `var(--mantine-color-${color}-filled)`;
 }
 
-// 근무 상황 칩: 옅은 배경 + 왼쪽 색 막대 + 진한 글자 (다크 모드는 밝은 글자)
+// 근무 상황 칩: 옅은 배경 + 진한 글자 (다크 모드는 밝은 글자), 왼쪽 색 막대는 없음
 function chipColors(color: string) {
   return {
     background: `light-dark(var(--mantine-color-${color}-0), color-mix(in srgb, var(--mantine-color-${color}-9) 30%, transparent))`,
     color: `light-dark(var(--mantine-color-${color}-9), var(--mantine-color-${color}-1))`,
-    borderLeft: `3px solid ${accentColor(color)}`,
   };
 }
 
@@ -179,6 +178,9 @@ export function WorkStatusPage() {
                   key={day.date}
                   p={4}
                   mih={92}
+                  // 이번 달 칸은 마우스를 올리면 강조 (index.css .ws-day)
+                  className="ws-day"
+                  data-in-month={day.inMonth || undefined}
                   data-today={isToday || undefined}
                   onClick={() => day.inMonth && openCreate(day.date)}
                   style={{
@@ -238,6 +240,9 @@ export function WorkStatusPage() {
                       fw={400}
                       fz="xs"
                       title={item.label}
+                      // 고칠 수 있는 칩만 마우스를 올리면 강조 (index.css .ws-chip)
+                      className="ws-chip"
+                      data-editable={canEdit(item) || undefined}
                       // 긴 라벨(예: 외근 장소·시간)이 잘리지 않도록 Badge 기본 한 줄·고정 높이 해제
                       styles={{
                         root: {

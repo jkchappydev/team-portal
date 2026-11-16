@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
-import type { MantineColorScheme } from "@mantine/core";
 import { ColorSchemeToggle } from "../layout/ColorSchemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
@@ -33,7 +32,7 @@ const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
   { value: "info", label: "개인정보 수정" }, { value: "profile", label: "내 설정" },
 ];
 
-// 내 설정 창: 왼쪽 탭으로 개인정보 수정과 내 설정(프로필 모양)을 나눔
+// 설정 창: 왼쪽 탭으로 개인정보 수정과 내 설정(프로필 모양)을 나눔
 export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const queryClient = useQueryClient();
   // 내 부서·직책·연락처는 팀원 목록에서 가져옴
@@ -43,7 +42,7 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const [tab, setTab] = useState<SettingsTab>("info");
 
   return (
-    <Modal opened={opened} onClose={onClose} title="내 설정" centered size="lg">
+    <Modal opened={opened} onClose={onClose} title="설정" centered size="lg">
       {/* 왼쪽 메뉴는 사이드바 고정 메뉴(NavLink)와 같은 모양에서 아이콘만 뺌 */}
       {/* 탭마다 내용 길이가 달라도 창 크기는 그대로 두고, 넘치는 내용은 오른쪽 칸 안에서 스크롤 */}
       <Group align="stretch" gap={0} wrap="nowrap" h="min(440px, 70vh)">
@@ -96,53 +95,25 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   );
 }
 
-// 페이지를 볼 때 다른 사람에게 보이는 내 동그라미의 색과 이미지
-// 개인정보 수정과 같게, 고른 내용은 미리 보기에만 반영하고 저장을 눌러야 서버에 저장
+// 페이지를 볼 때 다른 사람에게 보이는 내 동그라미의 색과 이미지, 화면 테마
+// 저장 버튼 없이 고르는 즉시 저장 (개인정보 수정 탭만 저장 버튼 사용)
 function ProfileAppearanceForm({ user }: { user: MemberDto }) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  // 저장 전 고른 값 (undefined = 그대로)
-  const [draftColor, setDraftColor] = useState<string | undefined>(undefined);
-  const [draftFile, setDraftFile] = useState<File | null>(null);
-  const [draftRemove, setDraftRemove] = useState(false);
-  // 화면 테마도 다른 항목처럼 저장을 눌러야 적용
+  // 화면 테마는 이 브라우저에만 저장되며 고르면 바로 적용
   const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const [draftScheme, setDraftScheme] = useState<MantineColorScheme | undefined>(undefined);
 
-  // 고른 이미지 파일을 미리 보기 주소로 만들고, 바뀌면 이전 주소를 해제
-  const draftFileUrl = useMemo(
-    () => (draftFile && typeof URL.createObjectURL === "function" ? URL.createObjectURL(draftFile) : null),
-    [draftFile],
-  );
-  useEffect(() => () => { if (draftFileUrl) URL.revokeObjectURL(draftFileUrl); }, [draftFileUrl]);
+  const color = user.profileColor ?? userColor(user.id);
+  const hasImage = !!user.profileImageUrl;
 
-  const pickedColor = draftColor ?? user.profileColor ?? null;
-  const color = pickedColor ?? userColor(user.id);
-  const imageUrl = draftFile ? draftFileUrl : draftRemove ? null : user.profileImageUrl;
-  const hasImage = !!draftFile || (!draftRemove && !!user.profileImageUrl);
-  const schemeChanged = draftScheme !== undefined && draftScheme !== colorScheme;
-  const dirty = draftColor !== undefined || !!draftFile || draftRemove || schemeChanged;
-
-  const edit = () => { setSaved(false); setError(null); };
-
-  // 이미지 → 색 순서로 저장하고 마지막 결과를 로그인 정보에 반영해 화면 전체가 새 색·이미지를 씀
+  // 바꾼 결과를 로그인 정보에 반영해 화면 전체가 새 색·이미지를 씀
   const save = useMutation({
-    mutationFn: async () => {
-      let profile: ProfileDto | null = null;
-      if (draftFile) profile = await uploadProfileImage(draftFile);
-      else if (draftRemove) profile = await removeProfileImage();
-      if (draftColor !== undefined) profile = await changeProfileColor(draftColor);
-      return profile;
-    },
+    mutationFn: (change: () => Promise<ProfileDto>) => change(),
+    onMutate: () => { setSaved(false); setError(null); },
     onSuccess: (profile) => {
-      if (draftScheme !== undefined) setColorScheme(draftScheme);
-      setDraftScheme(undefined);
-      if (profile) queryClient.setQueryData(["auth", "me"], (me: object | undefined) => me && { ...me, ...profile });
-      setDraftColor(undefined);
-      setDraftFile(null);
-      setDraftRemove(false);
+      queryClient.setQueryData(["auth", "me"], (me: object | undefined) => me && { ...me, ...profile });
       setSaved(true);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : "저장하지 못했습니다."),
@@ -150,111 +121,100 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
 
   const onPickFile = (file: File | undefined) => {
     if (!file) return;
-    edit();
     if (file.size > MAX_IMAGE_BYTES) {
+      setSaved(false);
       setError("프로필 이미지는 2MB까지 올릴 수 있습니다.");
       return;
     }
-    setDraftFile(file);
-    setDraftRemove(false);
+    save.mutate(() => uploadProfileImage(file));
   };
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
-      style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      <Stack gap="lg">
-        <Group gap="md" wrap="nowrap">
-          <Avatar
-            size={64}
-            radius="xl"
-            src={imageUrl}
-            aria-label="내 프로필 미리 보기"
-            styles={{ placeholder: {
-              background: color, color: "white", fontSize: 20, fontWeight: 400,
-              letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
-            } }}
-          >
-            {shortName(user.name)}
-          </Avatar>
-          <Stack gap={4}>
-            <Text fw={600}>{user.name}</Text>
-            {user.email && <Text size="xs" c="dimmed">{user.email}</Text>}
-          </Stack>
-        </Group>
+    <Stack gap="lg">
+      <Group gap="md" wrap="nowrap">
+        <Avatar
+          size={64}
+          radius="xl"
+          src={user.profileImageUrl}
+          aria-label="내 프로필 미리 보기"
+          styles={{ placeholder: {
+            background: color, color: "white", fontSize: 20, fontWeight: 400,
+            letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
+          } }}
+        >
+          {shortName(user.name)}
+        </Avatar>
+        <Stack gap={4}>
+          <Text fw={600}>{user.name}</Text>
+          {user.email && <Text size="xs" c="dimmed">{user.email}</Text>}
+        </Stack>
+      </Group>
 
-        <Stack gap="xs">
-          <Text size="sm" fw={500}>프로필 이미지</Text>
-          <Group gap="xs">
-            <Button size="xs" variant="light" onClick={() => fileRef.current?.click()}>
-              {hasImage ? "이미지 바꾸기" : "이미지 올리기"}
+      <Stack gap="xs">
+        <Text size="sm" fw={500}>프로필 이미지</Text>
+        <Group gap="xs">
+          <Button size="xs" variant="light" loading={save.isPending} onClick={() => fileRef.current?.click()}>
+            {hasImage ? "이미지 바꾸기" : "이미지 올리기"}
+          </Button>
+          {hasImage && (
+            <Button size="xs" variant="subtle" color="gray" disabled={save.isPending}
+              onClick={() => save.mutate(removeProfileImage)}>
+              이미지 지우기
             </Button>
-            {hasImage && (
-              <Button size="xs" variant="subtle" color="gray"
-                onClick={() => { edit(); setDraftFile(null); setDraftRemove(!!user.profileImageUrl); }}>
-                이미지 지우기
-              </Button>
-            )}
-          </Group>
-          <Text size="xs" c="dimmed">2MB 이하 PNG, JPG, GIF, WEBP. 이미지가 없으면 이름과 색으로 보입니다.</Text>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={IMAGE_TYPES}
-            hidden
-            data-testid="profile-image-input"
-            onChange={(e) => {
-              onPickFile(e.currentTarget.files?.[0]);
-              e.currentTarget.value = "";
-            }}
-          />
-        </Stack>
-
-        <Stack gap="xs">
-          {/* 랜덤 버튼은 제목 오른쪽 */}
-          <Group gap="xs">
-            <Text size="sm" fw={500}>색</Text>
-            <Tooltip label="아래 색 중 하나를 무작위로 고름" withArrow>
-              <Button size="compact-xs" variant="light" color="gray"
-                onClick={() => { edit(); setDraftColor(randomColor(color)); }}>
-                랜덤
-              </Button>
-            </Tooltip>
-          </Group>
-          <SimpleGrid cols={6} spacing={8} verticalSpacing={8} w="fit-content">
-            {PROFILE_COLORS.map((swatch) => (
-              <ColorSwatch
-                key={swatch}
-                component="button"
-                type="button"
-                color={swatch}
-                size={28}
-                aria-label={`색 ${swatch}`}
-                aria-pressed={pickedColor === swatch}
-                style={{ color: "white", cursor: "pointer" }}
-                onClick={() => { edit(); setDraftColor(swatch); }}
-              >
-                {pickedColor === swatch && <CheckIcon size={12} />}
-              </ColorSwatch>
-            ))}
-          </SimpleGrid>
-        </Stack>
-
-        {/* 화면 테마는 이 브라우저에만 저장되며 다른 항목처럼 저장을 눌러야 적용 */}
-        <Stack gap="xs">
-          <Text size="sm" fw={500}>화면 테마</Text>
-          <ColorSchemeToggle value={draftScheme ?? colorScheme} onChange={(value) => { edit(); setDraftScheme(value); }} />
-        </Stack>
-
-        {error && <Alert color="red" p="xs">{error}</Alert>}
-      </Stack>
-      {/* 저장 버튼은 칸 맨 아래에 붙이고, 내용이 넘쳐 스크롤해도 아래에 보이게 고정 */}
-      <Stack gap="xs" pt="md" mt="auto"
-        style={{ position: "sticky", bottom: 0, background: "var(--mantine-color-body)" }}>
-        <Group justify="flex-end">
-          <Button type="submit" loading={save.isPending} disabled={!dirty}>저장</Button>
+          )}
         </Group>
-        {saved && <Text size="xs" c="teal" ta="right">저장했습니다.</Text>}
+        <Text size="xs" c="dimmed">2MB 이하 PNG, JPG, GIF, WEBP. 이미지가 없으면 이름과 색으로 보입니다.</Text>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={IMAGE_TYPES}
+          hidden
+          data-testid="profile-image-input"
+          onChange={(e) => {
+            onPickFile(e.currentTarget.files?.[0]);
+            e.currentTarget.value = "";
+          }}
+        />
       </Stack>
-    </form>
+
+      <Stack gap="xs">
+        {/* 랜덤 버튼은 제목 오른쪽 */}
+        <Group gap="xs">
+          <Text size="sm" fw={500}>색</Text>
+          <Tooltip label="아래 색 중 하나를 무작위로 고름" withArrow>
+            <Button size="compact-xs" variant="light" color="gray" disabled={save.isPending}
+              onClick={() => { const next = randomColor(color); save.mutate(() => changeProfileColor(next)); }}>
+              랜덤
+            </Button>
+          </Tooltip>
+        </Group>
+        <SimpleGrid cols={6} spacing={8} verticalSpacing={8} w="fit-content">
+          {PROFILE_COLORS.map((swatch) => (
+            <ColorSwatch
+              key={swatch}
+              component="button"
+              type="button"
+              color={swatch}
+              size={28}
+              aria-label={`색 ${swatch}`}
+              aria-pressed={user.profileColor === swatch}
+              disabled={save.isPending}
+              style={{ color: "white", cursor: "pointer" }}
+              onClick={() => { if (user.profileColor !== swatch) save.mutate(() => changeProfileColor(swatch)); }}
+            >
+              {user.profileColor === swatch && <CheckIcon size={12} />}
+            </ColorSwatch>
+          ))}
+        </SimpleGrid>
+      </Stack>
+
+      <Stack gap="xs">
+        <Text size="sm" fw={500}>화면 테마</Text>
+        <ColorSchemeToggle value={colorScheme} onChange={(value) => { setColorScheme(value); setError(null); setSaved(true); }} />
+      </Stack>
+
+      {error && <Alert color="red" p="xs">{error}</Alert>}
+      {saved && !error && <Text size="xs" c="teal" ta="right">저장했습니다.</Text>}
+    </Stack>
   );
 }

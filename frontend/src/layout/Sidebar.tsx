@@ -107,9 +107,9 @@ export function Sidebar({ user }: Props) {
       </ScrollArea>
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-        {/* 이름(옆에 직책)을 누르면 내 설정 */}
+        {/* 이름(옆에 직책)을 누르면 설정 창 */}
         {user ? (
-          <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="내 설정"
+          <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="설정"
             onClick={() => setSettingsOpen(true)} styles={{ root: { cursor: "pointer" }, label: { fontWeight: 400, cursor: "pointer" } }}>
             {user.name}
             {user.jobRank && <Box component="span" ml={6}><RankBadge rank={user.jobRank} style={{ cursor: "pointer" }} /></Box>}

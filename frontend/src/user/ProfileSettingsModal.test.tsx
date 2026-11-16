@@ -24,11 +24,6 @@ const user = {
   id: 3, name: "홍길동", active: true, email: "hong@example.com", profileColor: null, profileImageUrl: null,
 };
 
-// 내 설정 탭 안의 저장 버튼 누르기
-function saveProfile() {
-  fireEvent.click(within(screen.getByRole("tabpanel", { name: "내 설정" })).getByRole("button", { name: "저장" }));
-}
-
 function renderModal(client = new QueryClient()) {
   client.setQueryData(["auth", "me"], { memberId: 3, memberName: "홍길동", profileColor: null, profileImageUrl: null });
   render(
@@ -56,21 +51,15 @@ describe("ProfileSettingsModal", () => {
     vi.clearAllMocks();
   });
 
-  it("개인정보 수정 탭이 먼저 열리고, 내 설정 탭은 바뀐 것이 없으면 저장 버튼이 꺼져 있다", () => {
+  it("창 제목은 설정이고, 개인정보 수정 탭이 먼저 열리며 내 설정 탭에는 저장 버튼이 없다", () => {
     renderModal();
+    expect(screen.getByText("설정", { selector: "h2" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "개인정보 수정" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
-    expect((within(screen.getByRole("tabpanel", { name: "내 설정" })).getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(within(screen.getByRole("tabpanel", { name: "내 설정" })).queryByRole("button", { name: "저장" })).toBeNull();
   });
 
-  it("내 설정 탭에서 화면 테마를 고를 수 있다", () => {
-    renderModal();
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
-    expect(screen.getByText("화면 테마")).toBeTruthy();
-    expect(screen.getByLabelText("화면 테마", { selector: "input" })).toBeTruthy();
-  });
-
-  it("화면 테마는 골라도 바로 바뀌지 않고, 저장을 눌러야 적용된다", async () => {
+  it("화면 테마는 고르면 바로 적용·저장된다", async () => {
     localStorage.clear();
     const client = new QueryClient();
     client.setQueryData(["auth", "me"], { memberId: 3, memberName: "홍길동", profileColor: null, profileImageUrl: null });
@@ -86,10 +75,6 @@ describe("ProfileSettingsModal", () => {
 
     fireEvent.click(screen.getByLabelText("화면 테마", { selector: "input" }));
     fireEvent.click(screen.getByRole("option", { name: "다크" }));
-    expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("light");
-    expect(localStorage.getItem(COLOR_SCHEME_STORAGE_KEY)).toBeNull();
-
-    saveProfile();
     await waitFor(() => expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("dark"));
     expect(localStorage.getItem(COLOR_SCHEME_STORAGE_KEY)).toBe("dark");
     expect(api.changeProfileColor).not.toHaveBeenCalled();
@@ -101,26 +86,24 @@ describe("ProfileSettingsModal", () => {
     expect(screen.getByText("hong@example.com")).toBeTruthy();
   });
 
-  it("색을 고르면 미리 보기만 바뀌고, 저장을 눌러야 저장해 로그인 정보에 반영한다", async () => {
+  it("색을 고르면 바로 저장해 로그인 정보에 반영한다", async () => {
     api.changeProfileColor.mockResolvedValue({ profileColor: "#1971c2", profileImageUrl: null });
     const client = renderModal();
     fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
 
     fireEvent.click(screen.getByRole("button", { name: "색 #1971c2" }));
-    expect(api.changeProfileColor).not.toHaveBeenCalled();
-    saveProfile();
 
     await waitFor(() => expect(client.getQueryData(["auth", "me"])).toMatchObject({ profileColor: "#1971c2" }));
     expect(api.changeProfileColor.mock.calls[0][0]).toBe("#1971c2");
+    expect(await screen.findByText("저장했습니다.")).toBeTruthy();
   });
 
-  it("랜덤을 누르면 지금과 다른 색 하나를 골라 저장한다", async () => {
+  it("랜덤을 누르면 지금과 다른 색 하나를 골라 바로 저장한다", async () => {
     api.changeProfileColor.mockResolvedValue({ profileColor: "#e03131", profileImageUrl: null });
     renderModal();
     fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
 
     fireEvent.click(screen.getByRole("button", { name: "랜덤" }));
-    saveProfile();
 
     await waitFor(() => expect(api.changeProfileColor).toHaveBeenCalled());
     expect(PROFILE_COLORS).toContain(api.changeProfileColor.mock.calls[0][0]);
@@ -131,7 +114,7 @@ describe("ProfileSettingsModal", () => {
     expect(randomColor("#495057", () => 0.9999)).toBe("#e8590c");
   });
 
-  it("이미지를 고르고 저장하면 올리고, 2MB를 넘으면 고르지 않고 안내한다", async () => {
+  it("이미지를 고르면 바로 올리고, 2MB를 넘으면 올리지 않고 안내한다", async () => {
     api.uploadProfileImage.mockResolvedValue({ profileColor: null, profileImageUrl: "/api/members/3/profile-image?v=1" });
     const client = renderModal();
     const input = screen.getByTestId("profile-image-input");
@@ -143,11 +126,9 @@ describe("ProfileSettingsModal", () => {
 
     const small = new File(["png"], "me.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [small] } });
-    expect(api.uploadProfileImage).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
-    saveProfile();
     await waitFor(() => expect(client.getQueryData(["auth", "me"]))
       .toMatchObject({ profileImageUrl: "/api/members/3/profile-image?v=1" }));
+    expect(api.uploadProfileImage).toHaveBeenCalledWith(small);
   });
 
   it("내 정보에서 부서·직책·연락처를 고쳐 저장한다 (이름은 보여주기만)", async () => {
