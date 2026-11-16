@@ -26,6 +26,32 @@ export function placePageBlock(editor: PageEditor, cursorBlock: PageBlockNode, d
   placeBlockAtCursor(editor, cursorBlock, pageBlock(documentId));
 }
 
+// 복제할 블록 (id는 사본에서 빠짐)
+export interface CopyableBlock {
+  id?: string;
+  type?: string;
+  props?: unknown;
+  content?: unknown;
+  children?: CopyableBlock[];
+}
+
+// 블록 복제용 사본: id를 지우고, 페이지 블록은 페이지 사본을 만들어 그 사본을 가리키게 함 (하위 블록 안까지)
+// 같은 페이지를 가리키는 블록이 둘이 되면 한쪽을 고칠 때 다른 쪽도 같이 바뀌므로 페이지째 복사
+// 페이지 사본은 표시 순서가 섞이지 않도록 하나씩 차례로 만듦
+export async function copyBlockWithPages<T extends CopyableBlock>(
+  block: T, copyPage: (documentId: number) => Promise<number>): Promise<Omit<T, "id">> {
+  const { id: _omit, children, ...rest } = block;
+  void _omit;
+  const props = rest.props as { documentId?: unknown } | undefined;
+  if (rest.type === "page" && typeof props?.documentId === "number") {
+    rest.props = { ...props, documentId: await copyPage(props.documentId) };
+  }
+  if (children === undefined) return rest as Omit<T, "id">;
+  const copiedChildren: Omit<CopyableBlock, "id">[] = [];
+  for (const child of children) copiedChildren.push(await copyBlockWithPages(child, copyPage));
+  return { ...rest, children: copiedChildren } as Omit<T, "id">;
+}
+
 // 본문의 페이지 블록이 가리키는 문서 ID (콜아웃 등 하위 블록 안까지)
 export function referencedPageIds(blocks: PageBlockNode[]): Set<number> {
   const ids = new Set<number>();

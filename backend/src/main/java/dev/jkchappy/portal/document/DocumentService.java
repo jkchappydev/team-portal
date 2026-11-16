@@ -143,6 +143,31 @@ public class DocumentService {
     return DocumentSummary.from(saved, space.getName(), names.getOrDefault(userId, ""));
   }
 
+  // 본문 페이지 블록 복제: 같은 상위의 맨 아래에 제목·아이콘·본문을 복사한 새 페이지 생성
+  // (본문 안의 하위 페이지 블록은 원래 하위 페이지를 그대로 가리킴)
+  @Transactional
+  public DocumentSummary duplicate(Long id, Long userId) {
+    Document source = getLiveDocument(id);
+    Space space = getLiveSpace(source.getSpaceId());
+    if (!source.isPage() || space.isHomeDocument(id)) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "페이지만 복제할 수 있습니다.");
+    }
+    Document saved = placeAndSave(space, Document.copyOf(source, copyTitle(source.getTitle()), userId),
+      source.getParentId());
+    Map<Long, String> names = memberService.findNamesByIds(Set.of(userId));
+    return DocumentSummary.from(saved, space.getName(), names.getOrDefault(userId, ""));
+  }
+
+  private static final String COPY_SUFFIX = " (사본)";
+  private static final int MAX_TITLE_LENGTH = 200;
+
+  // 원래 제목 뒤에 "(사본)", 제목 길이 제한을 넘으면 원래 제목을 잘라 맞춤
+  private static String copyTitle(String title) {
+    int room = MAX_TITLE_LENGTH - COPY_SUFFIX.length();
+    String base = title.length() > room ? title.substring(0, room) : title;
+    return base + COPY_SUFFIX;
+  }
+
   // 사이드바에 끌어다 놓은 파일 항목 생성 (파일 본체는 호출한 쪽에서 업로드 후 연결)
   @Transactional
   public Document createFile(Long spaceId, String fileName, Long parentId, Long userId) {

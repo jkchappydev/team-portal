@@ -131,6 +131,15 @@ public class Document {
     return doc;
   }
 
+  // 페이지 복제본: 아이콘과 본문을 복사하고 만든 사람은 복제한 사용자 (위치는 호출한 쪽에서 지정)
+  public static Document copyOf(Document source, String title, Long createdBy) {
+    Document doc = create(source.spaceId, title, createdBy);
+    doc.icon = source.icon;
+    doc.contentState = source.contentState == null ? null : source.contentState.clone();
+    doc.plainText = source.plainText;
+    return doc;
+  }
+
   // 제목 수정 시 수정자와 수정 시각 갱신
   public void rename(String title, Long userId) {
     this.title = title;

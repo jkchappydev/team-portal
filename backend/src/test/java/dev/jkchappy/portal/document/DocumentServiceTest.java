@@ -105,6 +105,59 @@ class DocumentServiceTest {
     assertThat(service().claimPageBlockBackfill(1L)).containsExactly(2L);
   }
 
+  // 페이지 블록 복제: 같은 상위의 맨 아래에 제목 "(사본)"·아이콘·본문을 복사한 새 페이지 생성
+  @Test
+  void duplicate_copiesTitleIconAndContentUnderSameParent() {
+    Space space = space(10L);
+    Document source = child(5L, 10L, 3L, Document.create(10L, "회의록", 2L));
+    source.changeIcon("📘", 2L);
+    source.updateContent(new byte[] {1, 2, 3}, "본문 내용", 2L);
+    source.changeSortOrder(0);
+    Document sibling = child(6L, 10L, 3L, Document.create(10L, "다른 페이지", 2L));
+    sibling.changeSortOrder(4);
+    Document parent = document(3L, 10L);
+    when(documentRepository.findById(5L)).thenReturn(Optional.of(source));
+    when(documentRepository.findById(3L)).thenReturn(Optional.of(parent));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(10L))
+      .thenReturn(List.of(parent, source, sibling));
+    when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> {
+      Document saved = invocation.getArgument(0);
+      ReflectionTestUtils.setField(saved, "id", 20L);
+      return saved;
+    });
+    when(memberService.findNamesByIds(Set.of(1L))).thenReturn(Map.of(1L, "작성자"));
+
+    DocumentSummary result = service().duplicate(5L, 1L);
+
+    ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(captor.capture());
+    Document copy = captor.getValue();
+    assertThat(result.id()).isEqualTo(20L);
+    assertThat(copy.getTitle()).isEqualTo("회의록 (사본)");
+    assertThat(copy.getIcon()).isEqualTo("📘");
+    assertThat(copy.getContentState()).containsExactly(1, 2, 3);
+    assertThat(copy.getContentState()).isNotSameAs(source.getContentState());
+    assertThat(copy.getPlainText()).isEqualTo("본문 내용");
+    assertThat(copy.getParentId()).isEqualTo(3L);
+    assertThat(copy.getSortOrder()).isEqualTo(5);
+    assertThat(copy.getCreatedBy()).isEqualTo(1L);
+    assertThat(copy.getKind()).isEqualTo(DocumentKind.PAGE);
+  }
+
+  // 파일·WBS 항목은 본문이 없어 복제하지 않음
+  @Test
+  void duplicate_file_throwsInvalidInput() {
+    Document file = child(5L, 10L, null, Document.createFile(10L, "a.pdf", 1L));
+    when(documentRepository.findById(5L)).thenReturn(Optional.of(file));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
+
+    assertThatThrownBy(() -> service().duplicate(5L, 1L))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    verify(documentRepository, never()).save(any());
+  }
+
   @Test
   void claimPageBlockBackfill_deletedDocument_throwsNotFound() {
     Document doc = document(1L, 10L);

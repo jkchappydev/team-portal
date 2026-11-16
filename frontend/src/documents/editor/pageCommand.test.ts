@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { appendMissingPageBlocks, placePageBlock, referencedPageIds } from "./pageCommand";
+import { appendMissingPageBlocks, copyBlockWithPages, placePageBlock, referencedPageIds } from "./pageCommand";
 import type { PageBlockNode, PageEditor } from "./pageCommand";
 
 function fakeEditor(document: PageBlockNode[]): PageEditor {
@@ -47,6 +47,39 @@ describe("appendMissingPageBlocks", () => {
     expect(appendMissingPageBlocks(editor, [5])).toEqual([]);
     expect(appendMissingPageBlocks(editor, [])).toEqual([]);
     expect(editor.insertBlocks).not.toHaveBeenCalled();
+  });
+});
+
+describe("copyBlockWithPages", () => {
+  it("페이지 블록은 페이지 사본을 만들어 새 페이지를 가리키게 하고 id는 지운다", async () => {
+    const copyPage = vi.fn().mockResolvedValue(70);
+    const copy = await copyBlockWithPages({ id: "a", type: "page", props: { documentId: 7 }, children: [] }, copyPage);
+    expect(copyPage).toHaveBeenCalledWith(7);
+    expect(copy).toEqual({ type: "page", props: { documentId: 70 }, children: [] });
+  });
+
+  it("하위 블록 안의 페이지 블록도 각각 사본을 가리키게 한다", async () => {
+    const copyPage = vi.fn((id: number) => Promise.resolve(id * 10));
+    const copy = await copyBlockWithPages({
+      id: "c", type: "callout", props: { textColor: "red" }, content: [],
+      children: [
+        { id: "p1", type: "page", props: { documentId: 1 } },
+        { id: "t", type: "paragraph", children: [{ id: "p2", type: "page", props: { documentId: 2 } }] },
+      ],
+    }, copyPage);
+    expect(copy).toEqual({
+      type: "callout", props: { textColor: "red" }, content: [],
+      children: [
+        { type: "page", props: { documentId: 10 } },
+        { type: "paragraph", children: [{ type: "page", props: { documentId: 20 } }] },
+      ],
+    });
+  });
+
+  it("페이지 블록이 없으면 사본을 만들지 않는다", async () => {
+    const copyPage = vi.fn();
+    await copyBlockWithPages({ id: "x", type: "paragraph", content: [{ type: "text", text: "글" }] }, copyPage);
+    expect(copyPage).not.toHaveBeenCalled();
   });
 });
 

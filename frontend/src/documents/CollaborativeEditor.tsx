@@ -28,7 +28,9 @@ import {
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { claimPageBlockBackfill, createDocument } from "../api/documents";
+import { claimPageBlockBackfill, createDocument, duplicateDocument } from "../api/documents";
+import { PageCopyContext } from "./editor/pageCopyContext";
+import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
 import type { PageEditor } from "./editor/pageCommand";
 import { pageSlashItem } from "./editor/pageSlashItem";
@@ -356,6 +358,19 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     onError: setScheduleError,
   });
 
+  // 블록 메뉴 "복제"로 페이지 블록을 복제할 때 페이지 사본을 만들고 목록 조회 갱신 (오류는 일정과 같은 안내 칸)
+  const pageCopy: PageCopyActions = {
+    copyPage: (id) => {
+      setScheduleError(null);
+      return duplicateDocument(id).then((created) => {
+        void queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
+        void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+        return created.id;
+      });
+    },
+    onError: setScheduleError,
+  };
+
   // 예전 하위 페이지 트리의 항목을 본문 맨 끝에 페이지 블록으로 한 번만 붙임 (서버 목록은 처음 가져간 한 명만 받음)
   // 읽기 전용이면 가져가지 않아 다음에 편집 가능한 사람이 열 때 붙음
   const backfilled = useRef(false);
@@ -420,7 +435,9 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
         formattingToolbar={false}>
         {/* 서식 도구 막대: 기본 버튼 + 노션처럼 코드(Ctrl+E)·서식 지우기 */}
         <FormattingToolbarController formattingToolbar={NotionFormattingToolbar} />
-        <AlignedSideMenuController sideMenu={NotionSideMenu} />
+        <PageCopyContext.Provider value={pageCopy}>
+          <AlignedSideMenuController sideMenu={NotionSideMenu} />
+        </PageCopyContext.Provider>
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />

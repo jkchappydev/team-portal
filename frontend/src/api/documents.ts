@@ -77,6 +77,11 @@ export function createDocument(spaceId: number, parentId?: number | null, title?
   });
 }
 
+// 본문 페이지 블록 복제용 페이지 사본 생성 (같은 상위의 맨 아래, 제목 뒤 "(사본)")
+export function duplicateDocument(id: number): Promise<DocumentSummaryDto> {
+  return apiFetch<DocumentSummaryDto>(`/api/documents/${id}/duplicate`, { method: "POST" });
+}
+
 export function getDocument(id: number): Promise<DocumentDetailDto> {
   return apiFetch<DocumentDetailDto>(`/api/documents/${id}`);
 }

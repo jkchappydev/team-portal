@@ -4,7 +4,10 @@ import { isDeleteKey, markMenuBlock } from "./menuSelection";
 import { Switch, UnstyledButton } from "@mantine/core";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import { DragHandleMenu, useBlockNoteEditor, useComponentsContext, useExtensionState } from "@blocknote/react";
+import { ApiError } from "../../api/client";
 import { colorTableCells, tableColor, withoutIds } from "./blockMenu";
+import { copyBlockWithPages, referencedPageIds } from "./pageCommand";
+import { usePageCopy } from "./pageCopyContext";
 import { ColorSubmenu } from "./ColorSubmenu";
 import { MenuIcon } from "./MenuIcon";
 import { MENU_ICONS } from "./menuIcons";
@@ -66,6 +69,7 @@ export function NotionDragHandleMenu() {
   const Components = useComponentsContext()!;
   const editor = useBlockNoteEditor();
   const block = useExtensionState(SideMenuExtension, { editor, selector: (state) => state?.block });
+  const pageCopy = usePageCopy();
   if (!block) return null;
 
   const isTable = block.type === "table";
@@ -95,8 +99,20 @@ export function NotionDragHandleMenu() {
     editor.focus();
   };
 
+  // 페이지 블록(하위 블록 안 포함)은 페이지 사본을 만든 뒤 사본을 가리키는 블록으로 넣음
   const duplicate = () => {
-    editor.insertBlocks([withoutIds(block) as never], block, "after");
+    if (!pageCopy || referencedPageIds([block as never]).size === 0) {
+      editor.insertBlocks([withoutIds(block) as never], block, "after");
+      return;
+    }
+    copyBlockWithPages(block as never, pageCopy.copyPage)
+      .then((copy) => {
+        // 사본을 만드는 사이 원래 블록이 지워졌으면 맨 끝에 넣음
+        const anchor = editor.getBlock(block.id) ?? editor.document[editor.document.length - 1];
+        editor.insertBlocks([copy as never], anchor, "after");
+      })
+      .catch((error: unknown) =>
+        pageCopy.onError(error instanceof ApiError && error.message ? error.message : "페이지를 복제하지 못했습니다."));
   };
 
   const remove = () => editor.removeBlocks([block]);

@@ -65,6 +65,12 @@ public class DocumentController {
     return ApiResponse.ok(documentService.claimPageBlockBackfill(id));
   }
 
+  // 본문 페이지 블록 복제용 페이지 사본 생성
+  @PostMapping("/api/documents/{id}/duplicate")
+  public ApiResponse<DocumentSummary> duplicate(@PathVariable Long id, @CurrentUser Long userId) {
+    return ApiResponse.ok(documentService.duplicate(id, userId));
+  }
+
   @PatchMapping("/api/documents/{id}/title")
   public ApiResponse<DocumentDetail> rename(@PathVariable Long id,
     @Valid @RequestBody DocumentTitleRequest request, @CurrentUser Long userId) {

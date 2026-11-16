@@ -75,6 +75,20 @@ class DocumentControllerTest {
       .andExpect(jsonPath("$.data[1]").value(12));
   }
 
+  // 페이지 블록 복제: 새로 만든 사본 페이지 정보를 돌려줌
+  @Test
+  void duplicate_returnsCopiedDocument() throws Exception {
+    when(documentService.duplicate(7L, 1L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentSummary(
+      20L, 10L, "개발", "회의록 (사본)", null, "작성자", java.time.OffsetDateTime.parse("2026-11-16T00:00:00Z"),
+      3L, "PAGE", null));
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+        .post("/api/documents/7/duplicate").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.id").value(20))
+      .andExpect(jsonPath("$.data.title").value("회의록 (사본)"));
+  }
+
   @Test
   void renameDocument_blankTitle_returns400() throws Exception {
     mockMvc.perform(patch("/api/documents/1/title")
