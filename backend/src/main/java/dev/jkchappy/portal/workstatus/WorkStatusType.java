@@ -8,8 +8,8 @@ public enum WorkStatusType {
   LEAVE("연차"),
   HALF_DAY("반차"),
   QUARTER_DAY("반반차"),
-  // 경조·생일 등 팀에서 따로 주는 휴가: 쉬는 날이지만 연차에서 빼지 않음 (하루·기간 또는 오전/오후 반차)
-  TEAM_LEAVE("팀자율연차"),
+  // 공가(예비군·민방위·경조 등): 쉬는 날이지만 연차에서 빼지 않음 (하루·기간 또는 오전/오후 반차)
+  OFFICIAL_LEAVE("공가"),
   BUSINESS_TRIP("출장"),
   OUTSIDE_WORK("외근"),
   OTHER(null);

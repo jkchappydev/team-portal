@@ -8,7 +8,7 @@ import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER } from "./types";
 import { DEFAULT_END_TIME, DEFAULT_START_TIME, buildTimeOptions } from "./timeOptions";
 
 // 종류별 입력 규칙 (백엔드 WorkStatusValidator와 동일)
-const RANGE_TYPES: WorkStatusType[] = ["LEAVE", "TEAM_LEAVE", "BUSINESS_TRIP", "OTHER"];
+const RANGE_TYPES: WorkStatusType[] = ["LEAVE", "OFFICIAL_LEAVE", "BUSINESS_TRIP", "OTHER"];
 const TIME_TYPES: WorkStatusType[] = ["OUTSIDE_WORK", "OTHER"];
 const PLACE_TYPES: WorkStatusType[] = ["BUSINESS_TRIP", "OUTSIDE_WORK"];
 
@@ -46,9 +46,9 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
   const [startDate, setStartDate] = useState(editing?.startDate ?? defaultDate);
   const [endDate, setEndDate] = useState(editing?.endDate ?? defaultDate);
   const [halfDayPeriod, setHalfDayPeriod] = useState<HalfDayPeriod>(editing?.halfDayPeriod ?? "AM");
-  // 팀자율연차: 하루(기간) 또는 오전/오후 반차
+  // 공가: 하루(기간) 또는 오전/오후 반나절
   const [teamPart, setTeamPart] = useState<"DAY" | HalfDayPeriod>(
-    editing?.type === "TEAM_LEAVE" && editing.halfDayPeriod ? editing.halfDayPeriod : "DAY",
+    editing?.type === "OFFICIAL_LEAVE" && editing.halfDayPeriod ? editing.halfDayPeriod : "DAY",
   );
   // 신규 등록은 기본 근무 시간(09:00~18:00)으로 시작
   const [startTime, setStartTime] = useState(editing ? toTimeInput(editing.startTime) : DEFAULT_START_TIME);
@@ -60,7 +60,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const isRange = RANGE_TYPES.includes(type) && !(type === "TEAM_LEAVE" && teamPart !== "DAY");
+  const isRange = RANGE_TYPES.includes(type) && !(type === "OFFICIAL_LEAVE" && teamPart !== "DAY");
   const showTimes = TIME_TYPES.includes(type);
   const showPlace = PLACE_TYPES.includes(type);
 
@@ -91,7 +91,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
       startDate,
       endDate: isRange ? endDate : startDate,
       halfDayPeriod: type === "HALF_DAY" || type === "QUARTER_DAY" ? halfDayPeriod
-        : type === "TEAM_LEAVE" && teamPart !== "DAY" ? teamPart : null,
+        : type === "OFFICIAL_LEAVE" && teamPart !== "DAY" ? teamPart : null,
       startTime: showTimes && startTime ? startTime : null,
       endTime: showTimes && endTime ? endTime : null,
       place: showPlace ? place.trim() || null : null,
@@ -148,11 +148,11 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
           allowDeselect={false}
         />
       )}
-      {type === "TEAM_LEAVE" && (
+      {type === "OFFICIAL_LEAVE" && (
         <Select
           label="구분"
-          description="경조·생일 등 팀에서 주는 휴가로, 연차 합계에서 빼지 않습니다."
-          data={[{ value: "DAY", label: "하루(기간)" }, { value: "AM", label: "오전 반차" }, { value: "PM", label: "오후 반차" }]}
+          description="예비군·민방위·경조 등 연차에서 빼지 않는 휴가입니다. 연차 표에는 0으로 표시됩니다."
+          data={[{ value: "DAY", label: "하루(기간)" }, { value: "AM", label: "오전" }, { value: "PM", label: "오후" }]}
           value={teamPart}
           onChange={(v) => {
             if (!v) return;

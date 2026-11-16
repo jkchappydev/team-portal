@@ -21,8 +21,6 @@ export interface AnnualLeaveSummaryDto {
   carriedDays: number;
   totalDays: number;
   usedDays: number;
-  // 연차에서 빼지 않는 팀자율연차 일수 (합계·잔여와 별도)
-  teamLeaveDays?: number;
   remainingDays: number;
   weeklyUsages: WeeklyLeaveUsageDto[];
   // 비활성·삭제(퇴사) 팀원은 이월·확정 연차를 고칠 수 없음

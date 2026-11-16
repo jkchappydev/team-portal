@@ -13,7 +13,7 @@ class WorkStatusTypeTest {
       WorkStatusType.LEAVE,
       WorkStatusType.HALF_DAY,
       WorkStatusType.QUARTER_DAY,
-      WorkStatusType.TEAM_LEAVE,
+      WorkStatusType.OFFICIAL_LEAVE,
       WorkStatusType.BUSINESS_TRIP,
       WorkStatusType.OUTSIDE_WORK,
       WorkStatusType.OTHER);

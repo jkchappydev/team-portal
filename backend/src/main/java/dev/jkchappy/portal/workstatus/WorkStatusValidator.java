@@ -19,9 +19,9 @@ public class WorkStatusValidator {
     if (singleDayOnly && !r.startDate().equals(r.endDate())) {
       throw invalid("반차, 반반차, 외근은 하루만 등록할 수 있습니다.");
     }
-    // 팀자율연차는 오전/오후를 고르면 반차라 하루만
-    if (type == WorkStatusType.TEAM_LEAVE && r.halfDayPeriod() != null && !r.startDate().equals(r.endDate())) {
-      throw invalid("오전/오후 팀자율연차는 하루만 등록할 수 있습니다.");
+    // 공가는 오전/오후를 고르면 반나절이라 하루만
+    if (type == WorkStatusType.OFFICIAL_LEAVE && r.halfDayPeriod() != null && !r.startDate().equals(r.endDate())) {
+      throw invalid("오전/오후 공가는 하루만 등록할 수 있습니다.");
     }
 
     switch (type) {

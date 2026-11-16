@@ -37,11 +37,11 @@ class WorkStatusLabelFormatterTest {
   }
 
   @Test
-  void teamLeave_halfAndRange() {
-    assertThat(f(ws(WorkStatusType.TEAM_LEAVE, "2026-10-30", "2026-10-30", HalfDayPeriod.AM, null, null,
-      null, null))).isEqualTo("홍길동 팀자율연차(오전)");
-    assertThat(f(ws(WorkStatusType.TEAM_LEAVE, "2026-11-02", "2026-11-03", null, null, null, null, null)))
-      .isEqualTo("홍길동 팀자율연차");
+  void officialLeave_halfAndRange() {
+    assertThat(f(ws(WorkStatusType.OFFICIAL_LEAVE, "2026-10-30", "2026-10-30", HalfDayPeriod.AM, null, null,
+      null, null))).isEqualTo("홍길동 공가(오전)");
+    assertThat(f(ws(WorkStatusType.OFFICIAL_LEAVE, "2026-11-02", "2026-11-03", null, null, null, null, null)))
+      .isEqualTo("홍길동 공가");
   }
 
   @Test

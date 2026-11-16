@@ -167,9 +167,6 @@ function AnnualLeaveRow({ item, year, currentMonth, currentWeek, last, admin, re
           />
         );
       }))}
-      <td style={cell} data-testid={`team-leave-${item.memberId}`}>
-        {item.teamLeaveDays ? formatDays(item.teamLeaveDays) : ""}
-      </td>
       <td style={{ ...cell, fontWeight: 600 }}>{formatDays(item.usedDays)}</td>
       <td style={cell}>{balanceInput("이월 연차", carriedDays, setCarriedDays)}</td>
       <td style={cell}>{balanceInput("확정 연차", confirmedDays, setConfirmedDays)}</td>
@@ -197,7 +194,7 @@ export function AnnualLeaveTable({ year }: { year: number }) {
     <section>
       <Group justify="space-between" mt="xl" mb="xs">
         <Title order={4}>{year}년 연차 사용 현황</Title>
-        <Text c="dimmed" fz="xs">연차 1일 · 반차 0.5일 · 반반차 0.25일 · 팀자율연차는 합계에서 제외 · 주는 월요일 시작 달력 기준</Text>
+        <Text c="dimmed" fz="xs">연차 1일 · 반차 0.5일 · 반반차 0.25일 · 공가는 0으로 표시하고 합계에서 제외 · 주는 월요일 시작 달력 기준</Text>
       </Group>
       {error && <Alert color="red" mb="sm">연차 정보를 불러오지 못했습니다.</Alert>}
       {reorder.error && <Alert color="red" mb="sm">팀원 순서를 저장하지 못했습니다.</Alert>}
@@ -207,7 +204,6 @@ export function AnnualLeaveTable({ year }: { year: number }) {
           <colgroup>
             <col style={{ width: 64 }} />
             {MONTHS.flatMap((month) => WEEKS.map((week) => <col key={`${month}-${week}`} />))}
-            <col style={{ width: 40 }} />
             <col style={{ width: 40 }} />
             <col style={{ width: 40 }} />
             <col style={{ width: 40 }} />
@@ -226,7 +222,6 @@ export function AnnualLeaveTable({ year }: { year: number }) {
                   {month}월
                 </th>
               ))}
-              <th rowSpan={2} style={headCell} title="팀자율연차 (경조·생일 등, 연차에서 빼지 않음)">팀자율</th>
               <th rowSpan={2} style={headCell}>합계</th>
               <th rowSpan={2} style={headCell} title="이월 연차">이월</th>
               <th rowSpan={2} style={headCell} title={`${year}년 확정 연차`}>확정</th>

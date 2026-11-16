@@ -55,14 +55,13 @@ class AnnualLeaveControllerTest {
   void list_returnsAnnualLeaveSummary() throws Exception {
     when(annualLeaveService.findByYear(2026)).thenReturn(List.of(new AnnualLeaveSummaryResponse(
       1L, "홍길동", new BigDecimal("15"), BigDecimal.ZERO, new BigDecimal("15"),
-      new BigDecimal("1.75"), BigDecimal.ONE, new BigDecimal("13.25"),
+      new BigDecimal("1.75"), new BigDecimal("13.25"),
       List.of(new dev.jkchappy.portal.annualleave.dto.WeeklyLeaveUsage(11, 2, new BigDecimal("1.75"),
         List.of(new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(java.time.LocalDate.of(2026, 11, 9), "연차")))), true)));
 
     mockMvc.perform(get("/api/annual-leaves").param("year", "2026"))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data[0].usedDays").value(1.75))
-      .andExpect(jsonPath("$.data[0].teamLeaveDays").value(1))
       .andExpect(jsonPath("$.data[0].remainingDays").value(13.25))
       .andExpect(jsonPath("$.data[0].weeklyUsages[0].month").value(11))
       .andExpect(jsonPath("$.data[0].weeklyUsages[0].week").value(2))

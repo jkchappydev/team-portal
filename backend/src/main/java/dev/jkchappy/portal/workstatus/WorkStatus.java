@@ -83,7 +83,7 @@ public class WorkStatus {
     this.startDate = startDate;
     this.endDate = endDate;
     boolean usesPeriod = type == WorkStatusType.HALF_DAY || type == WorkStatusType.QUARTER_DAY
-      || type == WorkStatusType.TEAM_LEAVE;
+      || type == WorkStatusType.OFFICIAL_LEAVE;
     this.halfDayPeriod = usesPeriod ? halfDayPeriod : null;
     boolean usesTime = type == WorkStatusType.OUTSIDE_WORK || type == WorkStatusType.OTHER;
     this.startTime = usesTime ? startTime : null;

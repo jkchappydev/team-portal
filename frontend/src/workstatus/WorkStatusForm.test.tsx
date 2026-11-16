@@ -64,20 +64,20 @@ describe("WorkStatusForm", () => {
     expect(screen.queryByText("종료 시간")).toBeNull();
   });
 
-  it("팀자율연차는 기본이 기간이고, 오전/오후를 고르면 하루짜리로 바뀐다", async () => {
+  it("공가는 기본이 기간이고, 오전/오후를 고르면 하루짜리로 바뀐다", async () => {
     vi.mocked(createWorkStatus).mockResolvedValue({} as Awaited<ReturnType<typeof createWorkStatus>>);
     renderForm();
-    fireEvent.click(screen.getByRole("button", { name: "팀자율연차" }));
+    fireEvent.click(screen.getByRole("button", { name: "공가" }));
     expect(screen.getByLabelText("종료일")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("구분", { selector: "input" }));
-    fireEvent.click(await screen.findByRole("option", { name: "오전 반차" }));
+    fireEvent.click(await screen.findByRole("option", { name: "오전" }));
     expect(screen.queryByLabelText("종료일")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "등록" }));
     await waitFor(() => expect(createWorkStatus).toHaveBeenCalled());
     expect(vi.mocked(createWorkStatus).mock.calls[0][0]).toMatchObject({
-      type: "TEAM_LEAVE", startDate: "2026-11-04", endDate: "2026-11-04", halfDayPeriod: "AM",
+      type: "OFFICIAL_LEAVE", startDate: "2026-11-04", endDate: "2026-11-04", halfDayPeriod: "AM",
     });
   });
 });
