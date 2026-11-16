@@ -88,7 +88,7 @@ class AnnualLeaveServiceTest {
     when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
     when(balanceRepository.findByYear(2026)).thenReturn(List.of(balance));
     WorkStatus halfOfficial = WorkStatus.create(1L, WorkStatusType.OFFICIAL_LEAVE, LocalDate.of(2026, 10, 30),
-      LocalDate.of(2026, 10, 30), HalfDayPeriod.AM, null, null, null, null, 1L);
+      LocalDate.of(2026, 10, 30), HalfDayPeriod.AM, null, null, null, "민방위", 1L);
     when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
       LocalDate.of(2026, 12, 31))).thenReturn(List.of(
       status(1L, WorkStatusType.OFFICIAL_LEAVE, LocalDate.of(2026, 1, 16), LocalDate.of(2026, 1, 16)),
@@ -105,7 +105,29 @@ class AnnualLeaveServiceTest {
     assertThat(january.dates()).containsExactly(
       new dev.jkchappy.portal.annualleave.dto.LeaveUsageDay(LocalDate.of(2026, 1, 16), "공가"));
     assertThat(result.weeklyUsages().getLast().dates()).extracting(d -> d.label())
-      .containsExactlyInAnyOrder("오전 공가", "오전 반차");
+      .containsExactlyInAnyOrder("오전 공가(민방위)", "오전 반차");
+  }
+
+  // 기타(예: 생일반차)는 0일로 보고 메모에는 내용만 표시
+  @Test
+  void findByYear_other_isNotCountedAndShowsContent() {
+    Member member = member(1L, "홍길동");
+    AnnualLeaveBalance balance = AnnualLeaveBalance.create(1L, 2026, new BigDecimal("15"), BigDecimal.ZERO);
+    when(memberRepository.findVisibleInYear(LocalDate.of(2026, 1, 1))).thenReturn(List.of(member));
+    when(balanceRepository.findByYear(2026)).thenReturn(List.of(balance));
+    WorkStatus birthday = WorkStatus.create(1L, WorkStatusType.OTHER, LocalDate.of(2026, 10, 30),
+      LocalDate.of(2026, 10, 30), null, null, null, null, "생일반차", 1L);
+    when(workStatusRepository.findLeaveOverlapping(LocalDate.of(2026, 1, 1),
+      LocalDate.of(2026, 12, 31))).thenReturn(List.of(
+      birthday,
+      status(1L, WorkStatusType.HALF_DAY, LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 30))));
+
+    AnnualLeaveSummaryResponse result = service().findByYear(2026).getFirst();
+
+    assertThat(result.usedDays()).isEqualByComparingTo("0.5");
+    assertThat(result.remainingDays()).isEqualByComparingTo("14.5");
+    assertThat(result.weeklyUsages().getFirst().dates()).extracting(d -> d.label())
+      .containsExactlyInAnyOrder("생일반차", "오전 반차");
   }
 
   // 11/6(금)~11/9(월) 연차는 주가 갈려 1주 1일, 2주 1일로 나뉨 (주말 제외)

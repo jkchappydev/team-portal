@@ -76,13 +76,13 @@ public class AnnualLeaveService {
   }
 
   // 한 주의 사용 일수와 연차를 쓴 날짜 목록
-  // 공가는 날짜 목록(메모)에는 넣되 사용 일수에 더하지 않음 (그 주만 공가면 0일로 보임)
+  // 공가·기타는 날짜 목록(메모)에는 넣되 사용 일수에 더하지 않음 (그 주만 공가·기타면 0일로 보임)
   private static final class WeekUsage {
     private BigDecimal days = BigDecimal.ZERO;
     private final List<LeaveUsageDay> dates = new ArrayList<>();
 
-    private void add(LocalDate date, BigDecimal amount, String label, boolean official) {
-      if (!official) {
+    private void add(LocalDate date, BigDecimal amount, String label, boolean notCounted) {
+      if (!notCounted) {
         days = days.add(amount);
       }
       dates.add(new LeaveUsageDay(date, label));
@@ -97,10 +97,16 @@ public class AnnualLeaveService {
     for (WorkStatus status : workStatusRepository.findLeaveOverlapping(from, to)) {
       TreeMap<Integer, WeekUsage> usage = result.computeIfAbsent(status.getMemberId(),
         id -> new TreeMap<>());
-      String label = status.getHalfDayPeriod() == null
+      boolean official = status.getType() == WorkStatusType.OFFICIAL_LEAVE;
+      String typeName = status.getHalfDayPeriod() == null
         ? status.getType().getDisplayName()
         : status.getHalfDayPeriod().getDisplayName() + " " + status.getType().getDisplayName();
-      boolean official = status.getType() == WorkStatusType.OFFICIAL_LEAVE;
+      // 공가 사유가 있으면 메모에 함께 표시 (예: 공가(예비군))
+      // 기타(예: 생일반차)도 공가처럼 메모에만 내용을 표시하고 연차에서 빼지 않음 (0일)
+      boolean other = status.getType() == WorkStatusType.OTHER;
+      boolean notCounted = official || other;
+      String label = other && status.getContent() != null ? status.getContent()
+        : official && status.getContent() != null ? typeName + "(" + status.getContent() + ")" : typeName;
       // 반차·반반차와 오전/오후 공가는 하루짜리
       boolean partDay = status.getType() == WorkStatusType.HALF_DAY || status.getType() == WorkStatusType.QUARTER_DAY
         || (official && status.getHalfDayPeriod() != null);
@@ -108,7 +114,7 @@ public class AnnualLeaveService {
         BigDecimal days = status.getType() == WorkStatusType.QUARTER_DAY ? QUARTER_DAY : HALF_DAY;
         LocalDate date = status.getStartDate();
         if (date.getYear() == year) {
-          usage.computeIfAbsent(weekKey(date), key -> new WeekUsage()).add(date, days, label, official);
+          usage.computeIfAbsent(weekKey(date), key -> new WeekUsage()).add(date, days, label, notCounted);
         }
         continue;
       }
@@ -117,7 +123,7 @@ public class AnnualLeaveService {
       start.datesUntil(end.plusDays(1))
         .filter(date -> !LeaveWeek.isWeekend(date))
         .forEach(date -> usage.computeIfAbsent(weekKey(date), key -> new WeekUsage())
-          .add(date, BigDecimal.ONE, label, official));
+          .add(date, BigDecimal.ONE, label, notCounted));
     }
     return result;
   }

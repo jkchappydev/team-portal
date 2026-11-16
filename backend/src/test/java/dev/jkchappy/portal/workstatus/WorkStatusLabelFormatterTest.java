@@ -42,6 +42,11 @@ class WorkStatusLabelFormatterTest {
       null, null))).isEqualTo("홍길동 공가(오전)");
     assertThat(f(ws(WorkStatusType.OFFICIAL_LEAVE, "2026-11-02", "2026-11-03", null, null, null, null, null)))
       .isEqualTo("홍길동 공가");
+    // 공가 사유(내용)는 괄호 맨 앞
+    assertThat(f(ws(WorkStatusType.OFFICIAL_LEAVE, "2026-09-07", "2026-09-10", null, null, null, null, "예비군")))
+      .isEqualTo("홍길동 공가(예비군)");
+    assertThat(f(ws(WorkStatusType.OFFICIAL_LEAVE, "2026-05-11", "2026-05-11", HalfDayPeriod.PM, null, null,
+      null, "민방위"))).isEqualTo("홍길동 공가(민방위, 오후)");
   }
 
   @Test

@@ -99,6 +99,22 @@ class WorkStatusServiceTest {
     assertThat(response.endTime()).isNull();
   }
 
+  // 공가는 내용(사유)을 선택으로 저장하고 앞뒤 공백을 지움, 빈 내용은 저장하지 않음
+  @Test
+  void create_officialLeave_keepsOptionalContent() {
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(Member.create("홍길동")));
+    when(workStatusRepository.save(any(WorkStatus.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    WorkStatusResponse withContent = service().create(new WorkStatusRequest(1L, WorkStatusType.OFFICIAL_LEAVE,
+      LocalDate.of(2026, 9, 7), LocalDate.of(2026, 9, 10), null, null, null, null, " 예비군 "), 1L);
+    WorkStatusResponse blank = service().create(new WorkStatusRequest(1L, WorkStatusType.OFFICIAL_LEAVE,
+      LocalDate.of(2026, 9, 7), LocalDate.of(2026, 9, 7), null, null, null, null, "  "), 1L);
+
+    assertThat(withContent.content()).isEqualTo("예비군");
+    assertThat(withContent.label()).isEqualTo("홍길동 공가(예비군)");
+    assertThat(blank.content()).isNull();
+  }
+
   @Test
   void create_quarterDay_keepsPeriodAndClearsTimes() {
     Member member = Member.create("홍길동");

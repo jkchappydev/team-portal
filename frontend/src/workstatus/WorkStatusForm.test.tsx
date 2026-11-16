@@ -99,4 +99,14 @@ describe("WorkStatusForm", () => {
     fireEvent.click(await screen.findByRole("option", { name: "이순신", hidden: true }));
     await waitFor(() => expect(select.value).toBe("이순신"));
   });
+
+  it("공가는 맨 아래 내용(사유) 칸을 선택으로 입력해 함께 저장한다", async () => {
+    vi.mocked(createWorkStatus).mockResolvedValue({} as Awaited<ReturnType<typeof createWorkStatus>>);
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "공가" }));
+    fireEvent.change(screen.getByLabelText("내용"), { target: { value: " 예비군 " } });
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
+    await waitFor(() => expect(createWorkStatus).toHaveBeenCalled());
+    expect(vi.mocked(createWorkStatus).mock.calls.at(-1)![0]).toMatchObject({ type: "OFFICIAL_LEAVE", content: "예비군" });
+  });
 });

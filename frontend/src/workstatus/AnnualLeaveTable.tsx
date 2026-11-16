@@ -194,7 +194,7 @@ export function AnnualLeaveTable({ year }: { year: number }) {
     <section>
       <Group justify="space-between" mt="xl" mb="xs">
         <Title order={4}>{year}년 연차 사용 현황</Title>
-        <Text c="dimmed" fz="xs">연차 1일 · 반차 0.5일 · 반반차 0.25일 · 공가는 0으로 표시하고 합계에서 제외 · 주는 월요일 시작 달력 기준</Text>
+        <Text c="dimmed" fz="xs">연차 1일 · 반차 0.5일 · 반반차 0.25일 · 공가·기타는 0으로 표시하고 합계에서 제외 · 주는 월요일 시작 달력 기준</Text>
       </Group>
       {error && <Alert color="red" mb="sm">연차 정보를 불러오지 못했습니다.</Alert>}
       {reorder.error && <Alert color="red" mb="sm">팀원 순서를 저장하지 못했습니다.</Alert>}

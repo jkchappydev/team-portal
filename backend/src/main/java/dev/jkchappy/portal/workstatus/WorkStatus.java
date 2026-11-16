@@ -90,7 +90,9 @@ public class WorkStatus {
     this.endTime = usesTime ? endTime : null;
     this.place = type == WorkStatusType.BUSINESS_TRIP || type == WorkStatusType.OUTSIDE_WORK
       ? place : null;
-    this.content = type == WorkStatusType.OTHER ? content : null;
+    // 내용은 기타(필수)와 공가(선택, 예: 예비군)에서만 사용
+    boolean usesContent = type == WorkStatusType.OTHER || type == WorkStatusType.OFFICIAL_LEAVE;
+    this.content = usesContent && content != null && !content.isBlank() ? content.trim() : null;
     this.updatedAt = Instant.now();
   }
 }

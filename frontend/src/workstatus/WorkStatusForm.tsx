@@ -97,7 +97,7 @@ function FormBody({ onClose, editing, defaultDate, currentUserId, canManageOther
       startTime: showTimes && startTime ? startTime : null,
       endTime: showTimes && endTime ? endTime : null,
       place: showPlace ? place.trim() || null : null,
-      content: type === "OTHER" ? content.trim() || null : null,
+      content: type === "OTHER" || type === "OFFICIAL_LEAVE" ? content.trim() || null : null,
     });
   };
 
@@ -115,11 +115,13 @@ function FormBody({ onClose, editing, defaultDate, currentUserId, canManageOther
       />
       <div>
         <Text size="sm" fw={500} mb={4}>종류</Text>
-        <Group gap={6}>
+        {/* 종류 7개를 줄바꿈 없이 한 줄에 같은 폭으로 표시 */}
+        <Group gap={4} grow wrap="nowrap">
           {TYPE_ORDER.map((t) => (
             <Button
               key={t}
               size="xs"
+              px={0}
               color={TYPE_COLORS[t]}
               variant={type === t ? "filled" : "light"}
               onClick={() => setType(t)}
@@ -190,7 +192,12 @@ function FormBody({ onClose, editing, defaultDate, currentUserId, canManageOther
         </Group>
       )}
       {showPlace && <TextInput label="장소" value={place} maxLength={100} onChange={(e) => setPlace(e.currentTarget.value)} />}
+      {/* 내용: 기타는 필수, 공가는 선택(사유) — 등록 창 맨 아래 */}
       {type === "OTHER" && <TextInput label="내용" value={content} maxLength={100} onChange={(e) => setContent(e.currentTarget.value)} />}
+      {type === "OFFICIAL_LEAVE" && (
+        <TextInput label="내용" placeholder="예: 예비군, 민방위 (선택)" value={content} maxLength={100}
+          onChange={(e) => setContent(e.currentTarget.value)} />
+      )}
       {errorMessage && <Alert color="red">{errorMessage}</Alert>}
       {/* 삭제는 되돌릴 수 없으므로 한 번 더 확인 */}
       {confirmDelete && (

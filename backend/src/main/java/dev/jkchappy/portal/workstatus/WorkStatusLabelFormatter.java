@@ -34,6 +34,8 @@ public final class WorkStatusLabelFormatter {
         }
       }
       case OFFICIAL_LEAVE -> {
+        // 공가 사유(예: 예비군) 먼저, 반나절이면 오전/오후
+        addIfPresent(details, ws.getContent());
         if (ws.getHalfDayPeriod() != null) {
           details.add(ws.getHalfDayPeriod().getDisplayName());
         }
