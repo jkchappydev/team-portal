@@ -28,6 +28,17 @@ export function filterLanguages(languages: CodeLanguages, query: string): string
     .map(([key]) => key);
 }
 
+// 붙여넣은 언어 이름(bash, Shell, language-Bash 등)을 지원 목록의 키로 맞추고, 모르는 언어는 일반 텍스트로
+export function normalizeLanguage(languages: CodeLanguages, value: string | undefined | null): string {
+  const v = (value ?? "").trim().toLowerCase();
+  if (v) {
+    const found = Object.entries(languages).find(([key, { name, aliases }]) =>
+      [key, name, ...(aliases ?? [])].some((candidate) => candidate.toLowerCase() === v));
+    if (found) return found[0];
+  }
+  return "text" in languages ? "text" : Object.keys(languages)[0];
+}
+
 // 코드 블록 내용(글자 조각 목록)을 하나의 문자열로
 export function codeText(content: unknown): string {
   if (!Array.isArray(content)) return "";
@@ -233,14 +244,24 @@ export function createCodeToolbar(block: CodeBlockLike, editor: CodeToolbarEdito
 
 // BlockNote 코드 블록을 그대로 쓰되 기본 언어 선택 상자(브라우저 기본 목록)만 노션식 도구 막대로 교체
 const baseCodeBlock = createCodeBlockSpec(codeBlockOptions);
-// 기본 코드 블록은 항상 render를 가짐
+// 기본 코드 블록은 항상 render·parse를 가짐
 const baseRender = baseCodeBlock.implementation.render!;
+const baseParse = baseCodeBlock.implementation.parse!;
+const supportedLanguages: CodeLanguages = codeBlockOptions.supportedLanguages;
 
 export const codeBlockSpec: typeof baseCodeBlock = {
   ...baseCodeBlock,
   implementation: {
     ...baseCodeBlock.implementation,
+    // 노션 등에서 붙여넣은 코드의 언어(class="language-bash")를 지원 목록 키로 변환
+    parse(el) {
+      const parsed = baseParse(el);
+      return parsed && { ...parsed, language: normalizeLanguage(supportedLanguages, parsed.language) };
+    },
     render(block, editor) {
+      // 이미 저장된 별칭 언어(bash 등)도 기본 언어 선택 상자가 오류를 내지 않게 키로 바꿔 그림
+      const language = normalizeLanguage(supportedLanguages, block.props.language);
+      if (language !== block.props.language) block = { ...block, props: { ...block.props, language } };
       const rendered = baseRender.apply(this as ThisParameterType<typeof baseRender>, [block, editor]);
       const toolbar = createCodeToolbar(block, editor as unknown as CodeToolbarEditor, codeBlockOptions.supportedLanguages);
       const select = rendered.dom.firstChild;

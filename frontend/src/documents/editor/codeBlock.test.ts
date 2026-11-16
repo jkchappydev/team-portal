@@ -1,5 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { codeText, createCodeToolbar, filterLanguages } from "./codeBlock";
+import { BlockNoteEditor } from "@blocknote/core";
+import { codeText, createCodeToolbar, filterLanguages, normalizeLanguage } from "./codeBlock";
+import { editorSchema } from "./schema";
 import type { CodeToolbarEditor } from "./codeBlock";
 
 const languages = {
@@ -86,5 +88,43 @@ describe("createCodeToolbar", () => {
     expect(button.disabled).toBe(true);
     button.click();
     expect(document.querySelector(".code-lang-panel")).toBeNull();
+  });
+});
+
+describe("코드 블록 언어 맞춤", () => {
+  it("별칭·이름·대소문자를 지원 목록 키로 바꾸고 모르는 언어는 일반 텍스트로 둔다", () => {
+    const list = { text: { name: "Plain Text", aliases: ["txt"] }, shellscript: { name: "Shell", aliases: ["bash", "sh"] } };
+    expect(normalizeLanguage(list, "bash")).toBe("shellscript");
+    expect(normalizeLanguage(list, " Bash ")).toBe("shellscript");
+    expect(normalizeLanguage(list, "Shell")).toBe("shellscript");
+    expect(normalizeLanguage(list, "Plain Text")).toBe("text");
+    expect(normalizeLanguage(list, "cobol")).toBe("text");
+    expect(normalizeLanguage(list, undefined)).toBe("text");
+  });
+
+  // 노션에서 bash 코드 블록을 붙여넣으면 "Language bash is not supported." 오류로 붙여넣기가 실패하던 문제 재발 방지
+  it("노션에서 붙여넣은 bash 코드 블록을 셸 언어로 받아 그린다", () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema });
+    const blocks = editor.tryParseHTMLToBlocks('<pre><code class="language-bash">echo hi\nls -al</code></pre>');
+    expect(blocks[0]).toMatchObject({ type: "codeBlock", props: { language: "shellscript" } });
+
+    editor.replaceBlocks(editor.document, blocks);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    expect(() => editor.mount(host)).not.toThrow();
+    expect(host.querySelector('[aria-label="코드 언어 선택"]')?.textContent).toBe("Shell");
+    editor.unmount();
+  });
+
+  it("이미 bash로 저장된 코드 블록도 오류 없이 그린다", () => {
+    const editor = BlockNoteEditor.create({
+      schema: editorSchema,
+      initialContent: [{ type: "codeBlock", props: { language: "bash" }, content: "echo hi" }],
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    expect(() => editor.mount(host)).not.toThrow();
+    expect(host.querySelector('[aria-label="코드 언어 선택"]')?.textContent).toBe("Shell");
+    editor.unmount();
   });
 });
