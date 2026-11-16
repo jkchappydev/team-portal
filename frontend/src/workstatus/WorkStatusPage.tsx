@@ -10,7 +10,7 @@ import { useCurrentUser } from "../user/currentUser";
 import { buildMonthGrid, expandToWeekdays, parseMonthParam } from "./calendar";
 import { calculateWeekMinHeight } from "./calendarLayout";
 import { groupHolidaysByDate } from "./holidayCalendar";
-import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER } from "./types";
+import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER, chipColors } from "./types";
 import { AnnualLeaveTable } from "./AnnualLeaveTable";
 import { WorkStatusForm } from "./WorkStatusForm";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "./highlight";
@@ -32,14 +32,6 @@ function accentColor(color: string): string {
   return color === "gray"
     ? "light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-4))"
     : `var(--mantine-color-${color}-filled)`;
-}
-
-// 근무 상황 칩: 옅은 배경 + 진한 글자 (다크 모드는 밝은 글자), 왼쪽 색 막대는 없음
-function chipColors(color: string) {
-  return {
-    background: `light-dark(var(--mantine-color-${color}-0), color-mix(in srgb, var(--mantine-color-${color}-9) 30%, transparent))`,
-    color: `light-dark(var(--mantine-color-${color}-9), var(--mantine-color-${color}-1))`,
-  };
 }
 
 function todayString(): string {

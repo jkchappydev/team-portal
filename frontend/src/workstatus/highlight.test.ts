@@ -18,6 +18,9 @@ describe("currentWeekOf", () => {
     // 2026년 7월 1일은 수요일이라 그 주가 1주
     expect(currentWeekOf(2026, new Date(2026, 6, 3))).toEqual({ month: 7, week: 1 });
     expect(currentWeekOf(2026, new Date(2026, 6, 6))).toEqual({ month: 7, week: 2 });
+    // 일요일 시작이라 일요일(11/8)은 다음 주, 토요일(11/7)은 그 주
+    expect(currentWeekOf(2026, new Date(2026, 10, 7))).toEqual({ month: 11, week: 1 });
+    expect(currentWeekOf(2026, new Date(2026, 10, 8))).toEqual({ month: 11, week: 2 });
   });
 
   it("다른 해를 보면 null을 돌려준다", () => {

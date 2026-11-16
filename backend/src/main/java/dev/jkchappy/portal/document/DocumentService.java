@@ -7,6 +7,7 @@ import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.dto.DocumentDetail;
 import dev.jkchappy.portal.document.dto.DocumentSummary;
 import dev.jkchappy.portal.document.dto.PageRef;
+import dev.jkchappy.portal.document.dto.RecentDocument;
 import dev.jkchappy.portal.document.dto.TrashChild;
 import dev.jkchappy.portal.document.dto.TrashItem;
 import dev.jkchappy.portal.document.dto.TrashResponse;
@@ -426,6 +427,26 @@ public class DocumentService {
     return toSummaries(docs.stream()
       .filter(doc -> ancestors(doc).stream().noneMatch(Document::isDeleted))
       .toList());
+  }
+
+  // 메인 화면 새 게시글: 최근 만든 페이지·파일 (상위 페이지가 휴지통에 있으면 제외)
+  @Transactional(readOnly = true)
+  public List<RecentDocument> findRecent(int limit) {
+    List<Document> docs = documentRepository.findRecentlyCreated(limit).stream()
+      .filter(doc -> ancestors(doc).stream().noneMatch(Document::isDeleted))
+      .toList();
+    if (docs.isEmpty()) {
+      return List.of();
+    }
+    Map<Long, String> spaceNames = spaceRepository.findAllById(
+        docs.stream().map(Document::getSpaceId).collect(Collectors.toSet())).stream()
+      .collect(Collectors.toMap(Space::getId, Space::getName));
+    Map<Long, String> names = memberService.findNamesByIds(
+      docs.stream().map(Document::getCreatedBy).collect(Collectors.toSet()));
+    return docs.stream()
+      .map(d -> RecentDocument.from(d, spaceNames.getOrDefault(d.getSpaceId(), ""),
+        names.getOrDefault(d.getCreatedBy(), "")))
+      .toList();
   }
 
   // 공간명과 수정자 이름을 한 번에 조회해 요약 목록 생성

@@ -80,11 +80,12 @@ export function leaveWeekRangeLabel(year: number, month: number, week: number): 
   const monthEnd = Date.UTC(year, month, 0);
   let firstWeekday = monthStart;
   while (isWeekend(firstWeekday)) firstWeekday += DAY_MS;
-  const firstMonday = firstWeekday - ((new Date(firstWeekday).getUTCDay() + 6) % 7) * DAY_MS;
-  const monday = firstMonday + (week - 1) * 7 * DAY_MS;
+  // 일요일 시작 주 (근무 상황표 달력과 같음)
+  const firstSunday = firstWeekday - new Date(firstWeekday).getUTCDay() * DAY_MS;
+  const sunday = firstSunday + (week - 1) * 7 * DAY_MS;
   // 해당 달에 속한 월~금만 범위로 사용
-  const from = Math.max(monday, monthStart);
-  const to = Math.min(monday + 4 * DAY_MS, monthEnd);
+  const from = Math.max(sunday + DAY_MS, monthStart);
+  const to = Math.min(sunday + 5 * DAY_MS, monthEnd);
   if (from > to) return null;
   return from === to ? formatShortDate(from) : `${formatShortDate(from)} ~ ${formatShortDate(to)}`;
 }

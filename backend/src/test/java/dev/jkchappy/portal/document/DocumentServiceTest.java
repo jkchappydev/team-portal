@@ -129,6 +129,26 @@ class DocumentServiceTest {
     return doc;
   }
 
+  // 메인 화면 새 게시글: 만든 사람 이름을 붙이고, 휴지통에 있는 상위 페이지 아래 글은 빼고 보여줌
+  @Test
+  void findRecent_addsCreatorName_excludesUnderDeletedParent() {
+    Document parent = child(1L, 10L, null, "상위");
+    parent.softDelete();
+    Document hidden = child(2L, 10L, 1L, "숨은 하위");
+    Document visible = child(3L, 10L, null, "새 글");
+    ReflectionTestUtils.setField(visible, "createdBy", 2L);
+    when(documentRepository.findRecentlyCreated(10)).thenReturn(List.of(visible, hidden));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(parent));
+    when(spaceRepository.findAllById(any())).thenReturn(List.of(space(10L)));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of(2L, "김철수"));
+
+    List<dev.jkchappy.portal.document.dto.RecentDocument> result = service().findRecent(10);
+
+    assertThat(result).extracting(dev.jkchappy.portal.document.dto.RecentDocument::title).containsExactly("새 글");
+    assertThat(result.getFirst().createdByName()).isEqualTo("김철수");
+    assertThat(result.getFirst().spaceName()).isEqualTo("개발");
+  }
+
   // 삭제된 페이지 아래에 함께 숨겨진 하위 페이지를 단계별로 펼쳐 보여줌
   @Test
   void findTrash_deletedPage_listsHiddenDescendantsWithDepth() {

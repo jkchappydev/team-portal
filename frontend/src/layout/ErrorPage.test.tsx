@@ -32,7 +32,7 @@ describe("ErrorPage", () => {
       <MantineProvider>
         <MemoryRouter initialEntries={["/nowhere"]}>
           <Routes>
-            <Route path="/work-status" element={<div>근무 상황표</div>} />
+            <Route path="/main" element={<div>메인 화면</div>} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </MemoryRouter>
@@ -41,6 +41,6 @@ describe("ErrorPage", () => {
     expect(screen.getByText("404")).toBeTruthy();
     expect(screen.getByText("페이지를 찾을 수 없습니다")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "첫 화면으로" }));
-    expect(screen.getByText("근무 상황표")).toBeTruthy();
+    expect(screen.getByText("메인 화면")).toBeTruthy();
   });
 });

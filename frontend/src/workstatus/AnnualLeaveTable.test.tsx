@@ -79,7 +79,7 @@ describe("AnnualLeaveTable", () => {
     expect(screen.getByTestId("usage-1-3-2").textContent).toBe("");
     expect(screen.getByText("12월")).toBeTruthy();
     expect(screen.getByText("13.25")).toBeTruthy();
-    expect(screen.getByText("연차 1일, 반차 0.5일, 반반차 0.25일, 공가·기타는 0으로 표시하고 합계에서 제외, 주는 월요일 시작 달력 기준")).toBeTruthy();
+    expect(screen.getByText("연차는 1일, 반차는 0.5일, 반반차는 0.25일로 산정하며, 공가 및 기타 항목은 0일로 표시하고 합계에서 제외함. 주간 기준은 일요일을 시작일로 하는 달력 기준을 적용함.")).toBeTruthy();
     // 공가만 쓴 주는 0으로 표시 (팀자율 열은 없음)
     expect(screen.getByTestId("usage-1-9-2").textContent).toBe("0");
     expect(screen.queryByText("팀자율")).toBeNull();

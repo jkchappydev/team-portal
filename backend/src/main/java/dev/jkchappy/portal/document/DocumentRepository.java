@@ -60,4 +60,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     + "order by d.updated_at desc limit :limit", nativeQuery = true)
   List<Document> findUnreadUpdates(@Param("memberId") Long memberId, @Param("since") Instant since,
     @Param("limit") int limit);
+
+  // 최근에 만든 페이지·파일 (메인 화면 새 게시글), 만든 시각 최신순 (WBS 항목·삭제된 문서·삭제된 공간 제외)
+  @Query(value = "select d.* from document d join space s on s.id = d.space_id "
+    + "where d.deleted_at is null and s.deleted_at is null and d.kind <> 'WBS' "
+    + "order by d.created_at desc, d.id desc limit :limit", nativeQuery = true)
+  List<Document> findRecentlyCreated(@Param("limit") int limit);
 }

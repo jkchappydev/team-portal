@@ -1,0 +1,81 @@
+import { MantineProvider } from "@mantine/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { listRecentDocuments } from "../api/documents";
+import { listHolidays } from "../api/holidays";
+import { listSpaces } from "../api/spaces";
+import { listWorkStatuses } from "../api/workStatuses";
+import { MainPage } from "./MainPage";
+import { thisWeekDays } from "./thisWeek";
+
+vi.mock("../api/documents", () => ({ listRecentDocuments: vi.fn() }));
+vi.mock("../api/holidays", () => ({ listHolidays: vi.fn() }));
+vi.mock("../api/spaces", () => ({ listSpaces: vi.fn() }));
+vi.mock("../api/workStatuses", () => ({ listWorkStatuses: vi.fn() }));
+
+describe("MainPage", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    window.matchMedia ??= ((query: string) => ({ matches: false, media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  });
+  beforeEach(() => {
+    vi.resetAllMocks();
+    const days = thisWeekDays();
+    vi.mocked(listWorkStatuses).mockResolvedValue([
+      { id: 1, memberId: 1, memberName: "홍길동", type: "LEAVE", startDate: days[1].date, endDate: days[1].date, halfDayPeriod: null,
+        startTime: null, endTime: null, place: null, content: null, label: "홍길동 연차" },
+      { id: 2, memberId: 2, memberName: "김철수", type: "BUSINESS_TRIP", startDate: days[1].date, endDate: days[1].date, halfDayPeriod: null,
+        startTime: null, endTime: null, place: "부산", content: null, label: "김철수 출장(부산)" },
+    ]);
+    vi.mocked(listHolidays).mockResolvedValue([]);
+    vi.mocked(listSpaces).mockResolvedValue([]);
+    vi.mocked(listRecentDocuments).mockResolvedValue([
+      { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", createdByName: "이영희", createdAt: new Date().toISOString() },
+    ]);
+  });
+  afterEach(cleanup);
+
+  function renderPage() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MantineProvider>
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={["/main"]}>
+            <Routes>
+              <Route path="/main" element={<MainPage />} />
+              <Route path="/documents/:id" element={<div>문서 화면</div>} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
+  }
+
+  it("이번 주 월~금 칸에 연차·출장 등 근무 상황을 보여주고, 빈 날은 없음으로 표시한다", async () => {
+    renderPage();
+    const days = thisWeekDays();
+    const tuesday = await screen.findByLabelText(`${days[1].month}/${days[1].day} (화)`);
+    expect(await within(tuesday).findByText("홍길동 연차")).toBeTruthy();
+    expect(within(tuesday).getByText("김철수 출장(부산)")).toBeTruthy();
+    expect(within(screen.getByLabelText(`${days[0].month}/${days[0].day} (월)`)).getByText("없음")).toBeTruthy();
+  });
+
+  it("새 게시글을 만든 사람과 함께 보여주고 누르면 그 페이지로 간다", async () => {
+    renderPage();
+    const post = await screen.findByText("배포 절차");
+    expect(screen.getByText("개발 · 이영희 · 방금 전")).toBeTruthy();
+    fireEvent.click(post);
+    expect(await screen.findByText("문서 화면")).toBeTruthy();
+  });
+
+  it("신규 CS·주간보고·모니터링은 영역만 잡아 둔다", async () => {
+    renderPage();
+    expect(within(screen.getByRole("region", { name: "신규 CS" })).getByText("CS 시스템과 연동 예정입니다.")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "이번 주 주간보고" })).getByText("준비 중입니다.")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "모니터링" })).getByText("준비 중입니다.")).toBeTruthy();
+  });
+});

@@ -76,6 +76,31 @@ class DocumentRepositoryTest {
     assertThat(result).extracting(Document::getTitle).containsExactly("할인 100% 적용");
   }
 
+  // 메인 화면 새 게시글: 만든 시각 최신순, WBS·삭제된 문서·삭제된 공간의 문서 제외, 개수 제한
+  @Test
+  void findRecentlyCreated_newestFirst_excludesWbsAndDeleted() {
+    Space space = spaceRepository.save(Space.create("개발", null, 1L));
+    Space removedSpace = spaceRepository.save(Space.create("보관", null, 1L));
+    Instant base = Instant.parse("2999-01-01T00:00:00Z");
+    Document older = createdAt(Document.create(space.getId(), "예전 글", 1L), base);
+    Document newer = createdAt(Document.create(space.getId(), "새 글", 1L), base.plusSeconds(60));
+    createdAt(Document.createWbs(space.getId(), "일정", 1L), base.plusSeconds(120));
+    Document deleted = Document.create(space.getId(), "지운 글", 1L);
+    deleted.softDelete();
+    createdAt(deleted, base.plusSeconds(180));
+    createdAt(Document.create(removedSpace.getId(), "보관 공간 글", 1L), base.plusSeconds(240));
+    removedSpace.softDelete();
+    spaceRepository.saveAndFlush(removedSpace);
+
+    assertThat(documentRepository.findRecentlyCreated(2)).extracting(Document::getId)
+      .containsExactly(newer.getId(), older.getId());
+  }
+
+  private Document createdAt(Document doc, Instant at) {
+    ReflectionTestUtils.setField(doc, "createdAt", at);
+    return documentRepository.saveAndFlush(doc);
+  }
+
   @Test
   void findTrashed_returnsDeletedDocsOnlyInLiveSpaces() {
     Space live = spaceRepository.save(Space.create("살아있음", null, 1L));

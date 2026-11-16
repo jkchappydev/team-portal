@@ -7,13 +7,13 @@ export function currentMonthOf(year: number, now: Date = new Date()): number | n
 }
 
 // 보고 있는 연도가 올해면 오늘이 속한 연차 표 칸(월·주), 아니면 null
-// 주 번호는 백엔드 LeaveWeek.weekOfMonth와 같은 규칙 (월요일 시작, 그 달 평일이 처음 나오는 주가 1주)
+// 주 번호는 백엔드 LeaveWeek.weekOfMonth와 같은 규칙 (일요일 시작, 그 달 평일이 처음 나오는 주가 1주)
 export function currentWeekOf(year: number, now: Date = new Date()): { month: number; week: number } | null {
   if (now.getFullYear() !== year) return null;
   const month = now.getMonth() + 1;
   const firstWeekday = new Date(year, month - 1, 1);
   while (firstWeekday.getDay() === 0 || firstWeekday.getDay() === 6) firstWeekday.setDate(firstWeekday.getDate() + 1);
-  const mondayOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
-  const days = Math.round((mondayOf(now).getTime() - mondayOf(firstWeekday).getTime()) / 86_400_000);
+  const sundayOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
+  const days = Math.round((sundayOf(now).getTime() - sundayOf(firstWeekday).getTime()) / 86_400_000);
   return { month, week: Math.max(1, Math.floor(days / 7) + 1) };
 }

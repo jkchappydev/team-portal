@@ -55,7 +55,7 @@ export function Sidebar({ user }: Props) {
 
   return (
     <Stack h="100%" gap="xs" p="sm">
-      {/* 포털 이름을 누르면 첫 화면(근무 상황표)으로 이동 */}
+      {/* 포털 이름을 누르면 첫 화면(메인)으로 이동 */}
       <Group justify="space-between" wrap="nowrap">
         <Text fw={700} size="lg" component={RouterLink} to="/" style={{ color: "inherit", textDecoration: "none" }}>
           개발팀
@@ -85,6 +85,7 @@ export function Sidebar({ user }: Props) {
             <Text size="xs" c="dimmed">팀 스페이스</Text>
           </Group>
           <Stack gap={0}>
+            <SidebarMenuLink to="/main" label="메인" icon={<span aria-hidden>🏠</span>} />
             <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
             {/* 팀원 목록은 누구나 보고 본인 정보만 수정, 팀원 관리는 관리자만 */}
             <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />

@@ -23,3 +23,12 @@ export const TYPE_COLORS: Record<WorkStatusType, string> = {
   OUTSIDE_WORK: "red",
   OTHER: "gray",
 };
+
+// 근무 상황 칩: 옅은 배경 + 진한 글자 (다크 모드는 밝은 글자), 근무 상황표와 메인 화면이 같이 씀
+// 인라인 스타일이라 운영 빌드 CSS 압축기를 거치지 않아 light-dark()를 그대로 쓸 수 있음
+export function chipColors(color: string) {
+  return {
+    background: `light-dark(var(--mantine-color-${color}-0), color-mix(in srgb, var(--mantine-color-${color}-9) 30%, transparent))`,
+    color: `light-dark(var(--mantine-color-${color}-9), var(--mantine-color-${color}-1))`,
+  };
+}

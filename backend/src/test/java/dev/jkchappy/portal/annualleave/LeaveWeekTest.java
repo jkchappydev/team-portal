@@ -25,6 +25,18 @@ class LeaveWeekTest {
     assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 10, 30))).isEqualTo(5);
   }
 
+  // 일요일 시작: 일요일은 다음 평일과 같은 주, 토요일은 앞 평일과 같은 주
+  @Test
+  void weekOfMonth_sundayStartsTheWeek() {
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 11, 7))).isEqualTo(1);
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 11, 8))).isEqualTo(2);
+    // 2026-08-01은 토요일: 평일이 없는 첫 주는 1주로 묶고 8/2(일)~8/7(금)도 1주
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 8, 1))).isEqualTo(1);
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 8, 2))).isEqualTo(1);
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 8, 3))).isEqualTo(1);
+    assertThat(LeaveWeek.weekOfMonth(LocalDate.of(2026, 8, 9))).isEqualTo(2);
+  }
+
   // 평일이 없는 앞쪽 주말은 1주로 묶음
   @Test
   void weekOfMonth_weekendBeforeFirstWeekday_isWeek1() {

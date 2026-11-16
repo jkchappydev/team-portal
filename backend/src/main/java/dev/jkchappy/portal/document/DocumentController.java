@@ -7,6 +7,7 @@ import dev.jkchappy.portal.document.dto.DocumentIconRequest;
 import dev.jkchappy.portal.document.dto.DocumentMoveRequest;
 import dev.jkchappy.portal.document.dto.DocumentSummary;
 import dev.jkchappy.portal.document.dto.DocumentTitleRequest;
+import dev.jkchappy.portal.document.dto.RecentDocument;
 import dev.jkchappy.portal.member.CurrentUser;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class DocumentController {
 
+  private static final int RECENT_LIMIT = 10;
+
   private final DocumentService documentService;
 
   @GetMapping("/api/spaces/{spaceId}/documents")
@@ -38,6 +41,12 @@ public class DocumentController {
     Long parentId = request == null ? null : request.parentId();
     DocumentKind kind = request == null || request.kind() == null ? DocumentKind.PAGE : request.kind();
     return ApiResponse.ok(documentService.create(spaceId, title, parentId, kind, userId));
+  }
+
+  // 메인 화면 새 게시글 (최근 만든 페이지·파일 10개)
+  @GetMapping("/api/documents/recent")
+  public ApiResponse<List<RecentDocument>> recent() {
+    return ApiResponse.ok(documentService.findRecent(RECENT_LIMIT));
   }
 
   @GetMapping("/api/documents/search")

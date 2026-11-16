@@ -139,3 +139,20 @@ export function purgeTrashItem(kind: TrashItemDto["kind"], id: number): Promise<
   const path = kind === "space" ? "spaces" : "documents";
   return apiFetch<void>(`/api/trash/${path}/${id}`, { method: "DELETE" });
 }
+
+// 메인 화면 새 게시글 한 줄 (만든 사람·만든 시각 기준)
+export interface RecentDocumentDto {
+  id: number;
+  spaceId: number;
+  spaceName: string;
+  title: string;
+  icon: string | null;
+  kind: DocumentKind;
+  createdByName: string;
+  createdAt: string;
+}
+
+// 최근 만든 페이지·파일 10개 (최신순)
+export function listRecentDocuments(): Promise<RecentDocumentDto[]> {
+  return apiFetch<RecentDocumentDto[]>("/api/documents/recent");
+}

@@ -53,6 +53,11 @@ describe("leaveWeekRangeLabel", () => {
     expect(leaveWeekRangeLabel(2026, 10, 5)).toBe("10/26(월) ~ 10/30(금)");
   });
 
+  it("1일이 토요일인 2026-08의 1주는 일요일 시작 주의 8/3(월) ~ 8/7(금)", () => {
+    expect(leaveWeekRangeLabel(2026, 8, 1)).toBe("8/3(월) ~ 8/7(금)");
+    expect(leaveWeekRangeLabel(2026, 8, 5)).toBe("8/31(월)");
+  });
+
   it("달 안에 평일이 없는 주는 null", () => {
     expect(leaveWeekRangeLabel(2026, 2, 5)).toBeNull();
   });

@@ -10,6 +10,7 @@ import { TrashPage } from "./documents/TrashPage";
 import { FavoritesPage } from "./documents/FavoritesPage";
 import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { ContactsPage } from "./contacts/ContactsPage";
+import { MainPage } from "./home/MainPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
@@ -28,7 +29,9 @@ export default function App() {
             {/* 개발자용 최초 가입 정보 입력 화면 미리보기 (포털 틀 없이 실제 화면 그대로) */}
             <Route path="/preview/profile-setup" element={<AuthGate><ProfileSetupPreview /></AuthGate>} />
             <Route element={<AuthGate><AppLayout /></AuthGate>}>
-              <Route path="/" element={<Navigate to="/work-status" replace />} />
+              {/* 첫 화면은 메인 */}
+              <Route path="/" element={<Navigate to="/main" replace />} />
+              <Route path="/main" element={<MainPage />} />
               {/* 없는 주소는 404 안내 후 첫 화면으로 */}
               <Route path="*" element={<NotFoundPage />} />
               <Route path="/work-status" element={<WorkStatusPage />} />
