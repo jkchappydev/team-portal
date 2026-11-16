@@ -163,7 +163,7 @@ public class MemberService {
   }
 
   // 서울(02)·휴대폰·지역번호·대표번호(8자리) 자리 규칙, 규칙에 없는 길이는 숫자 그대로
-  static String hyphenatePhone(String digits) {
+  public static String hyphenatePhone(String digits) {
     int length = digits.length();
     if (digits.startsWith("02") && (length == 9 || length == 10)) {
       return "02-" + digits.substring(2, length - 4) + "-" + digits.substring(length - 4);

@@ -1301,3 +1301,12 @@ html.block-marquee-dragging .bn-side-menu {
 [data-mantine-color-scheme="dark"] .ws-chip[data-editable]:hover {
   filter: brightness(1.25);
 }
+
+/* 외부 연락처 표 정렬 머리글: 글자 옆 위·아래 꺾쇠, 정렬 방향 쪽만 기본 색으로 진하게 */
+.sort-header { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; }
+.sort-header .sort-icon { color: var(--mantine-color-dimmed); flex: none; }
+.sort-header .sort-icon path { opacity: 0.45; transition: opacity 120ms; }
+.sort-header:hover .sort-icon path { opacity: 0.8; }
+.sort-header[data-active] .sort-icon { color: var(--mantine-primary-color-filled); }
+.sort-header[data-active] .sort-icon path { opacity: 0.25; }
+.sort-header[data-active] .sort-icon path[data-on] { opacity: 1; }

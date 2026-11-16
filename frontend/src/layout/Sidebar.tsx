@@ -88,8 +88,8 @@ export function Sidebar({ user }: Props) {
             <SidebarMenuLink to="/work-status" label="근무 상황표" icon={<span aria-hidden>📅</span>} />
             {/* 팀원 목록은 누구나 보고 본인 정보만 수정, 팀원 관리는 관리자만 */}
             <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />
-            {/* 주소록 (화면은 아직 미구현) */}
-            <SidebarMenuLink to="/contacts" label="주소록" icon={<span aria-hidden>📒</span>} />
+            {/* 회사 밖 업체 담당자 연락처 (팀 공용) */}
+            <SidebarMenuLink to="/contacts" label="외부 연락처" icon={<span aria-hidden>📒</span>} />
             {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
           </Stack>
           <Group justify="space-between" mt="sm">
