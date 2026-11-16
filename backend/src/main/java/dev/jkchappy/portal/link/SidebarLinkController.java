@@ -36,7 +36,7 @@ public class SidebarLinkController {
     return ApiResponse.ok(linkService.create(request, userId));
   }
 
-  // 링크 수정 (제목·주소·아이콘)
+  // 링크 수정 (제목·주소·아이콘·계정 정보)
   @PutMapping("/{id}")
   public ApiResponse<LinkResponse> update(@PathVariable Long id, @Valid @RequestBody LinkRequest request,
     @CurrentUser Long userId) {

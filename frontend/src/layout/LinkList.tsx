@@ -8,6 +8,7 @@ import { copyText } from "../documents/clipboard";
 import { dropSlotAt, moveIndexOf } from "../documents/dropSlot";
 import { showToast } from "../toast/toastStore";
 import { LinkDialog } from "./LinkDialog";
+import { LinkInfoDialog } from "./LinkInfoDialog";
 import { isNewItem, useReorderAnimation } from "./reorderAnimation";
 
 const DRAG_TYPE = "application/x-portal-link";
@@ -23,6 +24,8 @@ export function LinkList() {
   const queryClient = useQueryClient();
   // 링크 팝업: null = 닫힘, editing 없음 = 추가, 있음 = 그 링크 수정
   const [dialog, setDialog] = useState<{ editing: LinkDto | null } | null>(null);
+  // 계정 정보가 있는 링크를 눌렀을 때 뜨는 팝업
+  const [infoLink, setInfoLink] = useState<LinkDto | null>(null);
   const { data: links = [] } = useQuery({ queryKey: LINKS_KEY, queryFn: listLinks });
   const listRef = useRef<HTMLDivElement>(null);
   // 끌고 있는 링크와 가로선을 그을 줄 사이 위치 (0 = 맨 앞, links.length = 맨 뒤)
@@ -85,6 +88,7 @@ export function LinkList() {
           {links.map((link, index) => (
             <LinkRow key={link.id} link={link} dropLine={lineOf(index)}
               onEdit={() => setDialog({ editing: link })}
+              onShowInfo={() => setInfoLink(link)}
               onDragStart={() => setDraggingId(link.id)}
               onDragEnd={() => {
                 setDraggingId(null);
@@ -94,6 +98,7 @@ export function LinkList() {
         </Box>
       </Box>
       <LinkDialog opened={dialog !== null} editing={dialog?.editing} onClose={() => setDialog(null)} />
+      <LinkInfoDialog link={infoLink} onClose={() => setInfoLink(null)} />
     </>
   );
 }
@@ -102,11 +107,13 @@ interface LinkRowProps {
   link: LinkDto;
   dropLine?: "before" | "after";
   onEdit: () => void;
+  // 계정 정보 팝업 열기
+  onShowInfo: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }
 
-function LinkRow({ link, dropLine, onEdit, onDragStart, onDragEnd }: LinkRowProps) {
+function LinkRow({ link, dropLine, onEdit, onShowInfo, onDragStart, onDragEnd }: LinkRowProps) {
   const queryClient = useQueryClient();
   const [hovered, setHovered] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
@@ -139,6 +146,12 @@ function LinkRow({ link, dropLine, onEdit, onDragStart, onDragEnd }: LinkRowProp
           data-drop-position={dropLine}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
+          onClick={(e: MouseEvent) => {
+            // 계정 정보가 있으면 바로 열지 않고 팝업(링크 이동·계정 정보), 없으면 그대로 새 탭 (Ctrl·가운데 클릭도 그대로)
+            if (!link.accountInfo || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            onShowInfo();
+          }}
           onKeyDown={(e) => {
             if (e.key !== "Delete") return;
             e.preventDefault();

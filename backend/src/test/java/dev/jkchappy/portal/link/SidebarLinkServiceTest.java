@@ -29,7 +29,7 @@ class SidebarLinkServiceTest {
   }
 
   private SidebarLink link(long id, int sortOrder) {
-    SidebarLink link = SidebarLink.create("링크" + id, "https://example.com/" + id, null, sortOrder, 1L);
+    SidebarLink link = SidebarLink.create("링크" + id, "https://example.com/" + id, null, null, sortOrder, 1L);
     ReflectionTestUtils.setField(link, "id", id);
     return link;
   }
@@ -106,10 +106,34 @@ class SidebarLinkServiceTest {
     assertThat(target.getUrl()).isEqualTo("https://wiki.example.com/home");
   }
 
+  // 계정 정보는 선택값, 앞뒤 공백만 지우고 줄바꿈은 유지, 비어 있으면 없음
+  @Test
+  void create_accountInfo_isOptionalAndKeepsLines() {
+    when(linkRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of());
+    when(linkRepository.save(any(SidebarLink.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    assertThat(service().create(new LinkRequest("https://ci.example.com", "젠킨스", null, "  아이디 admin\n비밀번호 1234 \n"), 1L)
+      .accountInfo()).isEqualTo("아이디 admin\n비밀번호 1234");
+    assertThat(service().create(new LinkRequest("https://ci.example.com", "젠킨스", null, " \n "), 1L).accountInfo()).isNull();
+    assertThat(service().create(new LinkRequest("https://ci.example.com", "젠킨스"), 1L).accountInfo()).isNull();
+  }
+
+  // 수정할 때 계정 정보를 바꾸거나 비울 수 있음
+  @Test
+  void update_changesAndClearsAccountInfo() {
+    SidebarLink target = SidebarLink.create("젠킨스", "https://ci.example.com", null, "아이디 admin", 0, 1L);
+    when(linkRepository.findById(1L)).thenReturn(Optional.of(target));
+
+    assertThat(service().update(1L, new LinkRequest("https://ci.example.com", "젠킨스", null, "아이디 deploy"))
+      .accountInfo()).isEqualTo("아이디 deploy");
+    assertThat(service().update(1L, new LinkRequest("https://ci.example.com", "젠킨스", null, "")).accountInfo()).isNull();
+    assertThat(target.getAccountInfo()).isNull();
+  }
+
   // 아이콘을 비우면 기본 아이콘으로 돌아감, 웹 주소가 아니면 거부
   @Test
   void update_clearsIconAndRejectsNonWebUrl() {
-    SidebarLink target = SidebarLink.create("위키", "https://wiki.example.com", "📘", 0, 1L);
+    SidebarLink target = SidebarLink.create("위키", "https://wiki.example.com", "📘", "아이디 admin", 0, 1L);
     when(linkRepository.findById(1L)).thenReturn(Optional.of(target));
 
     assertThat(service().update(1L, new LinkRequest("https://wiki.example.com", "위키", null)).icon()).isNull();

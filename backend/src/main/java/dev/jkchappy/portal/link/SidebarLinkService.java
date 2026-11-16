@@ -32,7 +32,14 @@ public class SidebarLinkService {
     String icon = normalizeIcon(request.icon());
     int sortOrder = linkRepository.findAllByOrderBySortOrderAscIdAsc().stream()
       .mapToInt(SidebarLink::getSortOrder).max().orElse(-1) + 1;
-    return LinkResponse.from(linkRepository.save(SidebarLink.create(title, uri.toString(), icon, sortOrder, userId)));
+    return LinkResponse.from(linkRepository.save(
+      SidebarLink.create(title, uri.toString(), icon, normalizeAccountInfo(request.accountInfo()), sortOrder, userId)));
+  }
+
+  // 계정 정보는 선택값, 앞뒤 공백만 지우고 비어 있으면 없음 (줄바꿈은 유지)
+  static String normalizeAccountInfo(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    return raw.strip();
   }
 
   // 아이콘은 선택값, 짧은 이모지 글자만 허용 (주소·업로드 이미지 형식은 거부)
@@ -45,12 +52,13 @@ public class SidebarLinkService {
     return icon;
   }
 
-  // 제목·주소·아이콘을 한 번에 수정 (주소·아이콘 검사는 추가할 때와 같음)
+  // 제목·주소·아이콘·계정 정보를 한 번에 수정 (주소·아이콘 검사는 추가할 때와 같음)
   @Transactional
   public LinkResponse update(Long id, LinkRequest request) {
     SidebarLink link = getLink(id);
     URI uri = normalize(request.url());
-    link.change(request.title().trim(), uri.toString(), normalizeIcon(request.icon()));
+    link.change(request.title().trim(), uri.toString(), normalizeIcon(request.icon()),
+      normalizeAccountInfo(request.accountInfo()));
     return LinkResponse.from(link);
   }
 

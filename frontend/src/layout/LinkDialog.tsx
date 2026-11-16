@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Alert, Button, Group, Modal, Stack, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
+import { Alert, Button, Group, Modal, Stack, Text, Textarea, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconPicker } from "../documents/IconPicker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLink, LINKS_KEY, updateLink } from "../api/links";
@@ -15,7 +15,7 @@ interface Props {
 }
 
 // 노션처럼 얇은 선으로 그린 링크 아이콘
-function LinkIcon() {
+export function LinkIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
       strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -72,11 +72,16 @@ function LinkBody({ onClose, editing }: { onClose: () => void; editing: LinkDto 
   const [title, setTitle] = useState(editing?.title ?? "");
   const [url, setUrl] = useState(editing?.url ?? "");
   const [icon, setIcon] = useState<string | null>(editing?.icon ?? null);
+  const [accountInfo, setAccountInfo] = useState(editing?.accountInfo ?? "");
   const urlRef = useRef<HTMLInputElement>(null);
   const add = useMutation({
-    mutationFn: () => editing
-      ? updateLink(editing.id, url.trim(), title.trim(), icon)
-      : createLink(url.trim(), title.trim(), icon),
+    mutationFn: () => {
+      // 계정 정보는 선택값, 비어 있으면 없음으로 저장
+      const account = accountInfo.trim() || null;
+      return editing
+        ? updateLink(editing.id, url.trim(), title.trim(), icon, account)
+        : createLink(url.trim(), title.trim(), icon, account);
+    },
     onSuccess: (link) => {
       if (!editing) markNewItem(`link-${link.id}`);
       void queryClient.invalidateQueries({ queryKey: LINKS_KEY });
@@ -142,6 +147,16 @@ function LinkBody({ onClose, editing }: { onClose: () => void; editing: LinkDto 
             e.preventDefault();
             submit();
           }}
+        />
+        {/* 선택값, 넣어 두면 사이드바에서 링크를 눌렀을 때 팝업으로 보여줌 */}
+        <Textarea
+          label="계정 정보"
+          aria-label="계정 정보"
+          placeholder="아이디, 비밀번호 등"
+          rows={3}
+          maxLength={2000}
+          value={accountInfo}
+          onChange={(e) => setAccountInfo(e.currentTarget.value)}
         />
         {add.error && !invalid && <Alert color="red">{editing ? "링크를 수정하지 못했습니다." : "링크를 추가하지 못했습니다."}</Alert>}
       </Stack>

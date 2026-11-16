@@ -32,6 +32,10 @@ public class SidebarLink {
   @Column(length = 32)
   private String icon;
 
+  // 계정 정보 (선택, 링크를 누르면 뜨는 팝업에 표시)
+  @Column(name = "account_info", columnDefinition = "TEXT")
+  private String accountInfo;
+
   // 사이드바 표시 순서 (작을수록 위)
   @Column(name = "sort_order", nullable = false)
   private int sortOrder;
@@ -45,11 +49,13 @@ public class SidebarLink {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
-  public static SidebarLink create(String title, String url, String icon, int sortOrder, Long createdBy) {
+  public static SidebarLink create(String title, String url, String icon, String accountInfo, int sortOrder,
+    Long createdBy) {
     SidebarLink link = new SidebarLink();
     link.title = title;
     link.url = url;
     link.icon = icon;
+    link.accountInfo = accountInfo;
     link.sortOrder = sortOrder;
     link.createdBy = createdBy;
     link.createdAt = Instant.now();
@@ -57,10 +63,11 @@ public class SidebarLink {
     return link;
   }
 
-  public void change(String title, String url, String icon) {
+  public void change(String title, String url, String icon, String accountInfo) {
     this.title = title;
     this.url = url;
     this.icon = icon;
+    this.accountInfo = accountInfo;
     this.updatedAt = Instant.now();
   }
 

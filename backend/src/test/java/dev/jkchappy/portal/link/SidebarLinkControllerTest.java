@@ -74,6 +74,17 @@ class SidebarLinkControllerTest {
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
   }
 
+  // 계정 정보는 2000자까지
+  @Test
+  void create_tooLongAccountInfo_returns400() throws Exception {
+    mockMvc.perform(post("/api/links")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"url\":\"https://figma.com\",\"title\":\"피그마\",\"accountInfo\":\"" + "a".repeat(2001) + "\"}"))
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+  }
+
   @Test
   void update_blankUrl_returns400() throws Exception {
     mockMvc.perform(put("/api/links/1")

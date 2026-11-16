@@ -15,7 +15,7 @@ vi.mock("../api/links", () => ({
   deleteLink: vi.fn(),
 }));
 
-const wiki = { id: 1, title: "사내 위키", url: "https://wiki.example.com/home", icon: null };
+const wiki = { id: 1, title: "사내 위키", url: "https://wiki.example.com/home", icon: null, accountInfo: null };
 
 describe("LinkList", () => {
   beforeAll(() => {
@@ -45,7 +45,7 @@ describe("LinkList", () => {
   });
 
   it("링크 추가 팝업에서 제목과 주소를 넣고 Enter를 누르면 추가된다", async () => {
-    vi.mocked(createLink).mockResolvedValue({ id: 2, title: "디자인 시안", url: "https://figma.com", icon: null });
+    vi.mocked(createLink).mockResolvedValue({ id: 2, title: "디자인 시안", url: "https://figma.com", icon: null, accountInfo: null });
     renderList();
     fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
     const title = await screen.findByLabelText("링크 제목");
@@ -56,12 +56,12 @@ describe("LinkList", () => {
     expect(document.activeElement).toBe(input);
     fireEvent.change(input, { target: { value: " https://figma.com " } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(createLink).toHaveBeenCalledWith("https://figma.com", "디자인 시안", null));
+    await waitFor(() => expect(createLink).toHaveBeenCalledWith("https://figma.com", "디자인 시안", null, null));
     await waitFor(() => expect(screen.queryByLabelText("링크 주소")).toBeNull());
   });
 
   it("아이콘을 고른 링크는 그 아이콘, 없으면 기본 🔗로 보인다", async () => {
-    vi.mocked(listLinks).mockResolvedValue([wiki, { id: 2, title: "디자인 시안", url: "https://figma.com", icon: "🎨" }]);
+    vi.mocked(listLinks).mockResolvedValue([wiki, { id: 2, title: "디자인 시안", url: "https://figma.com", icon: "🎨", accountInfo: null }]);
     renderList();
     const designRow = (await screen.findByText("디자인 시안")).closest("a")!;
     const wikiRow = screen.getByText("사내 위키").closest("a")!;
@@ -96,7 +96,41 @@ describe("LinkList", () => {
     expect(await screen.findByText("웹 주소(http, https)만 쓸 수 있습니다.")).toBeTruthy();
   });
 
-  it("링크 수정은 추가와 같은 팝업에 기존 값을 채워 열고, 제목·주소를 함께 저장한다", async () => {
+  it("링크 추가 창 주소 아래에 계정 정보를 넣을 수 있고, 비워 두면 없음으로 저장한다", async () => {
+    vi.mocked(createLink).mockResolvedValue({ id: 2, title: "젠킨스", url: "https://ci.example.com", icon: null, accountInfo: null });
+    renderList();
+    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.change(await screen.findByLabelText("링크 제목"), { target: { value: "젠킨스" } });
+    fireEvent.change(screen.getByLabelText("링크 주소"), { target: { value: "https://ci.example.com" } });
+    const account = screen.getByLabelText("계정 정보");
+    fireEvent.change(account, { target: { value: "  아이디 admin\n비밀번호 1234  " } });
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+    await waitFor(() => expect(createLink).toHaveBeenCalledWith("https://ci.example.com", "젠킨스", null, "아이디 admin\n비밀번호 1234"));
+  });
+
+  it("계정 정보가 있는 링크를 누르면 링크 이동·계정 정보 팝업이 뜨고, 링크 이동은 새 탭으로 연다", async () => {
+    vi.mocked(listLinks).mockResolvedValue([{ id: 3, title: "젠킨스", url: "https://ci.example.com", icon: null, accountInfo: "아이디 admin\n비밀번호 1234" }]);
+    renderList();
+    const row = (await screen.findByText("젠킨스")).closest("a")!;
+    // 기본 동작(새 탭 열기)을 막고 팝업을 띄움
+    expect(fireEvent.click(row)).toBe(false);
+    const go = await screen.findByRole("link", { name: "링크 이동" });
+    expect(go.getAttribute("href")).toBe("https://ci.example.com");
+    expect(go.getAttribute("target")).toBe("_blank");
+    expect(go.getAttribute("rel")).toContain("noopener");
+    expect(screen.getByLabelText("계정 정보 내용").textContent).toBe("아이디 admin\n비밀번호 1234");
+    fireEvent.click(go);
+    await waitFor(() => expect(screen.queryByLabelText("계정 정보 내용")).toBeNull());
+  });
+
+  it("계정 정보가 없는 링크는 팝업 없이 바로 새 탭으로 연다", async () => {
+    renderList();
+    const row = (await screen.findByText("사내 위키")).closest("a")!;
+    expect(fireEvent.click(row)).toBe(true);
+    expect(screen.queryByRole("link", { name: "링크 이동" })).toBeNull();
+  });
+
+  it("링크 수정은 추가와 같은 팝업에 기존 값을 채워 열고, 제목·주소·계정 정보를 함께 저장한다", async () => {
     vi.mocked(updateLink).mockResolvedValue({ ...wiki, title: "팀 위키", url: "https://team.example.com" });
     // 서버 반영 후 다시 조회하면 바뀐 제목이 옴
     vi.mocked(listLinks).mockResolvedValueOnce([wiki]).mockResolvedValue([{ ...wiki, title: "팀 위키" }]);
@@ -112,8 +146,10 @@ describe("LinkList", () => {
     expect(url.value).toBe("https://wiki.example.com/home");
     fireEvent.change(title, { target: { value: "팀 위키" } });
     fireEvent.change(url, { target: { value: "https://team.example.com" } });
+    expect((screen.getByLabelText("계정 정보") as HTMLTextAreaElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("계정 정보"), { target: { value: "아이디 admin" } });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
-    await waitFor(() => expect(updateLink).toHaveBeenCalledWith(1, "https://team.example.com", "팀 위키", null));
+    await waitFor(() => expect(updateLink).toHaveBeenCalledWith(1, "https://team.example.com", "팀 위키", null, "아이디 admin"));
     expect(await screen.findByText("팀 위키")).toBeTruthy();
   });
 

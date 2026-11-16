@@ -1111,6 +1111,19 @@ tr:hover .member-drag-handle, .member-drag-handle:focus-visible { opacity: 1; }
   background: var(--mantine-color-default-hover);
 }
 
+/* 링크 팝업의 링크 이동 줄 (주소 입력칸과 같은 테두리, 마우스를 올리면 강조) */
+.link-info-go {
+  display: block;
+  padding: 8px 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.link-info-go:hover {
+  border-color: var(--mantine-primary-color-filled);
+  background: var(--mantine-color-default-hover);
+}
+
 /* 본문 콜아웃 블록: 아이콘 블록과 그 하위 블록(안의 글)을 한 상자로 묶음 (노션처럼 기본 배경도 회색) */
 .bn-block:has(> .node-callout > .bn-block-content[data-content-type="callout"]) {
   --callout-bg: var(--bn-colors-highlights-gray-background);

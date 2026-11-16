@@ -3,13 +3,18 @@ package dev.jkchappy.portal.link.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-// 링크 추가·수정 요청 (제목과 주소는 필수, 아이콘은 선택)
+// 링크 추가·수정 요청 (제목과 주소는 필수, 아이콘·계정 정보는 선택)
 public record LinkRequest(
   @NotBlank @Size(max = 2000) String url,
   @NotBlank @Size(max = 100) String title,
-  @Size(max = 32) String icon) {
+  @Size(max = 32) String icon,
+  @Size(max = 2000) String accountInfo) {
 
   public LinkRequest(String url, String title) {
-    this(url, title, null);
+    this(url, title, null, null);
+  }
+
+  public LinkRequest(String url, String title, String icon) {
+    this(url, title, icon, null);
   }
 }
