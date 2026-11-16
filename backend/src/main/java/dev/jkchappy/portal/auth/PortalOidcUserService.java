@@ -2,7 +2,6 @@ package dev.jkchappy.portal.auth;
 
 import dev.jkchappy.portal.account.AccountService;
 import dev.jkchappy.portal.account.dto.GoogleProfile;
-import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -27,13 +26,21 @@ public class PortalOidcUserService implements OAuth2UserService<OidcUserRequest,
   OidcUser verifyAndRegister(OidcUser user) {
     String email = user.getEmail();
     String hd = user.getIdToken().getClaimAsString("hd");
-    if (!Boolean.TRUE.equals(user.getEmailVerified()) || email == null ||
-      !email.toLowerCase(Locale.ROOT).endsWith("@" + properties.allowedEmailDomain().toLowerCase(Locale.ROOT)) ||
+    if (!Boolean.TRUE.equals(user.getEmailVerified()) || !isAllowedEmail(email) ||
       hd == null || properties.allowedHostedDomains().stream().noneMatch(domain -> domain.equalsIgnoreCase(hd))) {
       throw new OAuth2AuthenticationException(new OAuth2Error("domain_not_allowed"));
     }
     String name = user.getFullName();
     accounts.registerLogin(new GoogleProfile(user.getSubject(), email, name == null || name.isBlank() ? email : name));
     return user;
+  }
+
+  // 이메일 @ 뒤 도메인이 허용 목록 중 하나와 정확히 일치하는지 확인
+  private boolean isAllowedEmail(String email) {
+    if (email == null) return false;
+    int at = email.lastIndexOf('@');
+    if (at < 0) return false;
+    String domain = email.substring(at + 1);
+    return properties.allowedEmailDomains().stream().anyMatch(allowed -> allowed.trim().equalsIgnoreCase(domain));
   }
 }

@@ -46,13 +46,13 @@ export function LoginPage() {
         </Stack>
         {error && (
           <Alert color="red" variant="light" radius="md">
-            {error === "domain" ? "회사 계정(@example.com)으로 로그인해 주세요" : "로그인하지 못했습니다. 다시 시도해 주세요"}
+            {error === "domain" ? "회사 계정(@example.com, @example.org)으로 로그인해 주세요" : "로그인하지 못했습니다. 다시 시도해 주세요"}
           </Alert>
         )}
         <Button component="a" href="/oauth2/authorization/google" variant="default" size="md" radius="md" fullWidth leftSection={<GoogleIcon />}>
           Google로 로그인
         </Button>
-        <Text size="xs" c="dimmed" ta="center">@example.com 계정만 사용할 수 있습니다.<br />처음 로그인하면 관리자 승인 후 이용할 수 있습니다.</Text>
+        <Text size="xs" c="dimmed" ta="center">@example.com, @example.org 계정만 사용할 수 있습니다.<br />처음 로그인하면 관리자 승인 후 이용할 수 있습니다.</Text>
       </Stack>
     </AuthCard>
   );

@@ -4,4 +4,4 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("app.auth")
-public record AuthProperties(String allowedEmailDomain, List<String> allowedHostedDomains) {}
+public record AuthProperties(List<String> allowedEmailDomains, List<String> allowedHostedDomains) {}

@@ -40,7 +40,7 @@ server:
 
 app:
   auth:
-    allowed-email-domain: ${ALLOWED_EMAIL_DOMAIN:example.com}
+    allowed-email-domains: ${ALLOWED_EMAIL_DOMAINS:example.com,example.org}
     allowed-hosted-domains: ${ALLOWED_HOSTED_DOMAINS:example.org,example.com}
   storage:
     path: ${STORAGE_PATH:./storage}

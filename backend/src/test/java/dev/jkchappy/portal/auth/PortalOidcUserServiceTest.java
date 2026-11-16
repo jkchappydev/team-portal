@@ -17,7 +17,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 class PortalOidcUserServiceTest {
   private final AccountService accounts = mock(AccountService.class);
   private final PortalOidcUserService service = new PortalOidcUserService(accounts,
-    new AuthProperties("example.com", List.of("example.org", "example.com")));
+    new AuthProperties(List.of("example.com", "example.org"),List.of("example.org", "example.com")));
 
   private OidcUser user(String email, boolean verified, String hd) {
     var builder = OidcIdToken.withTokenValue("token").subject("subject")
@@ -37,6 +37,8 @@ class PortalOidcUserServiceTest {
       .isInstanceOf(OAuth2AuthenticationException.class);
     assertThatThrownBy(() -> service.verifyAndRegister(user("a@other.kr", true, "example.org")))
       .isInstanceOf(OAuth2AuthenticationException.class);
+    assertThatThrownBy(() -> service.verifyAndRegister(user("a@notexample.org", true, "example.org")))
+      .isInstanceOf(OAuth2AuthenticationException.class);
     verifyNoInteractions(accounts);
   }
 
@@ -44,6 +46,13 @@ class PortalOidcUserServiceTest {
   void acceptsBothHostedDomains() {
     service.verifyAndRegister(user("a@example.com", true, "example.org"));
     service.verifyAndRegister(user("a@example.com", true, "example.com"));
+    verify(accounts, times(2)).registerLogin(any());
+  }
+
+  @Test
+  void acceptsBothEmailDomains() {
+    service.verifyAndRegister(user("a@example.com", true, "example.org"));
+    service.verifyAndRegister(user("b@example.org", true, "example.org"));
     verify(accounts, times(2)).registerLogin(any());
   }
 }

@@ -34,7 +34,7 @@ describe("AuthGate", () => {
   it("도메인 오류는 회사 계정 안내를 보여준다", () => {
     window.history.replaceState({}, "", "/login?error=domain");
     render(<MantineProvider><LoginPage /></MantineProvider>);
-    expect(screen.getByText("회사 계정(@example.com)으로 로그인해 주세요")).toBeTruthy();
+    expect(screen.getByText("회사 계정(@example.com, @example.org)으로 로그인해 주세요")).toBeTruthy();
   });
 
   it.each([["PENDING", "승인 진행 중입니다"], ["REJECTED", "가입이 거절되었습니다. 관리자에게 문의하세요"]] as const)(
