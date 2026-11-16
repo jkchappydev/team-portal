@@ -19,8 +19,9 @@ export function createLink(url: string, title: string, icon?: string | null): Pr
   return apiFetch<LinkDto>("/api/links", { method: "POST", body: JSON.stringify({ url, title, icon: icon ?? null }) });
 }
 
-export function renameLink(id: number, title: string): Promise<LinkDto> {
-  return apiFetch<LinkDto>(`/api/links/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
+// 링크 수정 (제목·주소·아이콘을 한 번에)
+export function updateLink(id: number, url: string, title: string, icon?: string | null): Promise<LinkDto> {
+  return apiFetch<LinkDto>(`/api/links/${id}`, { method: "PUT", body: JSON.stringify({ url, title, icon: icon ?? null }) });
 }
 
 // 끌어 옮긴 링크를 index 위치로 (0이 맨 위)

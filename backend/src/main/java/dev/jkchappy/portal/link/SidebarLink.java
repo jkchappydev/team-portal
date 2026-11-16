@@ -57,8 +57,10 @@ public class SidebarLink {
     return link;
   }
 
-  public void changeTitle(String title) {
+  public void change(String title, String url, String icon) {
     this.title = title;
+    this.url = url;
+    this.icon = icon;
     this.updatedAt = Instant.now();
   }
 

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.lenient;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,11 +75,11 @@ class SidebarLinkControllerTest {
   }
 
   @Test
-  void rename_blankTitle_returns400() throws Exception {
-    mockMvc.perform(patch("/api/links/1")
+  void update_blankUrl_returns400() throws Exception {
+    mockMvc.perform(put("/api/links/1")
         .with(loginAs(1L))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"title\":\" \"}"))
+        .content("{\"url\":\" \",\"title\":\"사내 위키\"}"))
       .andExpect(status().isBadRequest())
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
   }

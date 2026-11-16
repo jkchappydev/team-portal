@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
-import dev.jkchappy.portal.link.dto.LinkCreateRequest;
+import dev.jkchappy.portal.link.dto.LinkRequest;
 import dev.jkchappy.portal.link.dto.LinkResponse;
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +40,7 @@ class SidebarLinkServiceTest {
     when(linkRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of(link(1L, 0), link(2L, 4)));
     when(linkRepository.save(any(SidebarLink.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    LinkResponse created = service().create(new LinkCreateRequest("https://www.figma.com/files/team", " 디자인 시안 "), 3L);
+    LinkResponse created = service().create(new LinkRequest("https://www.figma.com/files/team", " 디자인 시안 "), 3L);
 
     assertThat(created.title()).isEqualTo("디자인 시안");
     assertThat(created.url()).isEqualTo("https://www.figma.com/files/team");
@@ -53,7 +53,7 @@ class SidebarLinkServiceTest {
     when(linkRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of());
     when(linkRepository.save(any(SidebarLink.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    LinkResponse created = service().create(new LinkCreateRequest("  jenkins.example.com/job ", "젠킨스"), 3L);
+    LinkResponse created = service().create(new LinkRequest("  jenkins.example.com/job ", "젠킨스"), 3L);
 
     assertThat(created.url()).isEqualTo("https://jenkins.example.com/job");
     assertThat(created.title()).isEqualTo("젠킨스");
@@ -65,16 +65,16 @@ class SidebarLinkServiceTest {
     when(linkRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of());
     when(linkRepository.save(any(SidebarLink.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    assertThat(service().create(new LinkCreateRequest("https://figma.com", "피그마", " 🎨 "), 1L).icon()).isEqualTo("🎨");
-    assertThat(service().create(new LinkCreateRequest("https://figma.com", "피그마", " "), 1L).icon()).isNull();
-    assertThat(service().create(new LinkCreateRequest("https://figma.com", "피그마"), 1L).icon()).isNull();
+    assertThat(service().create(new LinkRequest("https://figma.com", "피그마", " 🎨 "), 1L).icon()).isEqualTo("🎨");
+    assertThat(service().create(new LinkRequest("https://figma.com", "피그마", " "), 1L).icon()).isNull();
+    assertThat(service().create(new LinkRequest("https://figma.com", "피그마"), 1L).icon()).isNull();
   }
 
   // 이미지 주소나 업로드 이미지 형식은 링크 아이콘으로 거부
   @Test
   void create_nonEmojiIcon_throwsInvalidInput() {
     for (String icon : List.of("https://example.com/a.png", "att:12", "a/b")) {
-      assertThatThrownBy(() -> service().create(new LinkCreateRequest("https://figma.com", "피그마", icon), 1L))
+      assertThatThrownBy(() -> service().create(new LinkRequest("https://figma.com", "피그마", icon), 1L))
         .as(icon)
         .isInstanceOfSatisfying(BusinessException.class,
           e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
@@ -85,19 +85,37 @@ class SidebarLinkServiceTest {
   @Test
   void create_notWebAddress_throwsInvalidInput() {
     for (String url : List.of("javascript:alert(1)", "ftp://files.example.com", "https://", "a b c")) {
-      assertThatThrownBy(() -> service().create(new LinkCreateRequest(url, "링크"), 1L))
+      assertThatThrownBy(() -> service().create(new LinkRequest(url, "링크"), 1L))
         .as(url)
         .isInstanceOfSatisfying(BusinessException.class,
           e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
     }
   }
 
+  // 제목·주소·아이콘을 함께 수정하고 주소는 추가할 때처럼 https를 붙임
   @Test
-  void rename_changesTitle() {
+  void update_changesTitleUrlAndIcon() {
     SidebarLink target = link(1L, 0);
     when(linkRepository.findById(1L)).thenReturn(Optional.of(target));
 
-    assertThat(service().rename(1L, "  사내 위키 ").title()).isEqualTo("사내 위키");
+    LinkResponse updated = service().update(1L, new LinkRequest(" wiki.example.com/home ", "  사내 위키 ", "📘"));
+
+    assertThat(updated.title()).isEqualTo("사내 위키");
+    assertThat(updated.url()).isEqualTo("https://wiki.example.com/home");
+    assertThat(updated.icon()).isEqualTo("📘");
+    assertThat(target.getUrl()).isEqualTo("https://wiki.example.com/home");
+  }
+
+  // 아이콘을 비우면 기본 아이콘으로 돌아감, 웹 주소가 아니면 거부
+  @Test
+  void update_clearsIconAndRejectsNonWebUrl() {
+    SidebarLink target = SidebarLink.create("위키", "https://wiki.example.com", "📘", 0, 1L);
+    when(linkRepository.findById(1L)).thenReturn(Optional.of(target));
+
+    assertThat(service().update(1L, new LinkRequest("https://wiki.example.com", "위키", null)).icon()).isNull();
+    assertThatThrownBy(() -> service().update(1L, new LinkRequest("ftp://files.example.com", "위키", null)))
+      .isInstanceOfSatisfying(BusinessException.class,
+        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
   }
 
   @Test

@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import type { DragEvent, MouseEvent } from "react";
-import { ActionIcon, Alert, Box, Button, Group, Menu, Modal, NavLink, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Box, Button, Group, Menu, Modal, NavLink, Stack, Text, Tooltip } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { deleteLink, listLinks, LINKS_KEY, moveLink, renameLink } from "../api/links";
+import { deleteLink, listLinks, LINKS_KEY, moveLink } from "../api/links";
 import type { LinkDto } from "../api/links";
 import { copyText } from "../documents/clipboard";
 import { dropSlotAt, moveIndexOf } from "../documents/dropSlot";
 import { showToast } from "../toast/toastStore";
-import { AddLinkDialog } from "./AddLinkDialog";
+import { LinkDialog } from "./LinkDialog";
 import { isNewItem, useReorderAnimation } from "./reorderAnimation";
 
 const DRAG_TYPE = "application/x-portal-link";
@@ -21,7 +21,8 @@ function stopLink(e: MouseEvent) {
 // 사이드바 "링크" 영역: 팀이 함께 쓰는 외부 주소 목록 (끌어서 순서 변경, 새 탭으로 열기)
 export function LinkList() {
   const queryClient = useQueryClient();
-  const [adding, setAdding] = useState(false);
+  // 링크 팝업: null = 닫힘, editing 없음 = 추가, 있음 = 그 링크 수정
+  const [dialog, setDialog] = useState<{ editing: LinkDto | null } | null>(null);
   const { data: links = [] } = useQuery({ queryKey: LINKS_KEY, queryFn: listLinks });
   const listRef = useRef<HTMLDivElement>(null);
   // 끌고 있는 링크와 가로선을 그을 줄 사이 위치 (0 = 맨 앞, links.length = 맨 뒤)
@@ -57,7 +58,7 @@ export function LinkList() {
     <>
       <Group justify="space-between" mt="sm">
         <Text size="xs" c="dimmed">링크</Text>
-        <Button size="compact-xs" variant="subtle" onClick={() => setAdding(true)}>+ 링크 추가</Button>
+        <Button size="compact-xs" variant="subtle" onClick={() => setDialog({ editing: null })}>+ 링크 추가</Button>
       </Group>
       <Box
         data-testid="link-list"
@@ -83,6 +84,7 @@ export function LinkList() {
         <Box ref={listRef}>
           {links.map((link, index) => (
             <LinkRow key={link.id} link={link} dropLine={lineOf(index)}
+              onEdit={() => setDialog({ editing: link })}
               onDragStart={() => setDraggingId(link.id)}
               onDragEnd={() => {
                 setDraggingId(null);
@@ -91,7 +93,7 @@ export function LinkList() {
           ))}
         </Box>
       </Box>
-      <AddLinkDialog opened={adding} onClose={() => setAdding(false)} />
+      <LinkDialog opened={dialog !== null} editing={dialog?.editing} onClose={() => setDialog(null)} />
     </>
   );
 }
@@ -99,28 +101,18 @@ export function LinkList() {
 interface LinkRowProps {
   link: LinkDto;
   dropLine?: "before" | "after";
+  onEdit: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }
 
-function LinkRow({ link, dropLine, onDragStart, onDragEnd }: LinkRowProps) {
+function LinkRow({ link, dropLine, onEdit, onDragStart, onDragEnd }: LinkRowProps) {
   const queryClient = useQueryClient();
   const [hovered, setHovered] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isNew] = useState(() => isNewItem(`link-${link.id}`));
 
-  const rename = useMutation({
-    mutationFn: (title: string) => renameLink(link.id, title),
-    // 바꾼 제목을 바로 보여주고 서버 반영 후 다시 조회
-    onMutate: (title) => {
-      queryClient.setQueryData<LinkDto[]>(LINKS_KEY, (current) =>
-        current?.map((l) => (l.id === link.id ? { ...l, title } : l)));
-    },
-    onError: () => showToast("제목을 바꾸지 못했습니다"),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
-  });
   const remove = useMutation({
     mutationFn: () => deleteLink(link.id),
     onSuccess: () => {
@@ -128,18 +120,6 @@ function LinkRow({ link, dropLine, onDragStart, onDragEnd }: LinkRowProps) {
       void queryClient.invalidateQueries({ queryKey: LINKS_KEY });
     },
   });
-
-  if (editing) {
-    return (
-      <LinkTitleInput
-        initial={link.title}
-        onDone={(title) => {
-          setEditing(false);
-          if (title && title !== link.title) rename.mutate(title);
-        }}
-      />
-    );
-  }
 
   return (
     <>
@@ -180,7 +160,7 @@ function LinkRow({ link, dropLine, onDragStart, onDragEnd }: LinkRowProps) {
                 <ActionIcon size="xs" variant="subtle" color="gray" aria-label={`${link.title} 메뉴`} onClick={stopLink}>⋯</ActionIcon>
               </Menu.Target>
               <Menu.Dropdown onClick={stopLink}>
-                <Menu.Item onClick={() => setEditing(true)}>이름 바꾸기</Menu.Item>
+                <Menu.Item onClick={onEdit}>링크 수정</Menu.Item>
                 <Menu.Item onClick={() => {
                   copyText(link.url)
                     .then(() => showToast("링크를 복사했습니다"))
@@ -205,34 +185,5 @@ function LinkRow({ link, dropLine, onDragStart, onDragEnd }: LinkRowProps) {
         </Stack>
       </Modal>
     </>
-  );
-}
-
-// 줄 자리에서 바로 제목 입력 (Enter·바깥 클릭은 저장, Esc는 취소)
-function LinkTitleInput({ initial, onDone }: { initial: string; onDone: (title: string | null) => void }) {
-  const [value, setValue] = useState(initial);
-  const finished = useRef(false);
-  const finish = (title: string | null) => {
-    if (finished.current) return;
-    finished.current = true;
-    onDone(title);
-  };
-  return (
-    <TextInput
-      aria-label="링크 제목"
-      size="xs"
-      py={2}
-      value={value}
-      maxLength={100}
-      autoFocus
-      onFocus={(e) => e.currentTarget.select()}
-      onChange={(e) => setValue(e.currentTarget.value)}
-      onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return;
-        if (e.key === "Enter") finish(value.trim() || null);
-        if (e.key === "Escape") finish(null);
-      }}
-      onBlur={() => finish(value.trim() || null)}
-    />
   );
 }

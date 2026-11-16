@@ -2,7 +2,7 @@ package dev.jkchappy.portal.link;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
-import dev.jkchappy.portal.link.dto.LinkCreateRequest;
+import dev.jkchappy.portal.link.dto.LinkRequest;
 import dev.jkchappy.portal.link.dto.LinkResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -26,7 +26,7 @@ public class SidebarLinkService {
 
   // 새 링크는 목록 맨 아래
   @Transactional
-  public LinkResponse create(LinkCreateRequest request, Long userId) {
+  public LinkResponse create(LinkRequest request, Long userId) {
     URI uri = normalize(request.url());
     String title = request.title().trim();
     String icon = normalizeIcon(request.icon());
@@ -45,10 +45,12 @@ public class SidebarLinkService {
     return icon;
   }
 
+  // 제목·주소·아이콘을 한 번에 수정 (주소·아이콘 검사는 추가할 때와 같음)
   @Transactional
-  public LinkResponse rename(Long id, String title) {
+  public LinkResponse update(Long id, LinkRequest request) {
     SidebarLink link = getLink(id);
-    link.changeTitle(title.trim());
+    URI uri = normalize(request.url());
+    link.change(request.title().trim(), uri.toString(), normalizeIcon(request.icon()));
     return LinkResponse.from(link);
   }
 

@@ -2,7 +2,7 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createLink, deleteLink, listLinks, renameLink } from "../api/links";
+import { createLink, deleteLink, listLinks, updateLink } from "../api/links";
 import { ApiError } from "../api/client";
 import { LinkList } from "./LinkList";
 
@@ -10,7 +10,7 @@ vi.mock("../api/links", () => ({
   LINKS_KEY: ["links"],
   listLinks: vi.fn(),
   createLink: vi.fn(),
-  renameLink: vi.fn(),
+  updateLink: vi.fn(),
   moveLink: vi.fn(),
   deleteLink: vi.fn(),
 }));
@@ -93,36 +93,40 @@ describe("LinkList", () => {
     const input = screen.getByLabelText("링크 주소");
     fireEvent.change(input, { target: { value: "javascript:alert(1)" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(await screen.findByText("웹 주소(http, https)만 추가할 수 있습니다.")).toBeTruthy();
+    expect(await screen.findByText("웹 주소(http, https)만 쓸 수 있습니다.")).toBeTruthy();
   });
 
-  it("이름 바꾸기로 제목을 바꾼다", async () => {
-    vi.mocked(renameLink).mockResolvedValue({ ...wiki, title: "팀 위키" });
+  it("링크 수정은 추가와 같은 팝업에 기존 값을 채워 열고, 제목·주소를 함께 저장한다", async () => {
+    vi.mocked(updateLink).mockResolvedValue({ ...wiki, title: "팀 위키", url: "https://team.example.com" });
     // 서버 반영 후 다시 조회하면 바뀐 제목이 옴
     vi.mocked(listLinks).mockResolvedValueOnce([wiki]).mockResolvedValue([{ ...wiki, title: "팀 위키" }]);
     renderList();
     const row = (await screen.findByText("사내 위키")).closest("a")!;
     fireEvent.mouseEnter(row);
     fireEvent.click(screen.getByLabelText("사내 위키 메뉴"));
-    fireEvent.click(await screen.findByText("이름 바꾸기"));
-    const input = screen.getByLabelText("링크 제목");
-    fireEvent.change(input, { target: { value: "팀 위키" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(renameLink).toHaveBeenCalledWith(1, "팀 위키"));
+    fireEvent.click(await screen.findByText("링크 수정"));
+    expect(await screen.findByText("링크 수정", { selector: "p" })).toBeTruthy();
+    const title = screen.getByLabelText("링크 제목") as HTMLInputElement;
+    const url = screen.getByLabelText("링크 주소") as HTMLInputElement;
+    expect(title.value).toBe("사내 위키");
+    expect(url.value).toBe("https://wiki.example.com/home");
+    fireEvent.change(title, { target: { value: "팀 위키" } });
+    fireEvent.change(url, { target: { value: "https://team.example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    await waitFor(() => expect(updateLink).toHaveBeenCalledWith(1, "https://team.example.com", "팀 위키", null));
     expect(await screen.findByText("팀 위키")).toBeTruthy();
   });
 
-  it("Esc를 누르면 제목을 바꾸지 않는다", async () => {
+  it("링크 수정 팝업에서 취소하면 바꾸지 않는다", async () => {
     renderList();
     const row = (await screen.findByText("사내 위키")).closest("a")!;
     fireEvent.mouseEnter(row);
     fireEvent.click(screen.getByLabelText("사내 위키 메뉴"));
-    fireEvent.click(await screen.findByText("이름 바꾸기"));
-    const input = screen.getByLabelText("링크 제목");
-    fireEvent.change(input, { target: { value: "다른 이름" } });
-    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.click(await screen.findByText("링크 수정"));
+    fireEvent.change(await screen.findByLabelText("링크 제목"), { target: { value: "다른 이름" } });
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(await screen.findByText("사내 위키")).toBeTruthy();
-    expect(renameLink).not.toHaveBeenCalled();
+    expect(updateLink).not.toHaveBeenCalled();
   });
 
   it("삭제는 확인 창을 거친다", async () => {

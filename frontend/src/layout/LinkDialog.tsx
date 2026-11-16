@@ -2,13 +2,16 @@ import { useRef, useState } from "react";
 import { Alert, Button, Group, Modal, Stack, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconPicker } from "../documents/IconPicker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLink, LINKS_KEY } from "../api/links";
+import { createLink, LINKS_KEY, updateLink } from "../api/links";
+import type { LinkDto } from "../api/links";
 import { ApiError } from "../api/client";
 import { markNewItem } from "./reorderAnimation";
 
 interface Props {
   opened: boolean;
   onClose: () => void;
+  // 수정할 링크 (없으면 새 링크 추가)
+  editing?: LinkDto | null;
 }
 
 // 노션처럼 얇은 선으로 그린 링크 아이콘
@@ -43,8 +46,8 @@ function RequiredLabel({ children }: { children: string }) {
   );
 }
 
-// 제목과 주소를 넣어 사이드바 링크 추가
-export function AddLinkDialog({ opened, onClose }: Props) {
+// 제목과 주소를 넣어 사이드바 링크 추가·수정 (같은 팝업)
+export function LinkDialog({ opened, onClose, editing = null }: Props) {
   return (
     <Modal
       opened={opened}
@@ -58,21 +61,24 @@ export function AddLinkDialog({ opened, onClose }: Props) {
       returnFocus={false}
     >
       {/* 열 때마다 입력을 초기화 */}
-      {opened && <AddLinkBody onClose={onClose} />}
+      {opened && <LinkBody onClose={onClose} editing={editing} />}
     </Modal>
   );
 }
 
-function AddLinkBody({ onClose }: { onClose: () => void }) {
+function LinkBody({ onClose, editing }: { onClose: () => void; editing: LinkDto | null }) {
   const queryClient = useQueryClient();
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [icon, setIcon] = useState<string | null>(null);
+  // 수정이면 기존 값으로 채워서 시작
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [url, setUrl] = useState(editing?.url ?? "");
+  const [icon, setIcon] = useState<string | null>(editing?.icon ?? null);
   const urlRef = useRef<HTMLInputElement>(null);
   const add = useMutation({
-    mutationFn: () => createLink(url.trim(), title.trim(), icon),
+    mutationFn: () => editing
+      ? updateLink(editing.id, url.trim(), title.trim(), icon)
+      : createLink(url.trim(), title.trim(), icon),
     onSuccess: (link) => {
-      markNewItem(`link-${link.id}`);
+      if (!editing) markNewItem(`link-${link.id}`);
       void queryClient.invalidateQueries({ queryKey: LINKS_KEY });
       onClose();
     },
@@ -86,7 +92,7 @@ function AddLinkBody({ onClose }: { onClose: () => void }) {
   };
   return (
     <>
-      <Text fw={600} fz="md" px="lg" pt="lg" pb="md">링크 추가</Text>
+      <Text fw={600} fz="md" px="lg" pt="lg" pb="md">{editing ? "링크 수정" : "링크 추가"}</Text>
       <Stack gap="md" px="lg" pb="lg">
         <TextInput
           label={<RequiredLabel>제목</RequiredLabel>}
@@ -126,7 +132,7 @@ function AddLinkBody({ onClose }: { onClose: () => void }) {
           placeholder="https://"
           leftSection={<LinkIcon />}
           value={url}
-          error={add.error ? (invalid ? "웹 주소(http, https)만 추가할 수 있습니다." : undefined) : undefined}
+          error={add.error ? (invalid ? "웹 주소(http, https)만 쓸 수 있습니다." : undefined) : undefined}
           onChange={(e) => {
             setUrl(e.currentTarget.value);
             add.reset();
@@ -137,7 +143,7 @@ function AddLinkBody({ onClose }: { onClose: () => void }) {
             submit();
           }}
         />
-        {add.error && !invalid && <Alert color="red">링크를 추가하지 못했습니다.</Alert>}
+        {add.error && !invalid && <Alert color="red">{editing ? "링크를 수정하지 못했습니다." : "링크를 추가하지 못했습니다."}</Alert>}
       </Stack>
       <Group
         justify="flex-end"
@@ -148,7 +154,7 @@ function AddLinkBody({ onClose }: { onClose: () => void }) {
         style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
       >
         <Button variant="default" onClick={onClose}>취소</Button>
-        <Button onClick={submit} loading={add.isPending} disabled={!ready}>추가</Button>
+        <Button onClick={submit} loading={add.isPending} disabled={!ready}>{editing ? "저장" : "추가"}</Button>
       </Group>
     </>
   );
