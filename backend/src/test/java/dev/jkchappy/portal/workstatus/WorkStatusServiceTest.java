@@ -152,8 +152,59 @@ class WorkStatusServiceTest {
       LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2)));
   }
 
+  private static Member admin() {
+    Member admin = Member.create("관리자");
+    admin.grantAdmin();
+    return admin;
+  }
+
+  private static WorkStatusRequest leaveFor(long memberId) {
+    return new WorkStatusRequest(memberId, WorkStatusType.LEAVE,
+      LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 2), null, null, null, null, null);
+  }
+
+  private static void assertForbidden(org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+    assertThatThrownBy(call).isInstanceOfSatisfying(BusinessException.class,
+      e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+  }
+
+  // 일반 팀원은 다른 팀원 근무 상황을 등록·수정·삭제할 수 없음
+  @Test
+  void member_cannotManageOthers() {
+    when(memberRepository.findById(2L)).thenReturn(Optional.of(Member.create("팀원")));
+    when(workStatusRepository.findById(5L)).thenReturn(Optional.of(entry(5, 1, WorkStatusType.LEAVE)));
+
+    assertForbidden(() -> service().create(leaveFor(1L), 2L));
+    assertForbidden(() -> service().update(5L, leaveFor(1L), 2L));
+    assertForbidden(() -> service().delete(5L, 2L));
+    verify(workStatusRepository, never()).save(any(WorkStatus.class));
+    verify(workStatusRepository, never()).delete(any(WorkStatus.class));
+  }
+
+  // 본인 기록을 다른 팀원 기록으로 옮기는 것도 막음
+  @Test
+  void member_cannotMoveOwnEntryToOthers() {
+    when(workStatusRepository.findById(5L)).thenReturn(Optional.of(entry(5, 2, WorkStatusType.LEAVE)));
+    when(memberRepository.findById(2L)).thenReturn(Optional.of(Member.create("팀원")));
+
+    assertForbidden(() -> service().update(5L, leaveFor(1L), 2L));
+  }
+
+  // 개발자 권한은 다른 팀원 근무 상황도 등록 가능
+  @Test
+  void developer_canCreateForOthers() {
+    Member developer = Member.create("개발자");
+    developer.grantDeveloper();
+    when(memberRepository.findById(3L)).thenReturn(Optional.of(developer));
+    when(memberRepository.findById(1L)).thenReturn(Optional.of(Member.create("홍길동")));
+    when(workStatusRepository.save(any(WorkStatus.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    assertThat(service().create(leaveFor(1L), 3L).memberName()).isEqualTo("홍길동");
+  }
+
   @Test
   void delete_publishesLiveUpdate() {
+    when(memberRepository.findById(7L)).thenReturn(Optional.of(admin()));
     when(workStatusRepository.findById(5L)).thenReturn(Optional.of(entry(5, 2, WorkStatusType.LEAVE)));
     when(memberService.findNamesByIds(any())).thenReturn(Map.of(2L, "이순신"));
 
@@ -180,6 +231,7 @@ class WorkStatusServiceTest {
     WorkStatus ws = entry(3, 1, WorkStatusType.LEAVE);
     when(workStatusRepository.findById(3L)).thenReturn(Optional.of(ws));
     when(memberRepository.findById(1L)).thenReturn(Optional.of(Member.create("홍길동")));
+    when(memberRepository.findById(4L)).thenReturn(Optional.of(admin()));
 
     service().update(3L, new WorkStatusRequest(1L, WorkStatusType.HALF_DAY, LocalDate.of(2026, 11, 3),
       LocalDate.of(2026, 11, 3), HalfDayPeriod.PM, null, null, null, null), 4L);

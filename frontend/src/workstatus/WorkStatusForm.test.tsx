@@ -6,7 +6,7 @@ import { createWorkStatus } from "../api/workStatuses";
 import { WorkStatusForm } from "./WorkStatusForm";
 
 vi.mock("../api/members", () => ({
-  listMembers: () => Promise.resolve([{ id: 1, name: "홍길동", active: true }]),
+  listMembers: () => Promise.resolve([{ id: 1, name: "홍길동", active: true }, { id: 2, name: "이순신", active: true }]),
 }));
 
 vi.mock("../api/workStatuses", () => ({
@@ -15,7 +15,7 @@ vi.mock("../api/workStatuses", () => ({
   updateWorkStatus: vi.fn(),
 }));
 
-function renderForm() {
+function renderForm(canManageOthers = true) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <MantineProvider>
@@ -26,6 +26,7 @@ function renderForm() {
           editing={null}
           defaultDate="2026-11-04"
           currentUserId={1}
+          canManageOthers={canManageOthers}
         />
       </QueryClientProvider>
     </MantineProvider>,
@@ -79,5 +80,23 @@ describe("WorkStatusForm", () => {
     expect(vi.mocked(createWorkStatus).mock.calls[0][0]).toMatchObject({
       type: "OFFICIAL_LEAVE", startDate: "2026-11-04", endDate: "2026-11-04", halfDayPeriod: "AM",
     });
+  });
+
+  it("일반 팀원은 대상자가 본인으로 고정되고 바꿀 수 없다", async () => {
+    renderForm(false);
+    const select = screen.getByLabelText("대상자", { selector: "input" }) as HTMLInputElement;
+    await waitFor(() => expect(select.value).toBe("홍길동"));
+    expect(select.disabled).toBe(true);
+    expect(screen.getByText("다른 팀원의 근무 상황은 관리자만 등록할 수 있습니다.")).toBeTruthy();
+  });
+
+  it("관리자·개발자는 대상자를 다른 팀원으로 바꿀 수 있다", async () => {
+    renderForm(true);
+    const select = screen.getByLabelText("대상자", { selector: "input" }) as HTMLInputElement;
+    await waitFor(() => expect(select.value).toBe("홍길동"));
+    expect(select.disabled).toBe(false);
+    fireEvent.click(select);
+    fireEvent.click(await screen.findByRole("option", { name: "이순신", hidden: true }));
+    await waitFor(() => expect(select.value).toBe("이순신"));
   });
 });

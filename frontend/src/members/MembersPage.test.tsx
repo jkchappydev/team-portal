@@ -53,11 +53,11 @@ describe("팀원 관리", () => {
     fireEvent.click(option!);
   }
 
-  it("관리자는 부서·직급 없이 구글 이름을 기본값으로 새 팀원 승인만 한다", async () => {
+  it("관리자는 부서·직책 없이 구글 이름을 기본값으로 새 팀원 승인만 한다", async () => {
     renderPage();
     expect(await screen.findByDisplayValue("홍길동")).toBeTruthy();
     expect(screen.queryByLabelText("부서")).toBeNull();
-    expect(screen.queryByLabelText("직급")).toBeNull();
+    expect(screen.queryByLabelText("직책")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "승인" }));
     await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(5, { newMemberName: "홍길동" }));
   });
@@ -128,7 +128,7 @@ describe("팀원 관리", () => {
     await waitFor(() => expect(approveSignup).toHaveBeenCalledWith(7, { memberId: 3 }));
   });
 
-  it("⋯ 메뉴의 정보 수정 창에서 이름은 보여주기만 하고 부서·직급·연락처를 저장한다", async () => {
+  it("⋯ 메뉴의 정보 수정 창에서 이름은 보여주기만 하고 부서·직책·연락처를 저장한다", async () => {
     vi.mocked(listMembers).mockResolvedValue([{ id: 1, name: "기존 팀원", active: true, email: null, department: "개발팀", jobRank: "SENIOR" }]);
     renderPage();
     fireEvent.click(await screen.findByLabelText("기존 팀원 메뉴"));
@@ -219,6 +219,8 @@ describe("팀원 관리", () => {
     expect(screen.queryByText("드래그로 순서를 변경할 수 있습니다.")).toBeNull();
     expect(screen.getByLabelText("관리자 메뉴")).toBeTruthy();
     expect(screen.queryByLabelText("팀원 메뉴")).toBeNull();
+    // 권한 열은 팀원 관리 화면에서만 보임
+    expect(screen.queryByRole("columnheader", { name: "권한" })).toBeNull();
   });
 
   it("팀원 목록 아래에 전화기 사용법을 보여준다 (팀원 관리에는 없음)", async () => {

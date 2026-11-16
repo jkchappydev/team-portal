@@ -67,6 +67,9 @@ export function WorkStatusPage() {
   const [editing, setEditing] = useState<WorkStatusDto | null>(null);
   const [defaultDate, setDefaultDate] = useState(todayString);
   const today = todayString();
+  // 관리자·개발자는 모든 팀원, 일반 팀원은 본인 근무 상황만 등록·수정
+  const canManageOthers = !!(user?.admin || user?.developer);
+  const canEdit = (item: WorkStatusDto) => canManageOthers || item.memberId === user?.id;
 
   // 다른 팀원이 등록·수정·삭제한 근무 상황과 연차를 새로고침 없이 바로 반영
   useLiveRefresh(LIVE_TOPICS.workStatus, [["workStatuses"], ["annualLeaves"]]);
@@ -238,7 +241,7 @@ export function WorkStatusPage() {
                       // 긴 라벨(예: 외근 장소·시간)이 잘리지 않도록 Badge 기본 한 줄·고정 높이 해제
                       styles={{
                         root: {
-                          cursor: "pointer",
+                          cursor: canEdit(item) ? "pointer" : "default",
                           display: "block",
                           textAlign: "left",
                           height: "auto",
@@ -250,8 +253,9 @@ export function WorkStatusPage() {
                         label: { whiteSpace: "normal", overflow: "visible", overflowWrap: "anywhere" },
                       }}
                       onClick={(e) => {
+                        // 다른 팀원 칩은 눌러도 수정 창을 열지 않음 (빈 칸 클릭 등록으로도 넘기지 않음)
                         e.stopPropagation();
-                        openEdit(item);
+                        if (canEdit(item)) openEdit(item);
                       }}
                     >
                       {item.label}
@@ -281,6 +285,7 @@ export function WorkStatusPage() {
         editing={editing}
         defaultDate={defaultDate}
         currentUserId={user?.id ?? null}
+        canManageOthers={canManageOthers}
       />
     </>
   );

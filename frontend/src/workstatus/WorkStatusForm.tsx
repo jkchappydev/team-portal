@@ -20,6 +20,8 @@ export interface WorkStatusFormProps {
   // 신규 등록 시 기본 날짜
   defaultDate: string;
   currentUserId: number | null;
+  // 관리자·개발자만 다른 팀원 근무 상황 등록 (팀원은 본인만)
+  canManageOthers: boolean;
 }
 
 function toTimeInput(value: string | null): string {
@@ -35,7 +37,7 @@ export function WorkStatusForm(props: WorkStatusFormProps) {
   );
 }
 
-function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFormProps) {
+function FormBody({ onClose, editing, defaultDate, currentUserId, canManageOthers }: WorkStatusFormProps) {
   const queryClient = useQueryClient();
   const { data: members = [] } = useQuery({ queryKey: ["members", false], queryFn: () => listMembers(false) });
 
@@ -107,6 +109,9 @@ function FormBody({ onClose, editing, defaultDate, currentUserId }: WorkStatusFo
         value={memberId}
         onChange={setMemberId}
         allowDeselect={false}
+        // 일반 팀원은 본인으로 고정
+        disabled={!canManageOthers}
+        description={canManageOthers ? undefined : "다른 팀원의 근무 상황은 관리자만 등록할 수 있습니다."}
       />
       <div>
         <Text size="sm" fw={500} mb={4}>종류</Text>

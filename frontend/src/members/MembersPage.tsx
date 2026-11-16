@@ -51,7 +51,7 @@ function ConfirmModal({ opened, title, message, confirmLabel, pending, onClose, 
 type ApproveMode = "rejoin" | "new" | "link";
 
 // 가입 요청 한 건: 새 팀원으로 만들거나 기존 팀원 기록과 연결해 승인
-// 부서·직급 등은 승인된 본인이 처음 들어올 때 직접 입력
+// 부서·직책 등은 승인된 본인이 처음 들어올 때 직접 입력
 // 삭제했던 팀원의 재가입이면 기본으로 이전 기록에 다시 연결
 function RequestCard({ request, members, refresh }: { request: SignupRequestDto; members: MemberDto[]; refresh: () => void }) {
   const rejoin = request.previousMemberId != null;
@@ -118,7 +118,7 @@ function RequestCard({ request, members, refresh }: { request: SignupRequestDto;
             )}
           </Group>
           {mode !== "rejoin" && (
-            <Text size="xs" c="dimmed">부서·직급·연락처는 승인된 팀원이 처음 들어올 때 직접 입력합니다.</Text>
+            <Text size="xs" c="dimmed">부서·직책·연락처는 승인된 팀원이 처음 들어올 때 직접 입력합니다.</Text>
           )}
           {action.error && <Alert color="red">{errorMessage(action.error, "처리하지 못했습니다.")}</Alert>}
           <Group justify="flex-end" gap="xs">
@@ -160,8 +160,10 @@ type MemberAction = "edit" | "delete" | null;
 
 // 팀원 한 줄: 정보는 읽기 전용으로 보여주고 변경은 ⋯ 메뉴에서
 // 관리자는 모든 줄을 바꾸고, 일반 팀원은 본인 줄의 정보 수정만 가능
-function MemberRow({ member, me, admin, developer, refresh, reorder }: {
+function MemberRow({ member, me, admin, developer, showRole, refresh, reorder }: {
   member: MemberDto;
+  // 권한 칸 표시 여부 (팀원 관리 화면에서만)
+  showRole: boolean;
   // 로그인한 본인 (자기 자신은 삭제 불가)
   me: boolean;
   // 로그인한 사람이 관리자인지
@@ -201,9 +203,11 @@ function MemberRow({ member, me, admin, developer, refresh, reorder }: {
       </Table.Td>
       <Table.Td><Text size="sm">{member.extension || "-"}</Text></Table.Td>
       <Table.Td><Text size="sm">{member.phone || "-"}</Text></Table.Td>
-      <Table.Td>
-        <Badge variant="light" size="sm" color={roleBadge(member).color}>{roleBadge(member).label}</Badge>
-      </Table.Td>
+      {showRole && (
+        <Table.Td>
+          <Badge variant="light" size="sm" color={roleBadge(member).color}>{roleBadge(member).label}</Badge>
+        </Table.Td>
+      )}
       <Table.Td ta="right">
         {(admin || me) && <Menu position="bottom-end" withinPortal>
           <Menu.Target>
@@ -277,7 +281,7 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
 
   return (
     // 가입 요청 상자도 같은 폭 (표 열 폭 합 + 상자 안쪽 여백)
-    <Stack maw={860} gap="xl">
+    <Stack maw={mode === "manage" ? 860 : 770} gap="xl">
       <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
 
       {admin && <Stack gap="sm">
@@ -309,16 +313,17 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
                 {/* 모든 열은 내용 길이에 맞춘 고정 폭, 화면 폭(maw)도 열 합에 맞춰 열 사이가 벌어지지 않게 함 */}
                 <Table.Th w={200}>이름</Table.Th>
                 <Table.Th w={170}>부서</Table.Th>
-                <Table.Th w={80}>직급</Table.Th>
+                <Table.Th w={80}>직책</Table.Th>
                 <Table.Th w={90}>내선번호</Table.Th>
                 <Table.Th w={140}>전화번호</Table.Th>
-                <Table.Th w={90}>권한</Table.Th>
+                {/* 권한은 팀원 관리 화면에서만 표시 */}
+                {mode === "manage" && <Table.Th w={90}>권한</Table.Th>}
                 <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody ref={bodyRef}>
               {members.map((member) => (
-                <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin} developer={admin && !!user?.developer}
+                <MemberRow key={member.id} member={member} me={member.id === user?.id} admin={admin} developer={admin && !!user?.developer} showRole={mode === "manage"}
                   refresh={refresh} reorder={reorder} />
               ))}
             </Table.Tbody>

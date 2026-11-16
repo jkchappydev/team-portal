@@ -98,7 +98,7 @@ describe("AuthGate", () => {
     }
   });
 
-  it("승인 후 부서·직급을 입력하지 않았으면 내 정보 입력 화면을 거쳐 본문으로 들어간다", async () => {
+  it("승인 후 부서·직책을 입력하지 않았으면 내 정보 입력 화면을 거쳐 본문으로 들어간다", async () => {
     vi.mocked(getMe)
       .mockResolvedValueOnce({ email: "a@example.com", status: "APPROVED", memberId: 4, memberName: "홍길동", admin: false, active: true, profileComplete: false })
       .mockResolvedValue({ email: "a@example.com", status: "APPROVED", memberId: 4, memberName: "홍길동", admin: false, active: true, profileComplete: true });

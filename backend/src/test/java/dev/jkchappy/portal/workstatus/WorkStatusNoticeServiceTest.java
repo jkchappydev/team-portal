@@ -60,7 +60,7 @@ class WorkStatusNoticeServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void onChanged_savesNoticeForEachRecipientExceptActor() {
-    when(memberRepository.findWorkStatusNoticeRecipients(WorkStatusNoticeService.NOTICE_RANKS))
+    when(memberRepository.findWorkStatusNoticeRecipients())
       .thenReturn(List.of(member(1, JobRank.TEAM_LEAD), member(2, JobRank.HEAD), member(3, JobRank.SENIOR)));
 
     service().onChanged(EVENT);
@@ -73,8 +73,9 @@ class WorkStatusNoticeServiceTest {
   }
 
   @Test
+  // 팀장 직책이어도 관리자·개발자 권한이 없으면 알림 대상이 아님
   void findUnread_notRecipient_returnsDisabled() {
-    when(memberRepository.findById(5L)).thenReturn(Optional.of(member(5, JobRank.RESPONSIBLE)));
+    when(memberRepository.findById(5L)).thenReturn(Optional.of(member(5, JobRank.TEAM_LEAD)));
 
     WorkStatusNoticeList result = service().findUnread(5L);
 

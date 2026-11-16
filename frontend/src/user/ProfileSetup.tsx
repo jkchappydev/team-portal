@@ -6,7 +6,7 @@ import type { AuthMe } from "../api/auth";
 import { MemberInfoForm } from "../members/MemberInfoForm";
 import { useCurrentUser } from "./currentUser";
 
-// 승인 후 처음 들어온 팀원이 부서·직급·연락처를 직접 입력하는 화면
+// 승인 후 처음 들어온 팀원이 부서·직책·연락처를 직접 입력하는 화면
 // 저장하면 서버 상태를 다시 받아 바로 포털로 넘어감
 // onPreviewDone이 있으면 미리보기: 이미 가입한 개발자가 화면을 확인하는 용도 (저장하지 않음)
 export function ProfileSetup({ me, onPreviewDone }: { me: AuthMe; onPreviewDone?: () => void }) {

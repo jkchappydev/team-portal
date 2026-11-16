@@ -2,7 +2,6 @@ package dev.jkchappy.portal.workstatus;
 
 import dev.jkchappy.portal.common.BusinessException;
 import dev.jkchappy.portal.common.ErrorCode;
-import dev.jkchappy.portal.member.JobRank;
 import dev.jkchappy.portal.member.Member;
 import dev.jkchappy.portal.member.MemberRepository;
 import dev.jkchappy.portal.member.MemberService;
@@ -19,12 +18,11 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 근무 상황 등록·수정·삭제를 팀장 이상(본부장·팀장)과 개발자에게 알림 (바꾼 본인은 제외)
+// 근무 상황 등록·수정·삭제를 관리자·개발자 권한 팀원에게 알림 (바꾼 본인은 제외)
 @Service
 @RequiredArgsConstructor
 public class WorkStatusNoticeService {
 
-  static final List<JobRank> NOTICE_RANKS = List.of(JobRank.HEAD, JobRank.TEAM_LEAD);
   // 페이지 수정 알림과 같은 기준: 14일 넘은 알림은 숨기고 최대 30건
   static final Duration LOOKBACK = Duration.ofDays(14);
   static final int MAX_ITEMS = 30;
@@ -38,7 +36,7 @@ public class WorkStatusNoticeService {
   @EventListener
   public void onChanged(WorkStatusChangedEvent event) {
     Instant now = clock.instant();
-    List<WorkStatusNotice> notices = memberRepository.findWorkStatusNoticeRecipients(NOTICE_RANKS).stream()
+    List<WorkStatusNotice> notices = memberRepository.findWorkStatusNoticeRecipients().stream()
       .map(Member::getId)
       .filter(id -> !id.equals(event.actorId()))
       .map(id -> WorkStatusNotice.of(id, event, now))
@@ -78,7 +76,7 @@ public class WorkStatusNoticeService {
   private boolean isRecipient(Long memberId) {
     return memberRepository.findById(memberId)
       .filter(m -> m.isActive() && m.getDeletedOn() == null)
-      .filter(m -> m.isDeveloper() || NOTICE_RANKS.contains(m.getJobRank()))
+      .filter(m -> m.isAdmin() || m.isDeveloper())
       .isPresent();
   }
 }

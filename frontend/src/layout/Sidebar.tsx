@@ -65,8 +65,11 @@ export function Sidebar({ user }: Props) {
       </Group>
       {/* 노션처럼 검색부터 휴지통까지 메뉴 전체를 한 스크롤로 (포털 이름과 아래 내 정보 줄은 고정)
           스크롤바 자리를 따로 비워 오른쪽 버튼·글자와 겹치지 않게 함 */}
-      <ScrollArea style={{ flex: 1 }} offsetScrollbars="y" scrollbarSize={8} data-testid="sidebar-scroll">
-        <Stack gap="xs">
+      {/* 마우스가 사이드바를 벗어나면 스크롤바를 바로 숨김 (기본 1초 지연 제거)
+          스크롤바는 사이드바 오른쪽 경계선에 붙이고(바깥 여백만큼 넓힘), 메뉴는 원래 자리에 둠 */}
+      <ScrollArea style={{ flex: 1 }} mr="calc(var(--mantine-spacing-sm) * -1)" offsetScrollbars="y" scrollbarSize={8}
+        scrollHideDelay={0} data-testid="sidebar-scroll">
+        <Stack gap="xs" pr="sm">
           {/* 검색 도구와 개인 즐겨찾기는 머리글 없이 맨 위 (고정 메뉴는 페이지 트리 줄과 같은 높이로 붙여서 표시) */}
           <Stack gap={0}>
             <SidebarMenuLink
@@ -104,7 +107,7 @@ export function Sidebar({ user }: Props) {
       </ScrollArea>
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
       <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-        {/* 이름(옆에 직급)을 누르면 내 설정 */}
+        {/* 이름(옆에 직책)을 누르면 내 설정 */}
         {user ? (
           <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="내 설정"
             onClick={() => setSettingsOpen(true)} styles={{ root: { cursor: "pointer" }, label: { fontWeight: 400, cursor: "pointer" } }}>

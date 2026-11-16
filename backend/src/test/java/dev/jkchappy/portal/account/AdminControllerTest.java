@@ -57,7 +57,7 @@ class AdminControllerTest {
     verify(accounts).approveWithMember(5L, 2L, 1L, "개발", dev.jkchappy.portal.member.JobRank.SENIOR);
   }
 
-  // 관리자는 승인만 하고 부서·직급은 승인된 본인이 입력
+  // 관리자는 승인만 하고 부서·직책은 승인된 본인이 입력
   @Test
   void approvalWithoutOrganizationIsAccepted() throws Exception {
     mvc.perform(post("/api/admin/signup-requests/5/approve").with(loginAs(1))

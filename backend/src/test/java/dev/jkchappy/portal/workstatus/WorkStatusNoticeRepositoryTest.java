@@ -45,21 +45,25 @@ class WorkStatusNoticeRepositoryTest {
   }
 
   @Test
-  void recipients_areTeamLeadOrAboveAndDevelopers() {
-    Member head = member("본부장", JobRank.HEAD);
-    Member lead = member("팀장", JobRank.TEAM_LEAD);
-    member("책임", JobRank.RESPONSIBLE);
+  // 직책과 무관하게 관리자·개발자 권한만 받음 (팀장이어도 권한이 없으면 제외)
+  void recipients_areAdminsAndDevelopers() {
+    Member admin = member("관리자", JobRank.RESPONSIBLE);
+    admin.grantAdmin();
+    member("팀장", JobRank.TEAM_LEAD);
+    member("본부장", JobRank.HEAD);
     Member developer = member("개발자", JobRank.SENIOR);
     developer.grantDeveloper();
-    Member inactive = member("비활성팀장", JobRank.TEAM_LEAD);
+    Member inactive = member("비활성관리자", JobRank.SENIOR);
+    inactive.grantAdmin();
     inactive.deactivate();
-    Member deleted = member("삭제팀장", JobRank.TEAM_LEAD);
+    Member deleted = member("삭제관리자", JobRank.SENIOR);
+    deleted.grantAdmin();
     deleted.markDeleted(LocalDate.of(2026, 11, 1));
     entityManager.flush();
 
-    assertThat(memberRepository.findWorkStatusNoticeRecipients(WorkStatusNoticeService.NOTICE_RANKS))
+    assertThat(memberRepository.findWorkStatusNoticeRecipients())
       .extracting(Member::getId)
-      .containsExactlyInAnyOrder(head.getId(), lead.getId(), developer.getId());
+      .containsExactlyInAnyOrder(admin.getId(), developer.getId());
   }
 
   @Test

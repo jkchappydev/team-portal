@@ -45,6 +45,7 @@ public class WorkStatusService {
   @Transactional
   public WorkStatusResponse create(WorkStatusRequest request, Long currentUserId) {
     validator.validate(request);
+    requireCanManage(currentUserId, request.memberId());
     Member target = getActiveTarget(request.memberId());
     WorkStatus saved = workStatusRepository.save(WorkStatus.create(request.memberId(), request.type(),
       request.startDate(), request.endDate(), request.halfDayPeriod(), request.startTime(),
@@ -57,6 +58,9 @@ public class WorkStatusService {
   public WorkStatusResponse update(Long id, WorkStatusRequest request, Long currentUserId) {
     WorkStatus ws = workStatusRepository.findById(id)
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    // 원래 대상자와 바꿀 대상자 모두 다룰 수 있어야 함
+    requireCanManage(currentUserId, ws.getMemberId());
+    requireCanManage(currentUserId, request.memberId());
     validator.validate(request);
     Member target = getActiveTarget(request.memberId());
     ws.change(request.memberId(), request.type(), request.startDate(), request.endDate(),
@@ -70,6 +74,7 @@ public class WorkStatusService {
   public void delete(Long id, Long currentUserId) {
     WorkStatus ws = workStatusRepository.findById(id)
       .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    requireCanManage(currentUserId, ws.getMemberId());
     String memberName = memberService.findNamesByIds(List.of(ws.getMemberId())).getOrDefault(ws.getMemberId(), "");
     workStatusRepository.delete(ws);
     publishChanged(WorkStatusAction.DELETED, ws, memberName, currentUserId);
@@ -80,6 +85,18 @@ public class WorkStatusService {
     events.publishEvent(new LiveUpdateEvent(LiveUpdateEvent.WORK_STATUS));
     events.publishEvent(new WorkStatusChangedEvent(action, actorId,
       WorkStatusLabelFormatter.format(memberName, ws), ws.getStartDate(), ws.getEndDate()));
+  }
+
+  // 본인 근무 상황은 누구나, 다른 팀원 것은 관리자·개발자만 등록·수정·삭제
+  private void requireCanManage(Long currentUserId, Long memberId) {
+    if (currentUserId.equals(memberId)) return;
+    boolean manager = memberRepository.findById(currentUserId)
+      .filter(Member::isActive)
+      .map(m -> m.isAdmin() || m.isDeveloper())
+      .orElse(false);
+    if (!manager) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, "다른 팀원의 근무 상황은 관리자만 등록·수정·삭제할 수 있습니다.");
+    }
   }
 
   // 등록 대상 팀원이 없거나 비활성이면 입력 오류

@@ -1,7 +1,6 @@
 package dev.jkchappy.portal.member;
 
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -37,8 +36,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   @Query("select m from Member m order by m.id")
   List<Member> lockAllForOrder();
 
-  // 근무 상황 변경 알림을 받는 팀원: 삭제·비활성이 아니고 지정한 직급(팀장 이상)이거나 개발자
+  // 근무 상황 변경 알림을 받는 팀원: 삭제·비활성이 아닌 관리자·개발자 (직책과 무관)
   @Query("select m from Member m where m.active = true and m.deletedOn is null "
-    + "and (m.developer = true or m.jobRank in :ranks) order by m.id")
-  List<Member> findWorkStatusNoticeRecipients(@Param("ranks") Collection<JobRank> ranks);
+    + "and (m.admin = true or m.developer = true) order by m.id")
+  List<Member> findWorkStatusNoticeRecipients();
 }

@@ -36,7 +36,7 @@ const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
 // 내 설정 창: 왼쪽 탭으로 개인정보 수정과 내 설정(프로필 모양)을 나눔
 export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const queryClient = useQueryClient();
-  // 내 부서·직급·연락처는 팀원 목록에서 가져옴
+  // 내 부서·직책·연락처는 팀원 목록에서 가져옴
   const { data: members } = useQuery({ queryKey: ["members", true], queryFn: () => listMembers(true), enabled: opened });
   const myInfo = members?.find((member) => member.id === user.id);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -67,7 +67,7 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
 
         {/* 탭을 바꿔도 저장 전 입력이 남도록 두 내용을 모두 그려 두고 숨김만 바꿈 */}
         <Box role="tabpanel" aria-label="개인정보 수정" hidden={tab !== "info"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-          {/* 가입 때 입력한 부서·직급·연락처 (최초 가입 정보 입력 화면과 같은 양식) */}
+          {/* 가입 때 입력한 부서·직책·연락처 (최초 가입 정보 입력 화면과 같은 양식) */}
           <Stack gap="xs">
             {myInfo ? (
               <MemberInfoForm
@@ -77,7 +77,7 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
                 onSaved={() => {
                   setInfoSaved(true);
                   void queryClient.invalidateQueries({ queryKey: ["members"] });
-                  // 사이드바 이름 옆 직급도 바로 바뀌도록 로그인 정보 다시 조회
+                  // 사이드바 이름 옆 직책도 바로 바뀌도록 로그인 정보 다시 조회
                   void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
                 }}
               />

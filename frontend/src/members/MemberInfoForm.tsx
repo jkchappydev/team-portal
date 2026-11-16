@@ -23,7 +23,7 @@ function departmentOptions(current: string | null | undefined): string[] {
 }
 
 // 팀원 정보 입력 양식 (팀원 정보 수정 창과 승인 후 내 정보 입력 화면에서 같이 사용)
-// 이름은 구글 계정 이름 그대로 보여 주기만 하고, 부서·직급·전화번호·내선번호는 모두 필수
+// 이름은 구글 계정 이름 그대로 보여 주기만 하고, 부서·직책·전화번호·내선번호는 모두 필수
 export function MemberInfoForm({ member, submitLabel, onSaved, onCancel, preview = false }: Props) {
   const [department, setDepartment] = useState(member.department ?? "");
   const [jobRank, setJobRank] = useState<JobRank | null>(member.jobRank ?? null);
@@ -50,7 +50,7 @@ export function MemberInfoForm({ member, submitLabel, onSaved, onCancel, preview
         {/* 부서는 정해진 목록에서 고름 (예전에 직접 적은 부서는 목록에 함께 보여 값이 사라지지 않게 함) */}
         <Select label="부서" withAsterisk placeholder="부서 선택" data={departmentOptions(member.department)} value={department || null}
           onChange={(v) => setDepartment(v ?? "")} allowDeselect={false} />
-        <Select label="직급" withAsterisk placeholder="직급 선택" data={JOB_RANKS} value={jobRank}
+        <Select label="직책" withAsterisk placeholder="직책 선택" data={JOB_RANKS} value={jobRank}
           onChange={(v) => setJobRank(v as JobRank | null)} />
         {/* 숫자만 쳐도 하이픈을 넣고, 내선번호는 숫자 3자리까지 */}
         <TextInput label="전화번호" withAsterisk placeholder="010-0000-0000" value={phone} maxLength={13} inputMode="tel"

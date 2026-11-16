@@ -150,7 +150,7 @@ describe("ProfileSettingsModal", () => {
       .toMatchObject({ profileImageUrl: "/api/members/3/profile-image?v=1" }));
   });
 
-  it("내 정보에서 부서·직급·연락처를 고쳐 저장한다 (이름은 보여주기만)", async () => {
+  it("내 정보에서 부서·직책·연락처를 고쳐 저장한다 (이름은 보여주기만)", async () => {
     renderModal();
     const phone = await screen.findByLabelText(/^전화번호/);
     expect((phone as HTMLInputElement).value).toBe("010-1111-2222");
