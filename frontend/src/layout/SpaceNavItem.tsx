@@ -12,6 +12,7 @@ import type { SpaceDto } from "../api/spaces";
 import { CopyLinkMenuItem } from "../documents/CopyLinkMenuItem";
 import { DeleteSpaceModal } from "../documents/DeleteSpaceModal";
 import { ExportModal } from "../documents/export/ExportModal";
+import { ImportModal } from "../documents/import/ImportModal";
 import { HistoryModal } from "../documents/history/HistoryModal";
 import { PageIcon } from "../documents/PageIconView";
 import { spaceLabel } from "../documents/spaceKind";
@@ -72,6 +73,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
   const [menuOpened, setMenuOpened] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
   // 제목이 칸을 넘어 말줄임(…)으로 잘렸을 때만 마우스를 올리면 전체 제목 표시
   const [truncated, setTruncated] = useState(false);
@@ -144,6 +146,9 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
                   <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
                 )}
                 {space.homeDocumentId !== null && (
+                  <Menu.Item onClick={() => setImporting(true)}>가져오기</Menu.Item>
+                )}
+                {space.homeDocumentId !== null && (
                   <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
                 )}
                 <Menu.Divider />
@@ -155,6 +160,13 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
         />
       </Box>
       {/* 링크 밖에 두어 확인 창 안의 클릭이 프로젝트 이동으로 이어지지 않게 함 */}
+      {space.homeDocumentId !== null && (
+        <ImportModal
+          opened={importing}
+          target={{ spaceId: space.id, documentId: space.homeDocumentId, title: space.name, icon: null, applyTitle: false }}
+          onClose={() => setImporting(false)}
+        />
+      )}
       {space.homeDocumentId !== null && (
         <ExportModal opened={exporting} documentId={space.homeDocumentId} title={space.name} onClose={() => setExporting(false)} />
       )}

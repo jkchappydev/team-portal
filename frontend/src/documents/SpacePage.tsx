@@ -13,6 +13,7 @@ import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { PrintMenuItem } from "./PrintMenuItem";
 import { DeleteSpaceModal } from "./DeleteSpaceModal";
 import { ExportModal } from "./export/ExportModal";
+import { ImportModal } from "./import/ImportModal";
 import { HistoryModal } from "./history/HistoryModal";
 import { PageView } from "./PageView";
 import { spaceLabel } from "./spaceKind";
@@ -29,6 +30,7 @@ export function SpacePage() {
   const { user } = useCurrentUser();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
 
   const { data: spaces, isPending: spacesPending, error: spacesError } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
@@ -106,6 +108,7 @@ export function SpacePage() {
           <>
             <CopyLinkMenuItem path={`/spaces/${spaceId}`} />
             <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
+            <Menu.Item onClick={() => setImporting(true)}>가져오기</Menu.Item>
             <PrintMenuItem />
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
@@ -124,6 +127,12 @@ export function SpacePage() {
         onChangeCover={space.kind === "PROJECT" ? (cover) => changeCover.mutate(cover) : undefined}
       />
       <ExportModal opened={exporting} documentId={home.id} title={space.name} onClose={() => setExporting(false)} />
+      {/* 프로젝트 이름·아이콘은 따로 관리해 노션 제목·아이콘으로 바꾸지 않음 */}
+      <ImportModal
+        opened={importing}
+        target={{ spaceId: space.id, documentId: home.id, title: space.name, icon: null, applyTitle: false }}
+        onClose={() => setImporting(false)}
+      />
       <HistoryModal opened={showingHistory} documentId={home.id} title={space.name} onClose={() => setShowingHistory(false)} />
       <DeleteSpaceModal
         opened={confirmDelete}

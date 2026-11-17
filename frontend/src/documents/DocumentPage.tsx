@@ -11,6 +11,7 @@ import { CopyLinkMenuItem } from "./CopyLinkMenuItem";
 import { PrintMenuItem } from "./PrintMenuItem";
 import { DeletePageModal } from "./DeletePageModal";
 import { ExportModal } from "./export/ExportModal";
+import { ImportModal } from "./import/ImportModal";
 import { HistoryModal } from "./history/HistoryModal";
 import { itemPath } from "./itemPath";
 import { PageIcon } from "./PageIconView";
@@ -39,6 +40,7 @@ export function DocumentPage() {
   const { user } = useCurrentUser();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
 
   // 경로 맨 앞 프로젝트 아이콘 (사이드바와 같은 캐시 사용)
@@ -141,6 +143,7 @@ export function DocumentPage() {
           <>
             <CopyLinkMenuItem path={path} />
             <Menu.Item onClick={() => setExporting(true)}>내보내기</Menu.Item>
+            <Menu.Item onClick={() => setImporting(true)}>가져오기</Menu.Item>
             <PrintMenuItem />
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
@@ -156,6 +159,11 @@ export function DocumentPage() {
         onChangeIcon={(icon) => changeIcon.mutate(icon)}
       />
       <ExportModal opened={exporting} documentId={doc.id} title={doc.title} onClose={() => setExporting(false)} />
+      <ImportModal
+        opened={importing}
+        target={{ spaceId: doc.spaceId, documentId: doc.id, title: doc.title, icon: doc.icon, applyTitle: true }}
+        onClose={() => setImporting(false)}
+      />
       <HistoryModal opened={showingHistory} documentId={doc.id} title={doc.title} onClose={() => setShowingHistory(false)} />
       <DeletePageModal
         opened={confirmDelete}

@@ -104,6 +104,8 @@ describe("SpaceNavItem", () => {
     fireEvent.click(screen.getByLabelText("스쿨북스 메뉴"));
     const items = (await screen.findAllByRole("menuitem")).map((el) => el.textContent);
     expect(items.indexOf("링크 복사")).toBe(items.indexOf("내보내기") - 1);
+    // 가져오기는 내보내기 바로 아래 (페이지·프로젝트 화면 메뉴와 같은 순서)
+    expect(items.indexOf("가져오기")).toBe(items.indexOf("내보내기") + 1);
     fireEvent.click(screen.getByText("링크 복사"));
     await waitFor(() => expect(toasts).toEqual(["링크를 복사했습니다"]));
     unsubscribe();
