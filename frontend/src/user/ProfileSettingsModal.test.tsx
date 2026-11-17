@@ -18,6 +18,8 @@ const members = vi.hoisted(() => ({
   }])),
   updateMember: vi.fn(() => Promise.resolve({ id: 3, name: "홍길동", active: true })),
 }));
+vi.mock("../api/notificationSettings", () => ({ listNotificationSettings: vi.fn(() => Promise.resolve([])), changeNotificationSetting: vi.fn() }));
+vi.mock("../api/spaces", () => ({ listSpaces: vi.fn(() => Promise.resolve([])) }));
 vi.mock("../api/members", async (importOriginal) => ({ ...(await importOriginal<typeof import("../api/members")>()), ...members }));
 
 const user = {
@@ -57,6 +59,14 @@ describe("ProfileSettingsModal", () => {
     expect(screen.getByRole("tab", { name: "개인정보 수정" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
     expect(within(screen.getByRole("tabpanel", { name: "내 설정" })).queryByRole("button", { name: "저장" })).toBeNull();
+  });
+
+  it("내 설정 아래에 알림 탭이 있다", () => {
+    renderModal();
+    const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
+    expect(tabs).toEqual(["개인정보 수정", "내 설정", "알림"]);
+    fireEvent.click(screen.getByRole("tab", { name: "알림" }));
+    expect(screen.getByRole("tab", { name: "알림" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("화면 테마는 고르면 바로 적용·저장된다", async () => {

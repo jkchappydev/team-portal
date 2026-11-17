@@ -23,7 +23,9 @@ import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
 import dev.jkchappy.portal.member.Member;
 import dev.jkchappy.portal.member.MemberService;
+import dev.jkchappy.portal.notification.DocumentMentionService;
 import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -62,6 +64,9 @@ class InternalCollabControllerTest {
 
   @MockitoBean
   private MemberService memberService;
+
+  @MockitoBean
+  private DocumentMentionService documentMentionService;
 
   @Test
   void request_withoutToken_returns403() throws Exception {
@@ -139,6 +144,22 @@ class InternalCollabControllerTest {
       .andExpect(status().isNoContent());
 
     verify(documentService).saveContent(eq(1L), eq(bytes), eq("본문"), eq(3L));
+    // 언급 정보를 보내지 않으면 null로 넘겨 기존 언급 유지
+    verify(documentMentionService).sync(1L, null, 3L);
+  }
+
+  @Test
+  void putContent_withMentions_syncsMentionedMembers() throws Exception {
+    String body = "{\"state\":\"" + Base64.getEncoder().encodeToString(new byte[] {1})
+      + "\",\"plainText\":\"@동료 확인\",\"updatedBy\":3,\"mentionedMemberIds\":[5,6]}";
+
+    mockMvc.perform(put("/internal/documents/1/content")
+        .header(TOKEN_HEADER, "test-token")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(body))
+      .andExpect(status().isNoContent());
+
+    verify(documentMentionService).sync(1L, List.of(5L, 6L), 3L);
   }
 
   @Test

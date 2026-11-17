@@ -1,7 +1,7 @@
 package dev.jkchappy.portal.notification;
 
 import dev.jkchappy.portal.common.ApiResponse;
-import dev.jkchappy.portal.document.dto.DocumentSummary;
+import dev.jkchappy.portal.notification.dto.DocumentUpdateResponse;
 import dev.jkchappy.portal.member.CurrentUser;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ public class DocumentUpdateController {
   private final DocumentUpdateService documentUpdateService;
 
   @GetMapping("/api/notifications/document-updates")
-  public ApiResponse<List<DocumentSummary>> unread(@CurrentUser Long userId) {
+  public ApiResponse<List<DocumentUpdateResponse>> unread(@CurrentUser Long userId) {
     return ApiResponse.ok(documentUpdateService.findUnread(userId));
   }
 

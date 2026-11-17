@@ -3,7 +3,7 @@ import { type Hocuspocus, Server } from "@hocuspocus/server";
 import * as Y from "yjs";
 import type { BackendClient } from "./backendClient.js";
 import type { CollabConfig } from "./config.js";
-import { extractText } from "./extractText.js";
+import { extractMentions, extractText } from "./extractText.js";
 
 interface ConnectionContext {
   userId: number;
@@ -59,6 +59,7 @@ export function createServer(
             Y.encodeStateAsUpdate(document),
             extractText(document),
             updatedBy,
+            extractMentions(document),
           );
           failedDocuments.delete(documentName);
         });
@@ -134,7 +135,8 @@ export function createServer(
           }
           const updatedBy = lastContext?.userId ?? null;
           try {
-            await client.storeContent(documentId, state, extractText(document as Y.Doc), updatedBy);
+            await client.storeContent(documentId, state, extractText(document as Y.Doc), updatedBy,
+              extractMentions(document as Y.Doc));
             failedDocuments.delete(documentName);
           } catch (error) {
             console.error(`[collab] ${documentName} 저장 실패`, error);

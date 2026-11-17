@@ -7,6 +7,7 @@ import { ApiError } from "../api/client";
 import { listMembers } from "../api/members";
 import type { MemberDto } from "../api/members";
 import { MemberInfoForm } from "../members/MemberInfoForm";
+import { NotificationSettingsForm } from "./NotificationSettingsForm";
 import { changeProfileColor, removeProfileImage, uploadProfileImage } from "../api/profile";
 import type { ProfileDto } from "../api/profile";
 import { shortName } from "../documents/presence";
@@ -28,12 +29,13 @@ export function randomColor(current: string, random: () => number = Math.random)
   return candidates[Math.floor(random() * candidates.length)];
 }
 
-type SettingsTab = "info" | "profile";
+type SettingsTab = "info" | "profile" | "notifications";
+// 알림은 내 설정 아래 탭
 const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
-  { value: "info", label: "개인정보 수정" }, { value: "profile", label: "내 설정" },
+  { value: "info", label: "개인정보 수정" }, { value: "profile", label: "내 설정" }, { value: "notifications", label: "알림" },
 ];
 
-// 설정 창: 왼쪽 탭으로 개인정보 수정과 내 설정(프로필 모양)을 나눔
+// 설정 창: 왼쪽 탭으로 개인정보 수정, 내 설정(프로필 모양), 알림(프로젝트별 알림 받기)을 나눔
 export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const queryClient = useQueryClient();
   // 내 부서·직책·연락처는 팀원 목록에서 가져옴
@@ -90,6 +92,10 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
 
         <Box role="tabpanel" aria-label="내 설정" hidden={tab !== "profile"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
           <ProfileAppearanceForm user={user} />
+        </Box>
+
+        <Box role="tabpanel" aria-label="알림" hidden={tab !== "notifications"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+          {tab === "notifications" && <NotificationSettingsForm />}
         </Box>
       </Group>
     </Modal>

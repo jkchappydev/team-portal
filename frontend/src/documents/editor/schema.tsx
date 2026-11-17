@@ -1,4 +1,5 @@
-import { BlockNoteSchema, defaultBlockSpecs, defaultProps, defaultStyleSpecs } from "@blocknote/core";
+import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultProps, defaultStyleSpecs } from "@blocknote/core";
+import { mentionInlineContentSpec } from "./mention";
 import { CalloutBlockView } from "./CalloutBlockView";
 import { codeStyleSpec } from "./codeStyle";
 import { backgroundColorSpec, textColorSpec } from "./colorStyles";
@@ -74,4 +75,6 @@ export const editorSchema = BlockNoteSchema.create({
   },
   // 다른 서식과 함께 쓸 수 있는 코드 서식, 붙여넣은 색을 노션 색 이름으로 바꾸는 글자색·배경색 서식
   styleSpecs: { ...defaultStyleSpecs, code: codeStyleSpec, textColor: textColorSpec, backgroundColor: backgroundColorSpec },
+  // 기본 글자·링크 + 팀원 @멘션
+  inlineContentSpecs: { ...defaultInlineContentSpecs, mention: mentionInlineContentSpec },
 });

@@ -19,7 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import org.junit.jupiter.api.BeforeEach;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.document.InternalTokenInterceptor;
-import dev.jkchappy.portal.document.dto.DocumentSummary;
+import dev.jkchappy.portal.notification.dto.DocumentUpdateResponse;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
 import dev.jkchappy.portal.member.MemberService;
 import java.time.OffsetDateTime;
@@ -63,13 +63,14 @@ class DocumentUpdateControllerTest {
 
   @Test
   void unread_returnsCurrentUsersList() throws Exception {
-    when(documentUpdateService.findUnread(1L)).thenReturn(List.of(new DocumentSummary(3L, 10L, "개발",
-      "회의록", null, "동료", OffsetDateTime.parse("2026-11-05T01:00:00Z"), null, "PAGE", null)));
+    when(documentUpdateService.findUnread(1L)).thenReturn(List.of(new DocumentUpdateResponse(3L, 10L, "개발",
+      "회의록", null, "동료", OffsetDateTime.parse("2026-11-05T01:00:00Z"), null, "PAGE", null, true)));
 
     mockMvc.perform(get("/api/notifications/document-updates").with(loginAs(1L)))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data[0].title").value("회의록"))
-      .andExpect(jsonPath("$.data[0].updatedByName").value("동료"));
+      .andExpect(jsonPath("$.data[0].updatedByName").value("동료"))
+      .andExpect(jsonPath("$.data[0].mentioned").value(true));
   }
 
   @Test

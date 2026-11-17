@@ -104,6 +104,7 @@ export function DocumentUpdatesBell() {
                 >
                   <Text size="sm" truncate><PageIcon icon={doc.icon} project={isProjectHome(doc, spaces)} /> {doc.title}</Text>
                   <Text size="xs" c="dimmed" truncate>
+                    {doc.mentioned && <Text span size="xs" c="blue" fw={500}>@나를 언급 · </Text>}
                     {doc.spaceName} · {doc.updatedByName || "알 수 없음"} · {formatRelative(doc.updatedAt)}
                   </Text>
                 </UnstyledButton>

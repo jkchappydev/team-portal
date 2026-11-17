@@ -12,7 +12,13 @@ export interface LinkContent {
   content: StyledText[];
 }
 
-export type InlineItem = StyledText | LinkContent;
+// 본문 @멘션 (내보내기에서는 "@이름" 글자로)
+export interface MentionContent {
+  type: "mention";
+  props?: { name?: unknown };
+}
+
+export type InlineItem = StyledText | LinkContent | MentionContent;
 
 export interface TableCellObject {
   type: "tableCell";
@@ -69,6 +75,7 @@ export function toRuns(content: InlineItem[] | undefined): TextRun[] {
   for (const item of content) {
     if (item.type === "link") item.content.forEach((text) => push(text, item.href));
     else if (item.type === "text") push(item);
+    else if (item.type === "mention") push({ type: "text", text: `@${String(item.props?.name ?? "")}` });
   }
   return runs;
 }

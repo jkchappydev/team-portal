@@ -83,11 +83,13 @@ describe("createServer", () => {
     });
 
     await vi.waitFor(() => expect(client.storeContent).toHaveBeenCalled(), { timeout: 3000 });
-    const [documentId, state, plainText, updatedBy] = vi.mocked(client.storeContent).mock.calls[0];
+    const [documentId, state, plainText, updatedBy, mentionedMemberIds] = vi.mocked(client.storeContent).mock.calls[0];
     expect(documentId).toBe(5);
     expect(state.length).toBeGreaterThan(0);
     expect(plainText).toBe("안녕");
     expect(updatedBy).toBe(7);
+    // 멘션이 없으면 빈 목록을 보내 백엔드가 기존 언급을 지움
+    expect(mentionedMemberIds).toEqual([]);
   });
 
   it("storeContent가 한 번 실패해도 이후 저장에 전체 상태가 전달된다", async () => {

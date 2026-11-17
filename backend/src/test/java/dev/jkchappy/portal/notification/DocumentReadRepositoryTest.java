@@ -37,6 +37,12 @@ class DocumentReadRepositoryTest {
   @Autowired
   private MemberRepository memberRepository;
 
+  @Autowired
+  private NotificationSettingRepository notificationSettingRepository;
+
+  @Autowired
+  private DocumentMentionRepository documentMentionRepository;
+
   private Long me;
   private Long other;
   private Long spaceId;
@@ -89,5 +95,54 @@ class DocumentReadRepositoryTest {
     documentReadRepository.upsert(me, doc.getId(), edited.plusSeconds(180));
     assertThat(unreadTitles()).isEmpty();
     assertThat(documentReadRepository.count()).isEqualTo(1);
+  }
+
+  @Test
+  void findUnreadUpdates_offProject_hidesEverything() {
+    Document doc = saveEdited("회의록", other, Instant.now());
+    documentMentionRepository.insert(doc.getId(), me, other, Instant.now());
+
+    notificationSettingRepository.upsert(me, spaceId, "OFF");
+
+    assertThat(unreadTitles()).isEmpty();
+  }
+
+  @Test
+  void findUnreadUpdates_mentionProject_showsOnlyUnreadMentionsByOthers() {
+    Instant now = Instant.now();
+    saveEdited("그냥 수정", other, now);
+    Document mentioned = saveEdited("언급된 페이지", other, now.minusSeconds(60));
+    documentMentionRepository.insert(mentioned.getId(), me, other, now.minusSeconds(60));
+    Document selfMention = saveEdited("내가 나를 언급", me, now);
+    documentMentionRepository.insert(selfMention.getId(), me, me, now);
+    notificationSettingRepository.upsert(me, spaceId, "MENTION");
+
+    assertThat(unreadTitles()).containsExactly("언급된 페이지");
+    assertThat(documentMentionRepository.findUnreadMentionedDocumentIds(me,
+      List.of(mentioned.getId(), selfMention.getId()))).containsExactly(mentioned.getId());
+
+    // 언급 뒤에 확인하면 사라지고, 확인 뒤 다른 사람이 수정만 하면 다시 뜨지 않음
+    documentReadRepository.upsert(me, mentioned.getId(), now);
+    ReflectionTestUtils.setField(mentioned, "updatedAt", now.plusSeconds(60));
+    documentRepository.saveAndFlush(mentioned);
+    assertThat(unreadTitles()).isEmpty();
+  }
+
+  @Test
+  void findUnreadUpdates_allProject_mentionByOtherOnMyEdit_shown() {
+    // 마지막 수정자가 나여도 다른 사람이 나를 언급했으면 알림
+    Document doc = saveEdited("내가 고친 페이지", me, Instant.now());
+    documentMentionRepository.insert(doc.getId(), me, other, Instant.now().minusSeconds(30));
+
+    assertThat(unreadTitles()).containsExactly("내가 고친 페이지");
+  }
+
+  @Test
+  void notificationSetting_upsertOverwrites() {
+    notificationSettingRepository.upsert(me, spaceId, "OFF");
+    notificationSettingRepository.upsert(me, spaceId, "MENTION");
+
+    assertThat(notificationSettingRepository.findByMemberId(me)).singleElement()
+      .extracting(NotificationSetting::getLevel).isEqualTo(NotificationLevel.MENTION);
   }
 }

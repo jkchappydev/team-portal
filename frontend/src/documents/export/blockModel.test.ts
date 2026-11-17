@@ -17,6 +17,15 @@ describe("toRuns", () => {
   it("내용이 없으면 빈 목록이다", () => {
     expect(toRuns(undefined)).toEqual([]);
   });
+
+  it("@멘션은 @이름 글자로 옮긴다", () => {
+    const runs = toRuns([
+      { type: "text", text: "확인 " },
+      { type: "mention", props: { name: "홍길동" } },
+    ]);
+
+    expect(runs.map((run) => run.text)).toEqual(["확인 ", "@홍길동"]);
+  });
 });
 
 describe("toCell", () => {

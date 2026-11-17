@@ -6,6 +6,7 @@ import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.dto.CollabContentRequest;
 import dev.jkchappy.portal.member.MemberService;
 import dev.jkchappy.portal.collab.CollabTicketService;
+import dev.jkchappy.portal.notification.DocumentMentionService;
 import jakarta.validation.Valid;
 import java.util.Base64;
 import java.util.HashMap;
@@ -30,6 +31,7 @@ public class InternalCollabController {
   private final DocumentService documentService;
   private final MemberService memberService;
   private final CollabTicketService tickets;
+  private final DocumentMentionService documentMentionService;
 
   // 문서가 살아 있고 사용자가 활성일 때만 접속 허용
   @GetMapping("/collab/authorize")
@@ -60,5 +62,7 @@ public class InternalCollabController {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "state가 올바른 Base64 형식이 아닙니다.");
     }
     documentService.saveContent(id, state, request.plainText(), request.updatedBy());
+    // 본문의 @언급을 담당 언급 알림 대상으로 기록
+    documentMentionService.sync(id, request.mentionedMemberIds(), request.updatedBy());
   }
 }

@@ -12,9 +12,9 @@ import type { SpaceDto } from "../api/spaces";
 import { useCurrentUser } from "../user/currentUser";
 import { countPendingSignups } from "../api/admin";
 
-const update = (id: number, title: string, kind: "PAGE" | "FILE" = "PAGE") => ({
+const update = (id: number, title: string, kind: "PAGE" | "FILE" = "PAGE", mentioned = false) => ({
   id, spaceId: 1, spaceName: "스쿨북스", title, icon: null, updatedByName: "김동료",
-  updatedAt: new Date(Date.now() - 5 * 60_000).toISOString(), parentId: null, kind, fileUrl: null,
+  updatedAt: new Date(Date.now() - 5 * 60_000).toISOString(), parentId: null, kind, fileUrl: null, mentioned,
 });
 
 vi.mock("../api/notifications", () => ({
@@ -93,6 +93,15 @@ describe("DocumentUpdatesBell", () => {
 
     fireEvent.click(screen.getByText(/배포 절차/));
     expect(await screen.findByText("페이지 화면")).toBeTruthy();
+  });
+
+  it("@언급으로 온 알림에는 나를 언급 표시를 붙인다", async () => {
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차", "PAGE", true), update(14, "회의록")]);
+    renderBell();
+
+    fireEvent.click(await screen.findByLabelText("수정 알림"));
+    expect(await screen.findByText(/@나를 언급/)).toBeTruthy();
+    expect(screen.getAllByText(/@나를 언급/)).toHaveLength(1);
   });
 
   it("모두 읽음을 누르면 전체 확인 처리를 요청한다", async () => {

@@ -1,6 +1,8 @@
 package dev.jkchappy.portal.notification;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -13,8 +15,11 @@ import dev.jkchappy.portal.common.ErrorCode;
 import dev.jkchappy.portal.document.Document;
 import dev.jkchappy.portal.document.DocumentRepository;
 import dev.jkchappy.portal.document.DocumentService;
+import dev.jkchappy.portal.document.dto.DocumentSummary;
+import dev.jkchappy.portal.notification.dto.DocumentUpdateResponse;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -35,10 +40,13 @@ class DocumentUpdateServiceTest {
   private DocumentReadRepository documentReadRepository;
 
   @Mock
+  private DocumentMentionRepository documentMentionRepository;
+
+  @Mock
   private DocumentService documentService;
 
   private DocumentUpdateService service() {
-    return new DocumentUpdateService(documentRepository, documentReadRepository, documentService,
+    return new DocumentUpdateService(documentRepository, documentReadRepository, documentMentionRepository, documentService,
       Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -57,6 +65,32 @@ class DocumentUpdateServiceTest {
     service().findUnread(1L);
 
     verify(documentService).summarizeVisible(docs);
+  }
+
+  @Test
+  void findUnread_marksUnreadMentions() {
+    List<Document> docs = List.of(document(1L), document(2L));
+    when(documentRepository.findUnreadUpdates(eq(1L), any(), eq(DocumentUpdateService.MAX_ITEMS))).thenReturn(docs);
+    when(documentMentionRepository.findUnreadMentionedDocumentIds(1L, List.of(1L, 2L))).thenReturn(List.of(2L));
+    when(documentService.summarizeVisible(docs)).thenReturn(List.of(summary(1L), summary(2L)));
+
+    List<DocumentUpdateResponse> result = service().findUnread(1L);
+
+    assertThat(result).extracting(DocumentUpdateResponse::id, DocumentUpdateResponse::mentioned)
+      .containsExactly(tuple(1L, false), tuple(2L, true));
+  }
+
+  @Test
+  void findUnread_noDocuments_skipsMentionLookup() {
+    when(documentRepository.findUnreadUpdates(eq(1L), any(), eq(DocumentUpdateService.MAX_ITEMS))).thenReturn(List.of());
+
+    assertThat(service().findUnread(1L)).isEmpty();
+    verify(documentMentionRepository, never()).findUnreadMentionedDocumentIds(anyLong(), any());
+  }
+
+  private DocumentSummary summary(Long id) {
+    return new DocumentSummary(id, 10L, "개발", "문서" + id, null, "동료", OffsetDateTime.parse("2026-11-05T01:00:00Z"),
+      null, "PAGE", null);
   }
 
   @Test

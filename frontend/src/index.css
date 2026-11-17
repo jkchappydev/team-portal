@@ -674,6 +674,19 @@ button.cell-selection-handle[aria-expanded="true"] svg {
   color: inherit;
 }
 
+/* 본문 @멘션: 노션처럼 옅은 색 글자 덩어리로 보여 일반 글과 구분 */
+.bn-editor .mention {
+  color: var(--mantine-color-blue-7);
+  background-color: var(--mantine-color-blue-light);
+  border-radius: 4px;
+  padding: 0 3px;
+  white-space: nowrap;
+}
+
+:root .bn-root[data-color-scheme="dark"] .bn-editor .mention {
+  color: var(--mantine-color-blue-3);
+}
+
 /* 본문 링크: 편집 영역이라 기본 커서가 글자 커서(I)로 보여 링크임을 알기 어려워 손가락 커서로 표시 */
 .bn-editor a[href] {
   cursor: pointer;

@@ -27,7 +27,7 @@ import {
   useCreateBlockNote,
 } from "@blocknote/react";
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { claimPageBlockBackfill, createDocument, duplicateDocument } from "../api/documents";
 import { PageCopyContext } from "./editor/pageCopyContext";
@@ -43,7 +43,9 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { uploadAttachment } from "../api/attachments";
 import { fetchCollabTicket } from "../api/collab";
+import { JOB_RANKS, listMembers } from "../api/members";
 import type { MemberDto } from "../api/members";
+import { filterMentionCandidates } from "./editor/mentionCandidates";
 import { collabUrl, FRAGMENT_NAME } from "./collab";
 import { createCursorActivity, editingClientIds, renderCursor } from "./cursorActivity";
 import type { CursorUser } from "./cursorActivity";
@@ -357,6 +359,8 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
   };
 
   // "/페이지": 이 문서 아래에 새 페이지를 만들고 슬래시를 친 자리에 페이지 블록을 넣음 (오류는 일정과 같은 안내 칸)
+  // @멘션 후보: 활성 팀원 (팀원 목록 화면과 같은 순서)
+  const { data: mentionMembers = [] } = useQuery({ queryKey: ["members", false], queryFn: () => listMembers(false) });
   const pageItem = spaceId === undefined ? null : pageSlashItem({
     editor: editor as unknown as Parameters<typeof pageSlashItem>[0]["editor"],
     spaceId,
@@ -464,6 +468,18 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
             ],
             query,
           )}
+        />
+        {/* @ 입력 시 활성 팀원 목록, 고르면 @멘션을 넣고 그 팀원에게 담당 언급 알림 */}
+        <SuggestionMenuController
+          triggerCharacter="@"
+          getItems={async (query) => filterMentionCandidates(mentionMembers, query).map((member) => ({
+            title: member.name,
+            subtext: [member.department, member.jobRank && JOB_RANKS.find((rank) => rank.value === member.jobRank)?.label]
+              .filter(Boolean).join(" · ") || undefined,
+            onItemClick: () => editor.insertInlineContent([
+              { type: "mention", props: { memberId: member.id, name: member.name } }, " ",
+            ]),
+          }))}
         />
       </BlockNoteView>
       {/* 본문 아래 빈 곳 (누르면 위 onMouseDownCapture가 마지막 빈 줄로 커서 이동) */}

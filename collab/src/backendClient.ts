@@ -8,6 +8,7 @@ export interface BackendClient {
     state: Uint8Array,
     plainText: string,
     updatedBy: number | null,
+    mentionedMemberIds: number[],
   ): Promise<void>;
 }
 
@@ -50,7 +51,7 @@ export function createBackendClient(
       return state ? new Uint8Array(Buffer.from(state, "base64")) : null;
     },
 
-    async storeContent(documentId, state, plainText, updatedBy) {
+    async storeContent(documentId, state, plainText, updatedBy, mentionedMemberIds) {
       const res = await fetch(`${config.backendUrl}/internal/documents/${documentId}/content`, {
         method: "PUT",
         signal: AbortSignal.timeout(10_000),
@@ -59,6 +60,8 @@ export function createBackendClient(
           state: Buffer.from(state).toString("base64"),
           plainText,
           updatedBy,
+          // 본문에서 @로 언급한 팀원 (백엔드가 담당 언급 알림 대상으로 기록)
+          mentionedMemberIds,
         }),
       });
       if (!res.ok) {

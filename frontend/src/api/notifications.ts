@@ -1,9 +1,14 @@
 import { apiFetch } from "./client";
 import type { DocumentSummaryDto } from "./documents";
 
-// 다른 팀원이 수정했고 내가 아직 확인하지 않은 페이지 (최근 수정순)
-export function listDocumentUpdates(): Promise<DocumentSummaryDto[]> {
-  return apiFetch<DocumentSummaryDto[]>("/api/notifications/document-updates");
+// 수정 알림 한 건 (mentioned: 다른 팀원이 본문에서 @로 나를 언급해 온 알림)
+export interface DocumentUpdateDto extends DocumentSummaryDto {
+  mentioned: boolean;
+}
+
+// 다른 팀원이 수정했거나 나를 @언급했고 내가 아직 확인하지 않은 페이지 (최근순, 프로젝트별 알림 설정 적용)
+export function listDocumentUpdates(): Promise<DocumentUpdateDto[]> {
+  return apiFetch<DocumentUpdateDto[]>("/api/notifications/document-updates");
 }
 
 export function markDocumentRead(id: number): Promise<void> {

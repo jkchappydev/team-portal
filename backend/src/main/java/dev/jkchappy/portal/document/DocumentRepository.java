@@ -56,13 +56,20 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     + "order by d.updated_at desc limit 50", nativeQuery = true)
   List<Document> search(@Param("pattern") String pattern);
 
-  // since 이후 다른 사람이 수정했고 memberId가 그 뒤로 확인하지 않은 문서, 최근 수정순 (본문 블록 저장소인 WBS 항목 제외)
+  // memberId가 아직 확인하지 않은 알림 대상 문서, 최근순 (본문 블록 저장소인 WBS 항목 제외)
+  // 프로젝트 알림 설정(없으면 ALL)에 따라 ALL은 since 이후 다른 사람의 수정, ALL·MENTION은 since 이후 다른 사람의 @언급
+  // OFF인 프로젝트는 모두 제외
   @Query(value = "select d.* from document d join space s on s.id = d.space_id "
     + "left join document_read r on r.document_id = d.id and r.member_id = :memberId "
+    + "left join notification_setting ns on ns.space_id = d.space_id and ns.member_id = :memberId "
+    + "left join document_mention m on m.document_id = d.id and m.member_id = :memberId "
+    + "and m.mentioned_by <> :memberId and m.mentioned_at > :since "
+    + "and (r.read_at is null or r.read_at < m.mentioned_at) "
     + "where d.deleted_at is null and s.deleted_at is null and d.kind <> 'WBS' "
-    + "and d.updated_by <> :memberId and d.updated_at > :since "
-    + "and (r.read_at is null or r.read_at < d.updated_at) "
-    + "order by d.updated_at desc limit :limit", nativeQuery = true)
+    + "and coalesce(ns.level, 'ALL') <> 'OFF' "
+    + "and ((coalesce(ns.level, 'ALL') = 'ALL' and d.updated_by <> :memberId and d.updated_at > :since "
+    + "and (r.read_at is null or r.read_at < d.updated_at)) or m.member_id is not null) "
+    + "order by greatest(d.updated_at, m.mentioned_at) desc limit :limit", nativeQuery = true)
   List<Document> findUnreadUpdates(@Param("memberId") Long memberId, @Param("since") Instant since,
     @Param("limit") int limit);
 
