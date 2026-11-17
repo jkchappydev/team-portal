@@ -1,8 +1,16 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { codeText, createCodeToolbar, filterLanguages, normalizeLanguage } from "./codeBlock";
+import { codeText, createCodeToolbar, createMermaidViewSwitch, filterLanguages, normalizeLanguage } from "./codeBlock";
 import { editorSchema } from "./schema";
 import type { CodeToolbarEditor } from "./codeBlock";
+
+// jsdom은 SVG 크기를 잴 수 없어 실제 mermaid 대신 받은 코드를 그대로 담는 가짜 그림을 돌려줌
+const mermaidMock = vi.hoisted(() => ({
+  initialize: vi.fn(),
+  parse: vi.fn(async () => ({ diagramType: "sequence" })),
+  render: vi.fn(async (_id: string, text: string) => ({ svg: `<svg><text>${text}</text></svg>` })),
+}));
+vi.mock("mermaid", () => ({ default: mermaidMock }));
 
 const languages = {
   json: { name: "JSON" },
@@ -13,7 +21,7 @@ const languages = {
 function toolbarEditor(editable = true) {
   return {
     isEditable: editable,
-    updateBlock: vi.fn((_id: string, _update: { props: { language: string } }) => undefined),
+    updateBlock: vi.fn((_id: string, _update: { props: { language?: string; mermaidView?: string } }) => undefined),
     getBlock: vi.fn((_id: string) => ({ content: [{ type: "text", text: "a = 1" }] })),
   } satisfies CodeToolbarEditor;
 }
@@ -126,5 +134,88 @@ describe("코드 블록 언어 맞춤", () => {
     expect(() => editor.mount(host)).not.toThrow();
     expect(host.querySelector('[aria-label="코드 언어 선택"]')?.textContent).toBe("Shell");
     editor.unmount();
+  });
+});
+
+describe("Mermaid 코드 블록", () => {
+  function mountBlock(language: string, content: string) {
+    const editor = BlockNoteEditor.create({
+      schema: editorSchema,
+      initialContent: [{ type: "codeBlock", props: { language }, content }],
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    return { editor, host };
+  }
+
+  it("코드 아래에 그림을 그리고, 코드를 고치면 같은 영역에 다시 그린다", async () => {
+    const { editor, host } = mountBlock("mermaid", "sequenceDiagram\n  A->>B: 요청");
+    const preview = host.querySelector<HTMLDivElement>(".mermaid-preview")!;
+    expect(preview.previousElementSibling?.tagName).toBe("PRE");
+    await vi.waitFor(() => expect(preview.querySelector("svg")?.textContent).toContain("A->>B: 요청"));
+
+    editor.updateBlock(editor.document[0], { content: "sequenceDiagram\n  A->>B: 응답" });
+    await vi.waitFor(() => expect(preview.querySelector("svg")?.textContent).toContain("A->>B: 응답"));
+    // 그림이 바뀌어도 블록을 다시 만들거나 문서 내용을 건드리지 않음
+    expect(host.querySelector(".mermaid-preview")).toBe(preview);
+    expect(editor.document[0].content).toEqual([{ type: "text", text: "sequenceDiagram\n  A->>B: 응답", styles: {} }]);
+    editor.unmount();
+  });
+
+  it("다른 언어 코드 블록에는 그림 영역을 붙이지 않는다", () => {
+    const { editor, host } = mountBlock("javascript", "const a = 1;");
+    expect(host.querySelector(".mermaid-preview")).toBeNull();
+    editor.unmount();
+  });
+});
+
+describe("Mermaid 보기 전환", () => {
+  function mountView(mermaidView?: "code" | "preview" | "split") {
+    const editor = BlockNoteEditor.create({
+      schema: editorSchema,
+      initialContent: [{ type: "codeBlock", props: { language: "mermaid", ...(mermaidView && { mermaidView }) }, content: "graph TD\nA-->B" }],
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    const pressed = () => host.querySelector('.mermaid-view-switch [aria-pressed="true"]')?.textContent;
+    const button = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElement>(".mermaid-view-switch button"))
+      .find((b) => b.textContent === label)!;
+    return { editor, host, pressed, button };
+  }
+
+  it("기존 블록은 분할로 보이고 코드·미리보기·분할 버튼을 둔다", () => {
+    const { editor, host, pressed } = mountView();
+    expect(pressed()).toBe("분할");
+    expect(Array.from(host.querySelectorAll(".mermaid-view-switch button"), (b) => b.textContent)).toEqual(["코드", "미리보기", "분할"]);
+    expect(host.querySelector(".mermaid-preview")).not.toBeNull();
+    expect(host.querySelector("pre.mermaid-code-hidden")).toBeNull();
+    editor.unmount();
+  });
+
+  it("코드 보기는 그림 영역 없이 코드만 보인다", () => {
+    const { editor, host, pressed } = mountView("code");
+    expect(pressed()).toBe("코드");
+    expect(host.querySelector(".mermaid-preview")).toBeNull();
+    editor.unmount();
+  });
+
+  it("미리보기를 누르면 블록 속성에 저장하고 코드를 숨길 표시를 단다", () => {
+    const { editor, host, pressed, button } = mountView();
+    button("미리보기").click();
+    expect(editor.document[0].props).toMatchObject({ mermaidView: "preview" });
+    expect(pressed()).toBe("미리보기");
+    expect(host.querySelector("pre.mermaid-code-hidden")).not.toBeNull();
+    editor.unmount();
+  });
+
+  it("읽기 전용이면 보기 버튼을 눌러도 바꾸지 않는다", () => {
+    const editor = toolbarEditor(false);
+    const dom = createMermaidViewSwitch({ id: "b1", props: { mermaidView: "split" } }, editor);
+    const buttons = Array.from(dom.querySelectorAll("button"));
+    expect(buttons.every((b) => b.disabled)).toBe(true);
+    buttons[0].click();
+    expect(editor.updateBlock).not.toHaveBeenCalled();
   });
 });

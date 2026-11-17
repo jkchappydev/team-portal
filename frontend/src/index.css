@@ -796,6 +796,58 @@ button.cell-selection-handle[aria-expanded="true"] svg {
   --bn-suggestion-surface: #2b2b2b;
 }
 
+/* Mermaid 코드 블록: 코드 아래에 그림을 놓도록 세로로 쌓음 */
+.bn-block-content[data-content-type="codeBlock"]:has(> .mermaid-preview) {
+  flex-direction: column;
+}
+
+.mermaid-preview {
+  display: flex;
+  justify-content: center;
+  padding: 8px 24px 24px;
+  overflow-x: auto;
+  user-select: none;
+}
+
+.mermaid-preview[data-state="empty"] {
+  display: none;
+}
+
+/* 미리보기 보기: 그림이 그려졌을 때만 코드를 숨김 (빈 코드·문법 오류면 고칠 수 있게 코드 표시) */
+.bn-block-content[data-content-type="codeBlock"]:has(> .mermaid-preview[data-state="ready"]) > pre.mermaid-code-hidden {
+  display: none;
+}
+
+.bn-block-content[data-content-type="codeBlock"]:has(> pre.mermaid-code-hidden) > .mermaid-preview {
+  padding-top: 40px;
+}
+
+/* 보기 전환(코드·미리보기·분할): 언어 버튼 앞에 붙는 버튼 묶음, 고른 보기는 진하게 */
+.mermaid-view-switch {
+  display: flex;
+  gap: 2px;
+  padding-right: 4px;
+  margin-right: 2px;
+  border-right: 1px solid var(--mantine-color-default-border);
+}
+
+.mermaid-view-switch > .code-toolbar-button[aria-pressed="true"] {
+  background: var(--mantine-color-default-hover);
+  color: var(--mantine-color-text);
+}
+
+.mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-preview-error {
+  width: 100%;
+  white-space: pre-wrap;
+  color: var(--mantine-color-red-text);
+  font-size: 12px;
+}
+
 /* 코드 블록 도구 막대: 노션처럼 오른쪽 위 언어 버튼·복사 버튼, 마우스를 올렸을 때만 표시 */
 .bn-block-content[data-content-type="codeBlock"] > .code-toolbar {
   position: absolute;

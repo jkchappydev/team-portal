@@ -1,16 +1,43 @@
 import { createCodeBlockSpec } from "@blocknote/core";
+import type { BlockSpec } from "@blocknote/core";
 import { codeBlockOptions } from "@blocknote/code-block";
 import { showToast } from "../../toast/toastStore";
 import { copyText } from "../clipboard";
+import { createMermaidPreview, MERMAID_VIEWS, normalizeMermaidView } from "./mermaidPreview";
+import type { MermaidView } from "./mermaidPreview";
 
 export type CodeLanguages = Record<string, { name: string; aliases?: string[] }>;
 
 // 코드 블록 도구 막대가 쓰는 편집기 기능만 추린 형태
 export interface CodeToolbarEditor {
   isEditable: boolean;
-  updateBlock(id: string, update: { props: { language: string } }): unknown;
+  updateBlock(id: string, update: { props: { language?: string; mermaidView?: MermaidView } }): unknown;
   getBlock(id: string): { content?: unknown } | undefined;
 }
+
+// 도구 막대 앞에 붙는 보기 전환 버튼 (고른 보기는 블록 속성으로 저장되어 모두에게 같게 보임)
+export function createMermaidViewSwitch(block: { id: string; props: { mermaidView?: unknown } }, editor: CodeToolbarEditor) {
+  const current = normalizeMermaidView(block.props.mermaidView);
+  const dom = document.createElement("div");
+  dom.className = "mermaid-view-switch";
+  dom.setAttribute("role", "group");
+  dom.setAttribute("aria-label", "Mermaid 보기 방식");
+  for (const view of MERMAID_VIEWS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "code-toolbar-button";
+    button.textContent = view.label;
+    button.setAttribute("aria-pressed", String(view.value === current));
+    button.disabled = !editor.isEditable;
+    button.addEventListener("click", () => {
+      if (view.value !== current && editor.isEditable) editor.updateBlock(block.id, { props: { mermaidView: view.value } });
+    });
+    dom.appendChild(button);
+  }
+  return dom;
+}
+
+type CodeBlockWithView = { id: string; props: { mermaidView?: unknown } };
 
 interface CodeBlockLike {
   id: string;
@@ -249,7 +276,7 @@ const baseRender = baseCodeBlock.implementation.render!;
 const baseParse = baseCodeBlock.implementation.parse!;
 const supportedLanguages: CodeLanguages = codeBlockOptions.supportedLanguages;
 
-export const codeBlockSpec: typeof baseCodeBlock = {
+const codeBlockWithToolbar: typeof baseCodeBlock = {
   ...baseCodeBlock,
   implementation: {
     ...baseCodeBlock.implementation,
@@ -267,13 +294,60 @@ export const codeBlockSpec: typeof baseCodeBlock = {
       const select = rendered.dom.firstChild;
       if (select instanceof HTMLDivElement && select.querySelector("select")) select.replaceWith(toolbar.dom);
       else rendered.dom.insertBefore(toolbar.dom, rendered.dom.firstChild);
+      if (language !== "mermaid") {
+        return {
+          ...rendered,
+          destroy: () => {
+            rendered.destroy?.();
+            toolbar.destroy();
+          },
+        };
+      }
+      // Mermaid 코드 블록은 노션처럼 보기 전환 버튼을 두고, 코드·미리보기·분할 중 고른 방식으로 그림
+      toolbar.dom.insertBefore(createMermaidViewSwitch(block as CodeBlockWithView, editor as unknown as CodeToolbarEditor), toolbar.dom.firstChild);
+      const view = normalizeMermaidView((block as CodeBlockWithView).props.mermaidView);
+      if (view === "code") {
+        return {
+          ...rendered,
+          destroy: () => {
+            rendered.destroy?.();
+            toolbar.destroy();
+          },
+        };
+      }
+      // 미리보기는 그림이 그려졌을 때만 코드를 숨김 (빈 코드·문법 오류면 고칠 수 있게 코드를 보여 줌)
+      if (view === "preview") rendered.dom.querySelector("pre")?.classList.add("mermaid-code-hidden");
+      const preview = createMermaidPreview();
+      rendered.dom.appendChild(preview.dom);
+      preview.update(codeText(block.content));
+      // 글자만 바뀌면 블록을 다시 그리지 않으므로 코드 영역 변경을 직접 지켜봄
+      const code = rendered.contentDOM;
+      const codeObserver = code ? new MutationObserver(() => preview.update(code.textContent ?? "")) : null;
+      if (code) codeObserver?.observe(code, { characterData: true, childList: true, subtree: true });
+      const baseIgnore = rendered.ignoreMutation;
       return {
         ...rendered,
+        // 그림 영역 변경을 편집기가 문서 수정으로 읽으면 블록을 다시 그리므로 무시
+        ignoreMutation: (mutation) =>
+          (mutation.type !== "selection" && preview.dom.contains(mutation.target)) || (baseIgnore?.(mutation) ?? false),
         destroy: () => {
           rendered.destroy?.();
           toolbar.destroy();
+          codeObserver?.disconnect();
+          preview.destroy();
         },
       };
     },
   },
 };
+
+// 기본 코드 블록 속성(language)에 Mermaid 보기 방식을 더함 (기존 블록은 기본값 분할로 보임)
+const codeBlockPropSchema = {
+  ...baseCodeBlock.config.propSchema,
+  mermaidView: { default: "split" as MermaidView, values: MERMAID_VIEWS.map((view) => view.value) },
+};
+
+export const codeBlockSpec = {
+  ...codeBlockWithToolbar,
+  config: { ...codeBlockWithToolbar.config, propSchema: codeBlockPropSchema },
+} as unknown as BlockSpec<"codeBlock", typeof codeBlockPropSchema, "plain">;

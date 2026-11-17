@@ -18,6 +18,8 @@ beforeAll(() => {
   });
 });
 
+const PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
 // 제목·목록·체크리스트·인용·코드·구분선·색·링크·표(제목 행·칸 색)가 섞인 본문
 const blocks: ExportBlock[] = [
   { type: "heading", props: { level: 1 }, content: [{ type: "text", text: "품의 내용" }] },
@@ -38,6 +40,11 @@ const blocks: ExportBlock[] = [
   ] },
   { type: "callout", props: { icon: "📌", backgroundColor: "default" }, children: [{ type: "paragraph", content: [{ type: "text", text: "배경 없음" }] }] },
   { type: "codeBlock", content: [{ type: "text", text: "const a = 1;" }] },
+  // 내보내기 전에 그려 둔 Mermaid 그림(1×1 PNG)을 분할·미리보기로 넣음
+  { type: "codeBlock", props: { language: "mermaid", mermaidView: "split", mermaidImage: { src: PIXEL, width: 400, height: 200 } },
+    content: [{ type: "text", text: "graph TD; A-->B" }] },
+  { type: "codeBlock", props: { language: "mermaid", mermaidView: "preview", mermaidImage: { src: PIXEL, width: 900, height: 300 } },
+    content: [{ type: "text", text: "graph TD; A-->B" }] },
   { type: "divider" },
   { type: "table", content: {
     type: "tableContent",

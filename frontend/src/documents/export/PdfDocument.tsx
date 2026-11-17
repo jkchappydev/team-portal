@@ -4,6 +4,7 @@ import type { Style } from "@react-pdf/types";
 import { listNumbers, toCell, toRuns } from "./blockModel";
 import type { ExportBlock, TableContentModel, TextRun } from "./blockModel";
 import { backgroundColorOf, textColorOf } from "./colors";
+import type { MermaidImage } from "./mermaidExport";
 
 export const PDF_FONT = "Pretendard";
 
@@ -29,7 +30,11 @@ const styles = StyleSheet.create({
   image: { maxWidth: "100%", marginVertical: 4 },
   caption: { fontSize: 9, color: "#787774" },
   fileLink: { color: "#787774", textDecoration: "underline" },
+  diagram: { alignItems: "center", marginVertical: 4 },
 });
+
+// A4(595pt)에서 좌우 여백(56pt씩)을 뺀 본문 폭
+const CONTENT_WIDTH = 595 - 56 * 2;
 
 const HEADING_SIZES: Record<number, number> = { 1: 20, 2: 16, 3: 13.5, 4: 12, 5: 11, 6: 10.5 };
 
@@ -156,9 +161,23 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
         </View>
       );
     }
-    case "codeBlock":
-      body = <Text style={styles.code}><Runs content={block.content} /></Text>;
+    case "codeBlock": {
+      const code = <Text style={styles.code}><Runs content={block.content} /></Text>;
+      // 내보내기 전에 그려 둔 Mermaid 그림이 있으면 보기 방식대로 코드·그림을 함께 넣음
+      const image = props.mermaidImage as MermaidImage | undefined;
+      if (!image) {
+        body = code;
+        break;
+      }
+      const width = Math.min(image.width * 0.75, CONTENT_WIDTH);
+      const diagram = (
+        <View wrap={false} style={styles.diagram}>
+          <Image src={image.src} style={{ width, height: (width * image.height) / image.width }} />
+        </View>
+      );
+      body = props.mermaidView === "preview" ? diagram : <>{code}{diagram}</>;
       break;
+    }
     case "divider":
       body = <View style={styles.divider} />;
       break;

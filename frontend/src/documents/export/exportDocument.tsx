@@ -51,8 +51,12 @@ function registerFonts(): Promise<void> {
 
 async function toPdf(title: string, blocks: ExportBlock[]): Promise<Blob> {
   await registerFonts();
-  const [{ pdf }, { PdfDocument }] = await Promise.all([import("@react-pdf/renderer"), import("./PdfDocument")]);
-  return pdf(<PdfDocument title={title} blocks={blocks} />).toBlob();
+  const [{ pdf }, { PdfDocument }, { attachMermaidImages }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("./PdfDocument"),
+    import("./mermaidExport"),
+  ]);
+  return pdf(<PdfDocument title={title} blocks={await attachMermaidImages(blocks)} />).toBlob();
 }
 
 // HTML은 다른 프로그램에서도 읽기 쉬운 단순한 구조로 (제목과 기본 표 테두리 포함)
@@ -66,6 +70,7 @@ function toHtml(title: string, body: string): Blob {
 body { max-width: 760px; margin: 40px auto; padding: 0 16px; font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.6; color: #37352f; }
 table { border-collapse: collapse; } th, td { border: 1px solid #e9e9e7; padding: 4px 8px; } th { background: #f7f6f3; }
 img { max-width: 100%; }
+.mermaid-diagram { margin: 8px 0; text-align: center; } .mermaid-diagram svg { max-width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -96,7 +101,8 @@ export async function exportDocument(params: { documentId: number; title: string
   if (format === "pdf") {
     blob = await toPdf(title, blocks as unknown as ExportBlock[]);
   } else if (format === "html") {
-    blob = toHtml(title, await editor.blocksToHTMLLossy(blocks));
+    const { addMermaidToHtml } = await import("./mermaidExport");
+    blob = toHtml(title, await addMermaidToHtml(await editor.blocksToHTMLLossy(blocks), blocks as unknown as ExportBlock[]));
   } else {
     const markdown = await editor.blocksToMarkdownLossy(blocks);
     blob = new Blob([`# ${title}\n\n${markdown}`], { type: "text/markdown;charset=utf-8" });
