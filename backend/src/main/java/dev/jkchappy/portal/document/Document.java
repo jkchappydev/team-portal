@@ -98,6 +98,10 @@ public class Document {
   @Column(length = 512)
   private String icon;
 
+  // 프로젝트 본문 커버 이미지: att:{첨부 ID}, https 이미지 주소 (null이면 없음)
+  @Column(length = 512)
+  private String cover;
+
   @Column(name = "content_state")
   private byte[] contentState;
 
@@ -164,6 +168,13 @@ public class Document {
     this.contentState = state;
     this.plainText = plainText;
     this.updatedBy = updatedBy;
+    this.updatedAt = Instant.now();
+  }
+
+  // 커버 변경 시 수정자와 수정 시각 갱신
+  public void changeCover(String cover, Long userId) {
+    this.cover = cover;
+    this.updatedBy = userId;
     this.updatedAt = Instant.now();
   }
 

@@ -298,27 +298,52 @@ public class DocumentService {
 
   // 업로드 이미지는 같은 페이지의 5MB 이하 이미지(SVG 제외)만, 주소는 https만, 그 외는 짧은 이모지 글자만 허용
   private void validateIcon(Document doc, String icon) {
-    var uploaded = UPLOADED_ICON.matcher(icon);
+    if (validateImageValue(doc, icon, "아이콘으로 쓸 수 없는 이미지입니다.")) return;
+    if (icon.length() > 32 || icon.contains(":")) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "이모지나 이미지만 아이콘으로 쓸 수 있습니다.");
+    }
+  }
+
+  // 업로드 이미지(att:{ID})나 https 주소면 검사 후 true, 이미지 값이 아니면 false
+  private boolean validateImageValue(Document doc, String value, String unusableMessage) {
+    var uploaded = UPLOADED_ICON.matcher(value);
     if (uploaded.matches()) {
       boolean usable = attachmentRepository.findById(Long.parseLong(uploaded.group(1)))
         .filter(a -> a.getDocumentId().equals(doc.getId()))
         .filter(a -> isIconImage(a))
         .isPresent();
-      if (!usable) throw new BusinessException(ErrorCode.INVALID_INPUT, "아이콘으로 쓸 수 없는 이미지입니다.");
-      return;
+      if (!usable) throw new BusinessException(ErrorCode.INVALID_INPUT, unusableMessage);
+      return true;
     }
-    if (icon.startsWith("https://")) {
+    if (value.startsWith("https://")) {
       try {
-        var uri = new java.net.URI(icon);
-        if (uri.getHost() != null && !uri.getHost().isBlank()) return;
+        var uri = new java.net.URI(value);
+        if (uri.getHost() != null && !uri.getHost().isBlank()) return true;
       } catch (java.net.URISyntaxException ignored) {
         // 아래에서 잘못된 주소로 처리
       }
       throw new BusinessException(ErrorCode.INVALID_INPUT, "이미지 주소가 올바르지 않습니다.");
     }
-    if (icon.length() > 32 || icon.contains(":")) {
-      throw new BusinessException(ErrorCode.INVALID_INPUT, "이모지나 이미지만 아이콘으로 쓸 수 있습니다.");
+    return false;
+  }
+
+  private static final int MAX_COVER_LENGTH = 512;
+
+  // 프로젝트 본문 커버 변경 (비어 있으면 제거, 업로드 이미지·https 이미지 주소만 허용)
+  @Transactional
+  public DocumentDetail changeCover(Long id, String cover, Long userId) {
+    Document doc = getLiveDocument(id);
+    Space coverSpace = getLiveSpace(doc.getSpaceId());
+    if (!coverSpace.isHomeDocument(id) || !coverSpace.isProject()) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "프로젝트에만 커버를 넣을 수 있습니다.");
     }
+    String resolved = cover == null || cover.isBlank() ? null : cover.trim();
+    if (resolved != null && (resolved.length() > MAX_COVER_LENGTH
+      || !validateImageValue(doc, resolved, "커버로 쓸 수 없는 이미지입니다."))) {
+      throw new BusinessException(ErrorCode.INVALID_INPUT, "이미지만 커버로 쓸 수 있습니다.");
+    }
+    doc.changeCover(resolved, userId);
+    return getDetail(id);
   }
 
   private static boolean isIconImage(Attachment attachment) {
@@ -427,13 +452,13 @@ public class DocumentService {
       List<TrashChild> children = new ArrayList<>();
       // 프로젝트 본문 페이지는 프로젝트 자신이므로 하위 목록에서 제외
       collectChildren(childrenOf.apply(space.getId()), ROOT_KEY, homeId, 1, children);
-      items.add(new TrashItem("space", space.getId(), space.getName(), icon,
+      items.add(new TrashItem("space", space.getId(), space.getName(), icon, space.getKind().name(),
         space.getDeletedAt().atOffset(ZoneOffset.UTC), children));
     }
     for (Document doc : documentRepository.findTrashed().stream().filter(d -> !d.isWbs()).toList()) {
       List<TrashChild> children = new ArrayList<>();
       collectChildren(childrenOf.apply(doc.getSpaceId()), doc.getId(), null, 1, children);
-      items.add(new TrashItem("document", doc.getId(), doc.getTitle(), doc.getIcon(),
+      items.add(new TrashItem("document", doc.getId(), doc.getTitle(), doc.getIcon(), null,
         doc.getDeletedAt().atOffset(ZoneOffset.UTC), children));
     }
     items.sort(Comparator.comparing(TrashItem::deletedAt).reversed());

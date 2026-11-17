@@ -9,6 +9,7 @@ import type { FavoriteDto } from "../api/favorites";
 import { DragHandleIcon } from "./DragHandleIcon";
 import { dropSlotAt, moveIndexOf } from "./dropSlot";
 import { PageIcon } from "./PageIconView";
+import { listSpaces } from "../api/spaces";
 import { useReorderAnimation } from "../layout/reorderAnimation";
 
 const rowStyle = { display: "block", width: "100%", padding: "6px 8px", borderRadius: 6 };
@@ -19,6 +20,9 @@ const DRAG_TYPE = "application/x-portal-favorite";
 export function FavoritesPage() {
   const queryClient = useQueryClient();
   const { data: favorites = [], error, isLoading } = useQuery({ queryKey: FAVORITES_KEY, queryFn: listFavorites });
+  // 프로젝트 본문 즐겨찾기만 폴더 아이콘 (최상위 페이지 본문은 페이지 아이콘)
+  const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
+  const projectIds = new Set(spaces.filter((space) => space.kind === "PROJECT").map((space) => space.id));
   // 끌고 있는 즐겨찾기와 가로선을 그을 줄 사이 위치 (0 = 맨 앞, favorites.length = 맨 뒤)
   const draggingId = useRef<number | null>(null);
   const [dropSlot, setDropSlot] = useState<number | null>(null);
@@ -134,7 +138,7 @@ export function FavoritesPage() {
                     <DragHandleIcon />
                   </span>
                   <UnstyledButton component={Link} to={favoritePath(favorite)} style={rowStyle} draggable={false}>
-                    <Text size="sm"><PageIcon icon={favorite.icon} project={favorite.home} />{" "}<span>{favorite.title}</span></Text>
+                    <Text size="sm"><PageIcon icon={favorite.icon} project={favorite.home && projectIds.has(favorite.spaceId)} />{" "}<span>{favorite.title}</span></Text>
                   </UnstyledButton>
                 </Box>
               ))}

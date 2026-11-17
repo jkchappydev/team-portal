@@ -67,3 +67,18 @@ describe("외부 HTML 붙여넣기", () => {
     ]);
   });
 });
+
+describe("글자색 검은색", () => {
+  it("검은색은 색 이름으로 저장되어 화면 CSS가 칠하고, 복사할 때는 #000000으로 내보낸다", async () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema });
+    editor.replaceBlocks(editor.document, [
+      { type: "paragraph", content: [{ type: "text", text: "검정", styles: { textColor: "black" } }] },
+    ]);
+    const html = await editor.blocksToHTMLLossy(editor.document);
+    expect(html).toMatch(/color:\s*(#000000|rgb\(0, 0, 0\))/);
+  });
+
+  it("붙여넣은 검정 글자는 문서 기본색으로 보고 색을 넣지 않는다", () => {
+    expect(parseTextColor(element('<span style="color:#000000">검정</span>'))).toBeUndefined();
+  });
+});

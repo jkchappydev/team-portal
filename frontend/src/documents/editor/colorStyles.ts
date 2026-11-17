@@ -78,6 +78,13 @@ export function nearestColorName(css: string, kind: ColorKind): string | undefin
 
 const isColorName = (value: string) => (COLOR_NAMES as readonly string[]).includes(value);
 
+// 글자색에만 있는 이름 (붙여넣은 검정 글자는 기본색으로 두므로 붙여넣기 판단 색표에는 넣지 않음)
+export const TEXT_ONLY_COLORS: Record<string, string> = { black: "#000000" };
+
+// 색 종류별 메뉴 색 이름인지 (화면 CSS가 칠하는 이름)
+const isNamedColor = (value: string, kind: ColorKind) =>
+  isColorName(value) || (kind === "text" && value in TEXT_ONLY_COLORS);
+
 // 노션 내보내기 형광펜: class="highlight-red"(글자색), "highlight-red_background"(배경색)
 function notionHighlight(element: HTMLElement, kind: ColorKind): string | undefined {
   for (const cls of Array.from(element.classList)) {
@@ -113,14 +120,16 @@ export function parseBackgroundColor(element: HTMLElement): string | undefined {
 // 화면 표시: 색 이름은 CSS(data-value)가 칠하고, 예전에 원본 값(rgb 등)으로 저장된 색은 그 값을 직접 칠함
 function colorSpan(value: string, property: "color" | "backgroundColor") {
   const dom = document.createElement("span");
-  if (value && value !== "default" && !isColorName(value)) dom.style[property] = value;
+  const kind: ColorKind = property === "color" ? "text" : "background";
+  if (value && value !== "default" && !isNamedColor(value, kind)) dom.style[property] = value;
   return { dom, contentDOM: dom };
 }
 
 // 다른 프로그램으로 복사·내보내기: 색 이름은 화면과 같은 노션 라이트 색, 원본 값은 그대로
 function exportSpan(value: string, kind: ColorKind) {
   const dom = document.createElement("span");
-  const css = isColorName(value) ? PALETTE[kind][value][0] : value !== "default" ? value : "";
+  const named = kind === "text" ? TEXT_ONLY_COLORS[value] : undefined;
+  const css = named ?? (isColorName(value) ? PALETTE[kind][value][0] : value !== "default" ? value : "");
   if (css) dom.style[kind === "text" ? "color" : "backgroundColor"] = css;
   return { dom, contentDOM: dom };
 }

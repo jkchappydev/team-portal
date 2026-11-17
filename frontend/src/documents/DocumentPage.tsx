@@ -111,7 +111,8 @@ export function DocumentPage() {
     return <Navigate to={path} replace />;
   }
 
-  const spaceIcon = spaces?.find((space) => space.id === doc.spaceId)?.icon;
+  const ownerSpace = spaces?.find((space) => space.id === doc.spaceId);
+  const spaceIcon = ownerSpace?.icon;
 
   return (
     <>
@@ -121,7 +122,7 @@ export function DocumentPage() {
         breadcrumb={
           <Group gap={8} wrap="nowrap">
             <Anchor component={Link} to={`/spaces/${doc.spaceId}`} size="sm" c="dimmed" truncate>
-              <IconLabel icon={spaceIcon} title={doc.spaceName ?? "페이지"} project />
+              <IconLabel icon={spaceIcon} title={doc.spaceName ?? "페이지"} project={ownerSpace?.kind === "PROJECT"} />
             </Anchor>
             {/* 상위 페이지 경로 */}
             {doc.path.map((ancestor) => (

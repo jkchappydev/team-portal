@@ -14,6 +14,7 @@ import { DeleteSpaceModal } from "../documents/DeleteSpaceModal";
 import { ExportModal } from "../documents/export/ExportModal";
 import { HistoryModal } from "../documents/history/HistoryModal";
 import { PageIcon } from "../documents/PageIconView";
+import { spaceLabel } from "../documents/spaceKind";
 import type { DropPosition } from "./dropPosition";
 import { isNewItem } from "./reorderAnimation";
 
@@ -124,7 +125,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
           }}
           leftSection={
             <Box className="tree-slot" w={22} h={22}>
-              <span aria-hidden className="tree-slot-icon"><PageIcon icon={space.icon} project /></span>
+              <span aria-hidden className="tree-slot-icon"><PageIcon icon={space.icon} project={space.kind === "PROJECT"} /></span>
             </Box>
           }
           rightSection={hovered || menuOpened ? (
@@ -146,7 +147,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
                   <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
                 )}
                 <Menu.Divider />
-                <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>프로젝트 삭제</Menu.Item>
+                <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>{spaceLabel(space.kind)} 삭제</Menu.Item>
               </Menu.Dropdown>
             </Menu>
           ) : null}
@@ -164,8 +165,9 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
       <DeleteSpaceModal
         opened={confirmDelete}
         name={space.name}
+        kind={space.kind}
         pending={remove.isPending}
-        error={remove.error ? (remove.error instanceof ApiError ? remove.error.message : "프로젝트를 삭제하지 못했습니다.") : null}
+        error={remove.error ? (remove.error instanceof ApiError ? remove.error.message : `${spaceLabel(space.kind)}를 삭제하지 못했습니다.`) : null}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate()}
       />

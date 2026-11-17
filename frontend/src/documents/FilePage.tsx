@@ -29,13 +29,14 @@ export function FilePage() {
   // 페이지·WBS 주소로 들어오면 그 화면으로
   if (doc.kind !== "FILE") return <Navigate to={itemPath(doc.kind, doc.id)} replace />;
 
-  const spaceIcon = spaces?.find((space) => space.id === doc.spaceId)?.icon;
+  const ownerSpace = spaces?.find((space) => space.id === doc.spaceId);
+  const spaceIcon = ownerSpace?.icon;
 
   return (
     <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
       <Group gap={8} wrap="nowrap" mb="lg">
         <Anchor component={Link} to={`/spaces/${doc.spaceId}`} size="sm" c="dimmed" truncate>
-          <span style={{ marginRight: 6 }}><PageIcon icon={spaceIcon} project /></span>{doc.spaceName ?? "페이지"}
+          <span style={{ marginRight: 6 }}><PageIcon icon={spaceIcon} project={ownerSpace?.kind === "PROJECT"} /></span>{doc.spaceName ?? "페이지"}
         </Anchor>
         {doc.path.map((ancestor) => (
           <Group key={ancestor.id} gap={8} wrap="nowrap">

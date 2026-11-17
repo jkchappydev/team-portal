@@ -14,6 +14,18 @@ export const BLOCK_COLORS = [
   { value: "red", label: "빨간색" },
 ] as const;
 
+// 글자색 메뉴 목록: 노션 색표에 검은색을 더함 (배경색에는 없음, 화면 색은 index.css의 black 변수)
+export const TEXT_COLORS = [
+  BLOCK_COLORS[0],
+  { value: "black", label: "검은색" },
+  ...BLOCK_COLORS.slice(1),
+] as const;
+
+// 색 종류별 메뉴 목록
+export function colorsFor(kind: ColorKind): readonly { value: string; label: string }[] {
+  return kind === "textColor" ? TEXT_COLORS : BLOCK_COLORS;
+}
+
 export type ColorKind = "textColor" | "backgroundColor";
 
 interface TableCellObject {

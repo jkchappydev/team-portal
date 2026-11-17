@@ -1,5 +1,6 @@
 // 내보내기(PDF)용 노션 라이트 팔레트 (편집기 화면의 index.css 값과 같음)
 const TEXT_COLORS: Record<string, string> = {
+  black: "#000000",
   gray: "#787774",
   brown: "#9f6b53",
   orange: "#d9730d",

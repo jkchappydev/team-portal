@@ -49,21 +49,23 @@ public class AttachmentController {
   }
 
   // 이미지는 본문 표시를 위해 inline, 그 외는 한글 파일명을 유지한 다운로드
+  // download=true면 이미지도 브라우저가 바로 저장하도록 attachment로 보냄 (본문 이미지 다운로드 버튼)
   @GetMapping("/api/attachments/{id}/download")
-  public ResponseEntity<Resource> download(@PathVariable Long id) {
-    AttachmentService.Download download = attachmentService.download(id);
-    Attachment attachment = download.attachment();
+  public ResponseEntity<Resource> download(@PathVariable Long id,
+    @RequestParam(defaultValue = "false") boolean download) {
+    AttachmentService.Download file = attachmentService.download(id);
+    Attachment attachment = file.attachment();
     String contentType = attachment.getContentType();
     // SVG는 스크립트를 포함할 수 있어 inline 대상에서 제외
     boolean image = contentType.startsWith("image/") && !contentType.startsWith("image/svg");
-    ContentDisposition disposition = (image
+    ContentDisposition disposition = (image && !download
       ? ContentDisposition.inline() : ContentDisposition.attachment())
       .filename(attachment.getOriginalName(), StandardCharsets.UTF_8).build();
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
       .header("X-Content-Type-Options", "nosniff")
       .contentType(MediaType.parseMediaType(contentType))
-      .body(download.resource());
+      .body(file.resource());
   }
 
   @DeleteMapping("/api/attachments/{id}")

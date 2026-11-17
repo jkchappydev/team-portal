@@ -11,7 +11,7 @@ import type { SpaceDto } from "../api/spaces";
 
 vi.mock("../api/spaces", () => ({ deleteSpace: vi.fn(() => Promise.resolve()) }));
 
-const space: SpaceDto = { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, icon: "🏫" };
+const space: SpaceDto = { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", icon: "🏫", cover: null };
 
 function renderItem(target: SpaceDto = space) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -65,6 +65,15 @@ describe("SpaceNavItem", () => {
     expect(screen.getByText("📁")).toBeTruthy();
     fireEvent.click(screen.getByText("스쿨북스"));
     expect(await screen.findByText("프로젝트 화면")).toBeTruthy();
+  });
+
+  it("최상위 페이지는 아이콘이 없으면 페이지 아이콘, 메뉴·확인 창은 페이지 삭제로 보인다", async () => {
+    renderItem({ ...space, kind: "PAGE", icon: null });
+    expect(screen.getByText("📄")).toBeTruthy();
+    fireEvent.mouseEnter(screen.getByText("스쿨북스"));
+    fireEvent.click(screen.getByLabelText("스쿨북스 메뉴"));
+    fireEvent.click(await screen.findByText("페이지 삭제"));
+    expect(await screen.findByText(/"스쿨북스" 페이지를 삭제할까요/)).toBeTruthy();
   });
 
   it("⋯ 메뉴의 프로젝트 삭제는 확인 후 삭제한다", async () => {

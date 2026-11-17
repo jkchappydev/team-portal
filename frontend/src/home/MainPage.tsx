@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { Anchor, Badge, Box, Group, Paper, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { Anchor, Badge, Box, Group, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { listRecentDocuments } from "../api/documents";
@@ -8,21 +7,10 @@ import { listSpaces } from "../api/spaces";
 import { listWorkStatuses } from "../api/workStatuses";
 import { PageIcon } from "../documents/PageIconView";
 import { formatRelative, isProjectHome, updatePath } from "../notifications/updateFormat";
+import { Panel } from "./Panel";
+import { ProjectGallery } from "./ProjectGallery";
 import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
-
-// 메인 화면 칸 하나 (제목 + 오른쪽 바로가기 + 내용)
-function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <Paper withBorder radius="md" p="md" component="section" aria-label={title}>
-      <Group justify="space-between" mb="sm">
-        <Title order={5}>{title}</Title>
-        {action}
-      </Group>
-      {children}
-    </Paper>
-  );
-}
 
 // 아직 기능이 없는 칸 (영역만 잡아 둠)
 function Upcoming({ message }: { message: string }) {
@@ -123,12 +111,13 @@ function RecentPosts() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황, 새 게시글, 신규 CS(연동 예정), 이번 주 주간보고·모니터링(추후 구현)
+// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 새 게시글, 신규 CS(연동 예정), 이번 주 주간보고·모니터링(추후 구현)
 export function MainPage() {
   return (
     <Stack maw={1300} gap="md">
       <Title order={3}>메인</Title>
       <WeekStatuses />
+      <ProjectGallery />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         <RecentPosts />
         {/* 다른 프로젝트에서 만드는 CS API와 연동할 자리 */}

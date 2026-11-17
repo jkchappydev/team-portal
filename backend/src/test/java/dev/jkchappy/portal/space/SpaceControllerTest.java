@@ -65,6 +65,28 @@ class SpaceControllerTest {
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
   }
 
+  // 사이드바 "+ 새로 만들기"에서 고른 종류(페이지)를 그대로 서비스에 넘김
+  @Test
+  void createSpace_withPageKind_passesKind() throws Exception {
+    mockMvc.perform(post("/api/spaces")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"kind\":\"PAGE\"}"))
+      .andExpect(status().isOk());
+
+    org.mockito.Mockito.verify(spaceService).create(
+      org.mockito.ArgumentMatchers.argThat(r -> r.kind() == SpaceKind.PAGE), org.mockito.ArgumentMatchers.eq(1L));
+  }
+
+  @Test
+  void createSpace_unknownKind_returns400() throws Exception {
+    mockMvc.perform(post("/api/spaces")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"kind\":\"FOLDER\"}"))
+      .andExpect(status().isBadRequest());
+  }
+
   @Test
   void updateSpace_blankName_returns400() throws Exception {
     mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/spaces/5")

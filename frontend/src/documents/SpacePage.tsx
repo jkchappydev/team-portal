@@ -3,7 +3,7 @@ import { Alert, Loader, Menu } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
-import { changeDocumentIcon, getDocument, renameDocument } from "../api/documents";
+import { changeDocumentCover, changeDocumentIcon, getDocument, renameDocument } from "../api/documents";
 import { deleteSpace, listSpaces } from "../api/spaces";
 import type { SpaceDto } from "../api/spaces";
 import { pathAfterSpaceDeleted } from "./spaceNavigation";
@@ -15,6 +15,7 @@ import { DeleteSpaceModal } from "./DeleteSpaceModal";
 import { ExportModal } from "./export/ExportModal";
 import { HistoryModal } from "./history/HistoryModal";
 import { PageView } from "./PageView";
+import { spaceLabel } from "./spaceKind";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -62,6 +63,15 @@ export function SpacePage() {
     },
   });
 
+  // 커버는 메인 화면 프로젝트 카드에도 쓰이므로 프로젝트 목록도 갱신
+  const changeCover = useMutation({
+    mutationFn: (cover: string | null) => changeDocumentCover(homeId as number, cover),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(["document", homeId], detail);
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+  });
+
   // 프로젝트 삭제 후 사이드바 옆 최상위 페이지(없으면 근무 상황표)로 이동, 사이드바·휴지통 목록 갱신
   const remove = useMutation({
     mutationFn: () => deleteSpace(spaceId),
@@ -75,7 +85,7 @@ export function SpacePage() {
   });
 
   if (spacesError) {
-    return <Alert color="red">프로젝트 정보를 불러오지 못했습니다.</Alert>;
+    return <Alert color="red">정보를 불러오지 못했습니다.</Alert>;
   }
   if (!spacesPending && !space) {
     return <Alert color="gray">삭제되었거나 없는 페이지입니다.</Alert>;
@@ -99,24 +109,28 @@ export function SpacePage() {
             <PrintMenuItem />
             <Menu.Item onClick={() => setShowingHistory(true)}>수정 이력</Menu.Item>
             <Menu.Divider />
-            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>프로젝트 삭제</Menu.Item>
+            <Menu.Item color="red" onClick={() => setConfirmDelete(true)}>{spaceLabel(space.kind)} 삭제</Menu.Item>
           </>
         }
         onRename={(title) => rename.mutate(title)}
         renameError={
           rename.error ? errorMessage(rename.error, "페이지 이름을 저장하지 못했습니다.")
             : changeIcon.error ? errorMessage(changeIcon.error, "아이콘을 저장하지 못했습니다.")
-              : null
+              : changeCover.error ? errorMessage(changeCover.error, "커버를 저장하지 못했습니다.")
+                : null
         }
         onChangeIcon={(icon) => changeIcon.mutate(icon)}
+        // 커버는 메인 화면 갤러리 미리보기용이라 프로젝트에만
+        onChangeCover={space.kind === "PROJECT" ? (cover) => changeCover.mutate(cover) : undefined}
       />
       <ExportModal opened={exporting} documentId={home.id} title={space.name} onClose={() => setExporting(false)} />
       <HistoryModal opened={showingHistory} documentId={home.id} title={space.name} onClose={() => setShowingHistory(false)} />
       <DeleteSpaceModal
         opened={confirmDelete}
         name={space.name}
+        kind={space.kind}
         pending={remove.isPending}
-        error={remove.error ? errorMessage(remove.error, "프로젝트를 삭제하지 못했습니다.") : null}
+        error={remove.error ? errorMessage(remove.error, `${spaceLabel(space.kind)}를 삭제하지 못했습니다.`) : null}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate()}
       />

@@ -235,6 +235,21 @@ class AttachmentControllerTest {
     assertThat(new String(download.getBody())).isEqualTo("pdf-bytes");
   }
 
+  // 본문 표시용 이미지는 inline, 다운로드 버튼(download=true)은 원래 파일 이름으로 바로 저장되게 attachment
+  @Test
+  void download_image_inlineByDefault_attachmentWhenDownloadRequested() {
+    ResponseEntity<String> uploaded = upload("화면.png", "png".getBytes(), "image/png", true);
+    String id = uploaded.getBody().replaceAll("(?s).*\"id\":(\\d+).*", "$1");
+
+    String shown = client.get().uri("/api/attachments/{id}/download", id)
+      .retrieve().toEntity(byte[].class).getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+    String saved = client.get().uri("/api/attachments/{id}/download?download=true", id)
+      .retrieve().toEntity(byte[].class).getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+
+    assertThat(shown).startsWith("inline");
+    assertThat(saved).startsWith("attachment").contains("filename*=UTF-8''%ED%99%94%EB%A9%B4.png");
+  }
+
   @Test
   void download_invalidContentType_fallsBackToOctetStream() {
     // RestClient가 잘못된 파트 타입을 거부하므로 멀티파트 본문을 직접 구성

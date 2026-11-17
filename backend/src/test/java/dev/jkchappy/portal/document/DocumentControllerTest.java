@@ -89,6 +89,21 @@ class DocumentControllerTest {
       .andExpect(jsonPath("$.data.title").value("회의록 (사본)"));
   }
 
+  // 프로젝트 커버 변경: 바뀐 문서 상세(커버 포함)를 돌려줌
+  @Test
+  void changeCover_returnsDetailWithCover() throws Exception {
+    when(documentService.changeCover(1L, "att:7", 1L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentDetail(
+      1L, 10L, "개발", "개발", null, "att:7", "작성자", "작성자",
+      java.time.OffsetDateTime.parse("2026-11-17T00:00:00Z"), true, null, List.of(), "PAGE", null));
+
+    mockMvc.perform(patch("/api/documents/1/cover")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"cover\":\"att:7\"}"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.cover").value("att:7"));
+  }
+
   @Test
   void renameDocument_blankTitle_returns400() throws Exception {
     mockMvc.perform(patch("/api/documents/1/title")
@@ -118,7 +133,7 @@ class DocumentControllerTest {
   @Test
   void changeIcon_returnsDetail() throws Exception {
     when(documentService.changeIcon(1L, "🚀", 1L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentDetail(
-      1L, 10L, "개발", "문서", "🚀", "홍길동", "홍길동", null, false, null, List.of(), "PAGE", null));
+      1L, 10L, "개발", "문서", "🚀", null, "홍길동", "홍길동", null, false, null, List.of(), "PAGE", null));
 
     mockMvc.perform(patch("/api/documents/1/icon")
         .with(loginAs(1L))

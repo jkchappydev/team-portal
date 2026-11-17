@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cellsColor, clearCells, colorCells, colorTableCells, tableColor, withoutIds } from "./blockMenu";
+import { cellsColor, clearCells, colorCells, colorTableCells, colorsFor, tableColor, withoutIds } from "./blockMenu";
 import type { TableContent } from "./blockMenu";
 
 const table = (): TableContent => ({
@@ -75,5 +75,12 @@ describe("고른 칸 처리", () => {
       { type: "tableCell", props: { textColor: "red" }, content: [] },
     ]);
     expect(cleared.rows[1].cells[0]).toEqual({ type: "tableCell", props: {}, content: [{ type: "text", text: "다" }] });
+  });
+});
+
+describe("colorsFor", () => {
+  it("글자색에는 기본 다음에 검은색이 있고 배경색에는 없다", () => {
+    expect(colorsFor("textColor").map((c) => c.value).slice(0, 3)).toEqual(["default", "black", "gray"]);
+    expect(colorsFor("backgroundColor").map((c) => c.value)).not.toContain("black");
   });
 });

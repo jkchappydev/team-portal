@@ -29,17 +29,18 @@ vi.mock("./CollaborativeEditor", async () => {
 });
 
 const doc: DocumentDetailDto = {
-  id: 7, spaceId: 1, spaceName: "개발", title: "제목 없음", icon: null, createdByName: null,
+  id: 7, spaceId: 1, spaceName: "개발", title: "제목 없음", icon: null, cover: null, createdByName: null,
   updatedByName: null, updatedAt: "2026-11-06T00:00:00Z", home: false, parentId: null, path: [],
   kind: "PAGE", fileUrl: null,
 };
 
-function renderPage(state: unknown) {
+function renderPage(state: unknown, over: { doc?: DocumentDetailDto; onChangeCover?: (cover: string | null) => void } = {}) {
   render(
     <MantineProvider>
       <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={[{ pathname: "/documents/7", state }]}>
-        <PageView doc={doc} user={{ id: 1, name: "홍길동", active: true }} menuItems={null} onRename={vi.fn()} />
+        <PageView doc={over.doc ?? doc} user={{ id: 1, name: "홍길동", active: true }} menuItems={null} onRename={vi.fn()}
+          onChangeCover={over.onChangeCover} />
       </MemoryRouter>
       </QueryClientProvider>
     </MantineProvider>,
@@ -88,5 +89,29 @@ describe("PageView", () => {
     renderPage(null);
     expect((await screen.findByLabelText("홍길동")).textContent).toBe("길동");
     expect(screen.getByLabelText("이영희").textContent).toBe("영희");
+  });
+
+  it("커버를 바꿀 수 있는 화면에서 커버가 없으면 커버 추가 버튼만 보인다", async () => {
+    renderPage(null, { onChangeCover: vi.fn() });
+    expect(await screen.findByText("커버 추가")).toBeTruthy();
+    expect(document.querySelector(".page-cover")).toBeNull();
+  });
+
+  it("커버가 있으면 제목 위 띠로 보이고 커버 제거를 누르면 지운다", async () => {
+    const onChangeCover = vi.fn();
+    renderPage(null, { doc: { ...doc, home: true, cover: "att:5" }, onChangeCover });
+    const image = document.querySelector(".page-cover img");
+    expect(image?.getAttribute("src")).toBe("/api/attachments/5/download");
+    expect(screen.getByText("커버 변경")).toBeTruthy();
+    expect(screen.queryByText("커버 추가")).toBeNull();
+    fireEvent.click(screen.getByText("커버 제거"));
+    expect(onChangeCover).toHaveBeenCalledWith(null);
+  });
+
+  it("커버를 바꿀 수 없는 일반 페이지는 커버 영역이 없다", async () => {
+    renderPage(null, { doc: { ...doc, cover: "att:5" } });
+    await screen.findByText("편집기");
+    expect(document.querySelector(".page-cover")).toBeNull();
+    expect(screen.queryByText("커버 추가")).toBeNull();
   });
 });

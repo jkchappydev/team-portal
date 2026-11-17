@@ -66,7 +66,7 @@ class SpaceServiceTest {
         return doc;
       });
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("스쿨북스", null), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("스쿨북스", null, null), 1L);
 
     assertThat(result.homeDocumentId()).isEqualTo(50L);
     org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
@@ -84,11 +84,30 @@ class SpaceServiceTest {
     when(documentRepository.save(org.mockito.ArgumentMatchers.any(dev.jkchappy.portal.document.Document.class)))
       .thenAnswer(inv -> inv.getArgument(0));
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("  ", null), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("  ", null, null), 1L);
 
     assertThat(result.name()).isEqualTo("제목 없음");
     org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
       d -> d.getTitle().equals("제목 없음")));
+    // 종류를 고르지 않으면 프로젝트
+    assertThat(result.kind()).isEqualTo("PROJECT");
+  }
+
+  // 사이드바에서 페이지를 고르면 최상위 페이지로 만들고 본문 페이지도 함께 생성
+  @Test
+  void create_pageKind_createsTopLevelPage() {
+    when(spaceRepository.save(org.mockito.ArgumentMatchers.any(Space.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentRepository.save(org.mockito.ArgumentMatchers.any(dev.jkchappy.portal.document.Document.class)))
+      .thenAnswer(inv -> {
+        dev.jkchappy.portal.document.Document doc = inv.getArgument(0);
+        ReflectionTestUtils.setField(doc, "id", 60L);
+        return doc;
+      });
+
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest(null, null, SpaceKind.PAGE), 1L);
+
+    assertThat(result.kind()).isEqualTo("PAGE");
+    assertThat(result.homeDocumentId()).isEqualTo(60L);
   }
 
   // 프로젝트 이름을 바꾸면 본문 페이지 제목도 같이 바뀜
@@ -129,6 +148,30 @@ class SpaceServiceTest {
     var result = service().findAll();
 
     assertThat(result).extracting(dev.jkchappy.portal.space.dto.SpaceResponse::icon).containsExactly("🎯", null);
+  }
+
+  // 프로젝트 화면 커버는 본문 페이지의 커버 (없으면 null)
+  @Test
+  void findAll_includesHomeCover() {
+    Space withCover = Space.create("스쿨북스", null, 1L);
+    ReflectionTestUtils.setField(withCover, "id", 1L);
+    withCover.assignHomeDocument(10L);
+    Space plain = Space.create("개발", null, 1L);
+    ReflectionTestUtils.setField(plain, "id", 2L);
+    plain.assignHomeDocument(20L);
+    dev.jkchappy.portal.document.Document home = dev.jkchappy.portal.document.Document.create(1L, "스쿨북스", 1L);
+    ReflectionTestUtils.setField(home, "id", 10L);
+    home.changeCover("att:3", 1L);
+    dev.jkchappy.portal.document.Document blank = dev.jkchappy.portal.document.Document.create(2L, "개발", 1L);
+    ReflectionTestUtils.setField(blank, "id", 20L);
+    when(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()).thenReturn(List.of(withCover, plain));
+    when(documentRepository.countLiveBySpaceIds(List.of(1L, 2L))).thenReturn(List.of());
+    when(documentRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(home, blank));
+
+    var result = service().findAll();
+
+    assertThat(result.get(0).cover()).isEqualTo("att:3");
+    assertThat(result.get(1).cover()).isNull();
   }
 
   private Space space(Long id, String name, int sortOrder) {
@@ -190,7 +233,7 @@ class SpaceServiceTest {
       .thenAnswer(inv -> inv.getArgument(0));
     org.mockito.ArgumentCaptor<Space> saved = org.mockito.ArgumentCaptor.forClass(Space.class);
 
-    service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("새 페이지", null), 1L);
+    service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("새 페이지", null, null), 1L);
 
     org.mockito.Mockito.verify(spaceRepository).save(saved.capture());
     assertThat(saved.getValue().getSortOrder()).isEqualTo(5);

@@ -1,5 +1,5 @@
 import { useComponentsContext, usePortalElement } from "@blocknote/react";
-import { BLOCK_COLORS } from "./blockMenu";
+import { colorsFor } from "./blockMenu";
 import type { ColorKind } from "./blockMenu";
 import { MenuIcon } from "./MenuIcon";
 import { MENU_ICONS } from "./menuIcons";
@@ -20,7 +20,7 @@ export function ColorSubmenu({ kinds, current, onSelect }: ColorSubmenuProps) {
   if (kinds.length === 0) return null;
 
   const items = (kind: ColorKind) =>
-    BLOCK_COLORS.map((color) => (
+    colorsFor(kind).map((color) => (
       <Components.Generic.Menu.Item
         key={`${kind}-${color.value}`}
         className="bn-menu-item"

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SpaceDto } from "../api/spaces";
 import { pathAfterSpaceDeleted } from "./spaceNavigation";
 
-const space = (id: number): SpaceDto => ({ id, name: `p${id}`, description: null, documentCount: 0, homeDocumentId: null, icon: null });
+const space = (id: number): SpaceDto => ({ id, name: `p${id}`, description: null, documentCount: 0, homeDocumentId: null, kind: "PROJECT", icon: null, cover: null });
 
 describe("pathAfterSpaceDeleted", () => {
   const spaces = [space(1), space(2), space(3)];

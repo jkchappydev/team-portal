@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Alert, Box, Button, Group, Kbd, ScrollArea, Stack, Text } from "@mantine/core";
+import { Box, Button, Group, Kbd, ScrollArea, Stack, Text } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useNavigate } from "react-router-dom";
 import { createSpace, listSpaces, moveSpace } from "../api/spaces";
-import type { SpaceDto } from "../api/spaces";
+import type { SpaceDto, SpaceKind } from "../api/spaces";
+import { CreateSpaceModal } from "./CreateSpaceModal";
 import type { MemberDto } from "../api/members";
 import { SearchDialog } from "../documents/SearchDialog";
 import { focusTitleState } from "../documents/titleFocus";
@@ -29,10 +30,13 @@ export function Sidebar({ user }: Props) {
   // 노션처럼 어디서든 Ctrl/Cmd+K로 검색 창 열기
   useHotkeys([["mod+K", () => setSearching(true)]], []);
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
-  // 이름 입력 창 없이 "제목 없음" 페이지를 바로 만들고, 열린 페이지의 제목 칸에서 이름을 입력
+  // 프로젝트·페이지 중 고르는 창 (이름은 만든 뒤 열린 화면의 제목 칸에서 입력)
+  const [choosingKind, setChoosingKind] = useState(false);
+  // 이름 입력 창 없이 "제목 없음"으로 바로 만들고, 열린 화면의 제목 칸에서 이름을 입력
   const create = useMutation({
-    mutationFn: () => createSpace(),
+    mutationFn: (kind: SpaceKind) => createSpace(undefined, undefined, kind),
     onSuccess: (space) => {
+      setChoosingKind(false);
       markNewItem(`space-${space.id}`);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       navigate(`/spaces/${space.id}`, space.homeDocumentId ? focusTitleState(space.homeDocumentId) : undefined);
@@ -95,9 +99,8 @@ export function Sidebar({ user }: Props) {
           </Stack>
           <Group justify="space-between" mt="sm">
             <Text size="xs" c="dimmed">프로젝트</Text>
-            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => create.mutate()}>+ 새 프로젝트</Button>
+            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => { create.reset(); setChoosingKind(true); }}>+ 새로 만들기</Button>
           </Group>
-          {create.error && <Alert color="red" p="xs">프로젝트를 만들지 못했습니다.</Alert>}
           {/* 링크는 프로젝트 목록 바로 아래에 붙음 */}
           <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
           {/* 팀이 함께 쓰는 외부 주소 (새 탭으로 열림) */}
@@ -121,6 +124,8 @@ export function Sidebar({ user }: Props) {
         <Button size="compact-xs" variant="subtle" onClick={() => void logout()}>로그아웃</Button>
       </Group>
       {user && <ProfileSettingsModal user={user} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+      <CreateSpaceModal opened={choosingKind} pending={create.isPending} error={create.error ? "만들지 못했습니다." : null}
+        onClose={() => setChoosingKind(false)} onCreate={(kind) => create.mutate(kind)} />
     </Stack>
   );
 }

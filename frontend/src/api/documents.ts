@@ -31,6 +31,8 @@ export interface DocumentDetailDto {
   spaceName: string | null;
   title: string;
   icon: string | null;
+  // 프로젝트 본문 커버 (att:{첨부 ID} 또는 https 주소, 일반 페이지·없으면 null)
+  cover: string | null;
   createdByName: string | null;
   updatedByName: string | null;
   updatedAt: string;
@@ -58,6 +60,8 @@ export interface TrashItemDto {
   id: number;
   name: string;
   icon: string | null;
+  // space일 때 PROJECT 또는 PAGE (document는 null)
+  spaceKind: "PROJECT" | "PAGE" | null;
   deletedAt: string;
   // 깊이 우선 순서
   children: TrashChildDto[];
@@ -98,6 +102,14 @@ export function changeDocumentIcon(id: number, icon: string | null): Promise<Doc
   return apiFetch<DocumentDetailDto>(`/api/documents/${id}/icon`, {
     method: "PATCH",
     body: JSON.stringify({ icon }),
+  });
+}
+
+// cover가 null이면 커버 제거 (프로젝트 본문만)
+export function changeDocumentCover(id: number, cover: string | null): Promise<DocumentDetailDto> {
+  return apiFetch<DocumentDetailDto>(`/api/documents/${id}/cover`, {
+    method: "PATCH",
+    body: JSON.stringify({ cover }),
   });
 }
 

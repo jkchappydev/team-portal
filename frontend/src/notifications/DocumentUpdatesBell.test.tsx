@@ -7,7 +7,8 @@ import { DocumentUpdatesBell } from "./DocumentUpdatesBell";
 import {
   listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead, markAllWorkStatusNoticesRead, markWorkStatusNoticeRead,
 } from "../api/notifications";
-import { formatRelative, updatePath } from "./updateFormat";
+import { formatRelative, isProjectHome, updatePath } from "./updateFormat";
+import type { SpaceDto } from "../api/spaces";
 import { useCurrentUser } from "../user/currentUser";
 import { countPendingSignups } from "../api/admin";
 
@@ -35,7 +36,7 @@ function WorkStatusRoute() {
   return <div>근무 상황표 {location.search}</div>;
 }
 vi.mock("../api/spaces", () => ({
-  listSpaces: () => Promise.resolve([{ id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, icon: null }]),
+  listSpaces: () => Promise.resolve([{ id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", icon: null, cover: null }]),
 }));
 vi.mock("../user/currentUser", () => ({ useCurrentUser: vi.fn() }));
 vi.mock("../api/admin", () => ({ countPendingSignups: vi.fn() }));
@@ -179,10 +180,17 @@ describe("DocumentUpdatesBell", () => {
 
 describe("updateFormat", () => {
   it("최상위 페이지 본문은 /spaces, 파일은 /files, 나머지는 /documents로 연결한다", () => {
-    const spaces = [{ id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, icon: null }];
+    const spaces: SpaceDto[] = [
+      { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", icon: null, cover: null },
+      { id: 2, name: "메모", description: null, documentCount: 1, homeDocumentId: 20, kind: "PAGE", icon: null, cover: null },
+    ];
     expect(updatePath(update(10, "스쿨북스"), spaces)).toBe("/spaces/1");
     expect(updatePath(update(15, "양식.xlsx", "FILE"), spaces)).toBe("/files/15");
     expect(updatePath(update(11, "배포 절차"), spaces)).toBe("/documents/11");
+    // 최상위 페이지 본문도 /spaces로 열지만 폴더 아이콘은 프로젝트 본문만
+    expect(updatePath({ ...update(20, "메모"), spaceId: 2 }, spaces)).toBe("/spaces/2");
+    expect(isProjectHome(update(10, "스쿨북스"), spaces)).toBe(true);
+    expect(isProjectHome(update(20, "메모"), spaces)).toBe(false);
   });
 
   it("수정 시각을 방금 전·분·시간·일 단위로 짧게 표시한다", () => {

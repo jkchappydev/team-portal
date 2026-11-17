@@ -306,6 +306,9 @@ class DocumentServiceTest {
 
     assertThat(items).extracting(i -> i.kind() + ":" + i.name()).containsExactly("space:개발", "document:다른 프로젝트 페이지");
     assertThat(items.get(0).icon()).isEqualTo("🏫");
+    // 휴지통에서도 프로젝트·최상위 페이지를 구분해 기본 아이콘을 고름
+    assertThat(items.get(0).spaceKind()).isEqualTo("PROJECT");
+    assertThat(items.get(1).spaceKind()).isNull();
     assertThat(items.get(0).children()).extracting(c -> c.title() + ":" + c.depth()).containsExactly("최상위:1", "하위:2");
   }
 
@@ -781,6 +784,66 @@ class DocumentServiceTest {
     serviceAt(Instant.parse("2026-11-04T01:00:00Z")).saveContent(1L, new byte[] {1}, "본문", null);
 
     assertThat(doc.getUpdatedBy()).isEqualTo(1L);
+  }
+
+  // 커버는 프로젝트 본문에만, 같은 문서에 올린 이미지·https 주소만 허용
+  @Test
+  void changeCover_home_storesUploadedImageAndHttpsAndBlankRemoves() {
+    Space space = space(10L);
+    space.assignHomeDocument(1L);
+    Document doc = document(1L, 10L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of());
+    when(attachmentRepository.findById(7L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(1L, "cover.png", "stored", "image/png", 1024, true, 1L)));
+
+    service().changeCover(1L, " att:7 ", 2L);
+    assertThat(doc.getCover()).isEqualTo("att:7");
+    assertThat(doc.getUpdatedBy()).isEqualTo(2L);
+
+    service().changeCover(1L, "https://x.com/cover.jpg", 2L);
+    assertThat(doc.getCover()).isEqualTo("https://x.com/cover.jpg");
+
+    service().changeCover(1L, " ", 2L);
+    assertThat(doc.getCover()).isNull();
+  }
+
+  @Test
+  void changeCover_invalidValues_throwInvalidInput() {
+    Space space = space(10L);
+    space.assignHomeDocument(1L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(document(1L, 10L)));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(attachmentRepository.findById(7L)).thenReturn(Optional.of(
+      dev.jkchappy.portal.attachment.Attachment.create(2L, "other.png", "stored", "image/png", 1024, true, 1L)));
+
+    for (String cover : List.of("att:7", "🎯", "http://x.com/a.png")) {
+      assertThatThrownBy(() -> service().changeCover(1L, cover, 1L))
+        .as(cover)
+        .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+  }
+
+  // 커버는 메인 화면 갤러리용이라 최상위 페이지 본문에는 넣을 수 없음
+  @Test
+  void changeCover_topLevelPage_throwsInvalidInput() {
+    Space page = Space.create("메모", null, dev.jkchappy.portal.space.SpaceKind.PAGE, 1L);
+    ReflectionTestUtils.setField(page, "id", 10L);
+    page.assignHomeDocument(1L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(document(1L, 10L)));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(page));
+
+    assertThatThrownBy(() -> service().changeCover(1L, "https://x.com/a.png", 1L))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+  }
+
+  @Test
+  void changeCover_notHome_throwsInvalidInput() {
+    liveDocument();
+
+    assertThatThrownBy(() -> service().changeCover(1L, "https://x.com/a.png", 1L))
+      .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
   }
 
   // 프로젝트 본문 페이지는 단독으로 삭제할 수 없음 (프로젝트 삭제로만)

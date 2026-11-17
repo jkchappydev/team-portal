@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ActionIcon, Alert, Box, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Box, Button, Group, Loader, Menu, Text, TextInput, UnstyledButton } from "@mantine/core";
 import type { DocumentDetailDto } from "../api/documents";
 import type { MemberDto } from "../api/members";
 import { FavoriteButton } from "./FavoriteButton";
+import { CoverPicker } from "./CoverPicker";
 import { IconPicker } from "./IconPicker";
+import { iconImageSrc } from "./pageIcon";
 import { PageIcon } from "./PageIconView";
 import { PresenceAvatars } from "./PresenceAvatars";
 import type { Viewer } from "./presence";
@@ -26,6 +28,8 @@ interface Props {
   renameError?: string | null;
   // 아이콘 변경 (없으면 아이콘 영역을 표시하지 않음, null이면 제거)
   onChangeIcon?: (icon: string | null) => void;
+  // 커버 변경 (프로젝트 화면에서만, 없으면 커버 영역을 표시하지 않음, null이면 제거)
+  onChangeCover?: (cover: string | null) => void;
 }
 
 // "아이콘 추가"에 쓰는 회색 선 웃는 얼굴
@@ -41,8 +45,20 @@ function SmileIcon() {
   );
 }
 
+// "커버 추가"에 쓰는 회색 선 그림 아이콘
+function ImageIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
+      strokeWidth="1.3" strokeLinejoin="round">
+      <rect x="2" y="3" width="12" height="10" rx="1.5" />
+      <circle cx="5.8" cy="6.4" r="1" />
+      <path d="M2.5 11.5l3.5-3 2.5 2 2-1.6 3 2.6" />
+    </svg>
+  );
+}
+
 // 노션처럼 큰 제목 + 바로 쓰는 편집기로 구성한 페이지 화면
-export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, onChangeIcon }: Props) {
+export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameError, onChangeIcon, onChangeCover }: Props) {
   // 편집 중인 제목 (null이면 서버 제목 표시)
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -91,14 +107,63 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
           )}
         </Group>
       </Group>
+      {/* 프로젝트 커버: 있으면 제목 위에 가로 띠, 마우스를 올리면 변경·제거 */}
+      {onChangeCover && doc.cover && (
+        <Box className="page-cover">
+          <img src={iconImageSrc(doc.cover) ?? undefined} alt="" draggable={false} referrerPolicy="no-referrer" />
+          <Group className="page-cover-actions" gap={4} wrap="nowrap">
+            <CoverPicker
+              hasCover
+              documentId={doc.id}
+              onSelect={onChangeCover}
+              target={(toggle) => (
+                <Button size="compact-xs" variant="default" onClick={toggle}>커버 변경</Button>
+              )}
+            />
+            <Button size="compact-xs" variant="default" onClick={() => onChangeCover(null)}>커버 제거</Button>
+          </Group>
+        </Box>
+      )}
       <Box className="page-title">
-        {/* 노션처럼 아이콘이 있으면 제목 위에 크게, 없으면 마우스를 올렸을 때 추가 버튼 */}
-        {onChangeIcon && (
+        {/* 노션처럼 "아이콘 추가"·"커버 추가"는 제목 영역에 마우스를 올렸을 때만 보이는 회색 버튼 */}
+        {((onChangeIcon && !doc.icon) || (onChangeCover && !doc.cover)) && (
+          <Group gap={4} wrap="nowrap">
+            {onChangeIcon && !doc.icon && (
+              <IconPicker
+                hasIcon={false}
+                documentId={doc.id}
+                onSelect={onChangeIcon}
+                target={(toggle) => (
+                  // 노션처럼 회색 선 아이콘 + 보통 굵기 회색 글자, 마우스를 올리면 옅은 배경
+                  <UnstyledButton onClick={toggle} className="icon-add">
+                    <SmileIcon />
+                    아이콘 추가
+                  </UnstyledButton>
+                )}
+              />
+            )}
+            {onChangeCover && !doc.cover && (
+              <CoverPicker
+                hasCover={false}
+                documentId={doc.id}
+                onSelect={onChangeCover}
+                target={(toggle) => (
+                  <UnstyledButton onClick={toggle} className="icon-add">
+                    <ImageIcon />
+                    커버 추가
+                  </UnstyledButton>
+                )}
+              />
+            )}
+          </Group>
+        )}
+        {/* 노션처럼 아이콘이 있으면 제목 위에 크게 */}
+        {onChangeIcon && doc.icon && (
           <IconPicker
-            hasIcon={!!doc.icon}
+            hasIcon
             documentId={doc.id}
             onSelect={onChangeIcon}
-            target={(toggle) => doc.icon ? (
+            target={(toggle) => (
               <UnstyledButton
                 onClick={toggle}
                 aria-label="아이콘 변경"
@@ -107,12 +172,6 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
                 style={{ fontSize: 56, lineHeight: 1.2, borderRadius: 8, padding: "0 4px", marginBottom: 20 }}
               >
                 <PageIcon icon={doc.icon} />
-              </UnstyledButton>
-            ) : (
-              // 노션처럼 회색 선 아이콘 + 보통 굵기 회색 글자, 마우스를 올리면 옅은 배경
-              <UnstyledButton onClick={toggle} className="icon-add">
-                <SmileIcon />
-                아이콘 추가
               </UnstyledButton>
             )}
           />

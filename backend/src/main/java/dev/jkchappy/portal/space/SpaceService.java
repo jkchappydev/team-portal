@@ -33,17 +33,13 @@ public class SpaceService {
     Map<Long, Long> counts = new HashMap<>();
     documentRepository.countLiveBySpaceIds(spaces.stream().map(Space::getId).toList())
       .forEach(row -> counts.put((Long) row[0], (Long) row[1]));
-    // 프로젝트 아이콘은 본문 페이지 아이콘을 사용
-    Map<Long, String> icons = new HashMap<>();
+    // 프로젝트 아이콘·커버는 본문 페이지 값을 사용
+    Map<Long, Document> homes = new HashMap<>();
     documentRepository.findAllById(spaces.stream().map(Space::getHomeDocumentId)
         .filter(Objects::nonNull).toList())
-      .forEach(home -> {
-        if (home.getIcon() != null) {
-          icons.put(home.getId(), home.getIcon());
-        }
-      });
+      .forEach(home -> homes.put(home.getId(), home));
     return spaces.stream()
-      .map(s -> SpaceResponse.from(s, counts.getOrDefault(s.getId(), 0L), icons.get(s.getHomeDocumentId())))
+      .map(s -> SpaceResponse.from(s, counts.getOrDefault(s.getId(), 0L), homes.get(s.getHomeDocumentId())))
       .toList();
   }
 
@@ -52,14 +48,14 @@ public class SpaceService {
   public SpaceResponse create(SpaceCreateRequest request, Long userId) {
     String name = request.name() == null || request.name().isBlank()
       ? Document.DEFAULT_TITLE : request.name().trim();
-    Space space = Space.create(name, request.description(), userId);
+    Space space = Space.create(name, request.description(), request.kind(), userId);
     // 새 최상위 페이지는 사이드바 맨 아래
     space.changeSortOrder(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc().stream()
       .mapToInt(Space::getSortOrder).max().orElse(-1) + 1);
     Space saved = spaceRepository.save(space);
     Document home = documentRepository.save(Document.create(saved.getId(), name, userId));
     saved.assignHomeDocument(home.getId());
-    return SpaceResponse.from(saved, 0, null);
+    return SpaceResponse.from(saved, 0, home);
   }
 
   // 사이드바에서 끌어 옮긴 최상위 페이지를 index 위치에 끼워 넣고 0부터 다시 번호를 매김
@@ -87,7 +83,7 @@ public class SpaceService {
     }
     long count = documentRepository.countLiveBySpaceIds(List.of(id)).stream()
       .mapToLong(row -> (Long) row[1]).sum();
-    return SpaceResponse.from(space, count, home == null ? null : home.getIcon());
+    return SpaceResponse.from(space, count, home);
   }
 
   // 하위 문서는 그대로 두고 공간만 삭제 처리

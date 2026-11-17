@@ -1,6 +1,8 @@
 package dev.jkchappy.portal.space;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -60,8 +62,22 @@ public class Space {
     return homeDocumentId != null && homeDocumentId.equals(documentId);
   }
 
+  // 프로젝트 또는 최상위 페이지 (만든 뒤에는 바꾸지 않음)
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 10, updatable = false)
+  private SpaceKind kind = SpaceKind.PROJECT;
+
+  public boolean isProject() {
+    return kind == SpaceKind.PROJECT;
+  }
+
   public static Space create(String name, String description, Long createdBy) {
+    return create(name, description, SpaceKind.PROJECT, createdBy);
+  }
+
+  public static Space create(String name, String description, SpaceKind kind, Long createdBy) {
     Space space = new Space();
+    space.kind = kind == null ? SpaceKind.PROJECT : kind;
     space.name = name;
     space.description = description;
     space.createdBy = createdBy;

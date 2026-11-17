@@ -45,6 +45,94 @@ body {
   opacity: 1;
 }
 
+/* 프로젝트 커버: 제목 위 가로 띠, 마우스를 올리면 오른쪽 아래에 변경·제거 버튼 */
+.page-cover {
+  position: relative;
+  height: 200px;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+}
+
+.page-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-cover-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.page-cover:hover .page-cover-actions,
+.page-cover-actions:focus-within {
+  opacity: 1;
+}
+
+/* 메인 화면 프로젝트 카드: 노션 갤러리처럼 위 미리보기(이미지·본문 글) + 아래 아이콘·이름 */
+.project-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  background: var(--mantine-color-body);
+  transition: background-color 120ms;
+}
+
+.project-card:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.project-card-preview {
+  height: 120px;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.project-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 카드 윗부분: 프로젝트 아이콘(이모지·이미지·기본 폴더 그림)을 옅은 배경 가운데에 크게 */
+.project-card-icon-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-card-preview.project-card-icon-preview img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.project-card-emoji {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.project-card-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
 /* 사이드바 트리: 평소엔 페이지 아이콘, 마우스를 올리면 같은 자리에 펼치기 화살표 */
 .tree-slot {
   position: relative;
@@ -131,6 +219,7 @@ body {
   .mantine-AppShell-header,
   .print-hide,
   .icon-add,
+  .page-cover,
   .bn-side-menu,
   .bn-formatting-toolbar,
   .bn-trailing-block,
@@ -382,6 +471,8 @@ button.menu-toggle-row {
   --bn-colors-highlights-pink-background: #fbf2f5;
   --bn-colors-highlights-red-text: #d44c47;
   --bn-colors-highlights-red-background: #fdebec;
+  /* 글자색 검은색 (노션 색표에는 없어 따로 추가, 배경색에는 없음) */
+  --bn-colors-highlights-black-text: #000000;
 }
 
 :root .bn-root[data-color-scheme="dark"] {
@@ -403,6 +494,15 @@ button.menu-toggle-row {
   --bn-colors-highlights-pink-background: #4e2c3c;
   --bn-colors-highlights-red-text: #df5452;
   --bn-colors-highlights-red-background: #522e2a;
+  /* 다크 모드에서 검정 글자는 배경에 묻혀 안 보이므로 기본 글자색으로 표시 */
+  --bn-colors-highlights-black-text: var(--bn-colors-editor-text);
+}
+
+/* 글자색 검은색: 글자 서식·블록 글자색·표 칸·색 메뉴 견본 (BlockNote 기본 CSS에는 없는 이름) */
+.bn-root [data-style-type="textColor"][data-value="black"],
+.bn-root [data-text-color="black"],
+.color-swatch[data-text-color="black"] {
+  color: var(--bn-colors-highlights-black-text, #000000);
 }
 
 /* 다크 모드 표 테두리는 노션처럼 옅은 회색 (기본 흰 테두리는 너무 도드라짐) */

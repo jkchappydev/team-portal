@@ -11,7 +11,7 @@ import { PageBlockView } from "./PageBlockView";
 vi.mock("../../api/documents", () => ({ getDocument: vi.fn() }));
 
 const page = (over: Partial<DocumentDetailDto>): DocumentDetailDto => ({
-  id: 9, spaceId: 1, spaceName: "개발", title: "배포 절차", icon: "📘", createdByName: null, updatedByName: null,
+  id: 9, spaceId: 1, spaceName: "개발", title: "배포 절차", icon: "📘", cover: null, createdByName: null, updatedByName: null,
   updatedAt: "", home: false, parentId: null, path: [], kind: "PAGE", fileUrl: null, ...over,
 });
 

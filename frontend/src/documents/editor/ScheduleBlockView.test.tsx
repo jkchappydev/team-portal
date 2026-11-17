@@ -35,7 +35,7 @@ describe("ScheduleBlockView", () => {
 
   it("크게 보기는 페이지를 떠나지 않고 전체 화면으로 열고, 작게 보기로 본문 블록 크기로 돌아온다", async () => {
     vi.mocked(getDocument).mockResolvedValue({
-      id: 9, spaceId: 1, spaceName: "개발", title: "일정", icon: "📊", createdByName: null, updatedByName: null,
+      id: 9, spaceId: 1, spaceName: "개발", title: "일정", icon: "📊", cover: null, createdByName: null, updatedByName: null,
       updatedAt: "", home: false, parentId: 3, path: [], kind: "WBS", fileUrl: null,
     });
     renderBlock(9);

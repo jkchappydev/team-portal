@@ -1,6 +1,7 @@
 package dev.jkchappy.portal.document;
 
 import dev.jkchappy.portal.common.ApiResponse;
+import dev.jkchappy.portal.document.dto.DocumentCoverRequest;
 import dev.jkchappy.portal.document.dto.DocumentCreateRequest;
 import dev.jkchappy.portal.document.dto.DocumentDetail;
 import dev.jkchappy.portal.document.dto.DocumentIconRequest;
@@ -87,6 +88,13 @@ public class DocumentController {
   public ApiResponse<DocumentDetail> changeIcon(@PathVariable Long id,
     @Valid @RequestBody DocumentIconRequest request, @CurrentUser Long userId) {
     return ApiResponse.ok(documentService.changeIcon(id, request.icon(), userId));
+  }
+
+  // 프로젝트 본문 커버 변경 (비어 있으면 제거)
+  @PatchMapping("/api/documents/{id}/cover")
+  public ApiResponse<DocumentDetail> changeCover(@PathVariable Long id,
+    @Valid @RequestBody DocumentCoverRequest request, @CurrentUser Long userId) {
+    return ApiResponse.ok(documentService.changeCover(id, request.cover(), userId));
   }
 
   @DeleteMapping("/api/documents/{id}")

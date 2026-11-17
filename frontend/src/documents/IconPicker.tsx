@@ -83,7 +83,7 @@ export function IconPicker({ target, hasIcon, onSelect, documentId }: Props) {
           </Tabs.Panel>
           {documentId != null && (
             <Tabs.Panel value="upload">
-              <IconUpload documentId={documentId} onDone={select} onCancel={() => setOpened(false)} />
+              <ImageUpload documentId={documentId} onDone={select} onCancel={() => setOpened(false)} />
             </Tabs.Panel>
           )}
         </Tabs>
@@ -92,8 +92,8 @@ export function IconPicker({ target, hasIcon, onSelect, documentId }: Props) {
   );
 }
 
-// 이미지 파일을 고르거나 끌어다 놓거나 Ctrl+V로 이미지·https 이미지 주소를 붙여넣고 저장
-function IconUpload({ documentId, onDone, onCancel }: { documentId: number; onDone: (icon: string) => void; onCancel: () => void }) {
+// 이미지 파일을 고르거나 끌어다 놓거나 Ctrl+V로 이미지·https 이미지 주소를 붙여넣고 저장 (아이콘·커버 공용, 결과는 att:{ID} 또는 https 주소)
+export function ImageUpload({ documentId, onDone, onCancel }: { documentId: number; onDone: (value: string) => void; onCancel: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
