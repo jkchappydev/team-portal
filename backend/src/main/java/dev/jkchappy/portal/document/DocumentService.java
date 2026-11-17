@@ -495,10 +495,10 @@ public class DocumentService {
       .toList());
   }
 
-  // 메인 화면 새 게시글: 최근 만든 페이지·파일 (상위 페이지가 휴지통에 있으면 제외)
+  // 메인 화면 최근 수정된 게시글: 최근 수정한 페이지·파일과 마지막 수정자 (상위 페이지가 휴지통에 있으면 제외)
   @Transactional(readOnly = true)
   public List<RecentDocument> findRecent(int limit) {
-    List<Document> docs = documentRepository.findRecentlyCreated(limit).stream()
+    List<Document> docs = documentRepository.findRecentlyUpdated(limit).stream()
       .filter(doc -> ancestors(doc).stream().noneMatch(Document::isDeleted))
       .toList();
     if (docs.isEmpty()) {
@@ -508,10 +508,10 @@ public class DocumentService {
         docs.stream().map(Document::getSpaceId).collect(Collectors.toSet())).stream()
       .collect(Collectors.toMap(Space::getId, Space::getName));
     Map<Long, String> names = memberService.findNamesByIds(
-      docs.stream().map(Document::getCreatedBy).collect(Collectors.toSet()));
+      docs.stream().map(Document::getUpdatedBy).collect(Collectors.toSet()));
     return docs.stream()
       .map(d -> RecentDocument.from(d, spaceNames.getOrDefault(d.getSpaceId(), ""),
-        names.getOrDefault(d.getCreatedBy(), "")))
+        names.getOrDefault(d.getUpdatedBy(), "")))
       .toList();
   }
 

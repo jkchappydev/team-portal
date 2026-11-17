@@ -85,7 +85,7 @@ export function FavoritesPage() {
           <Alert color="red">{reorder.error instanceof ApiError ? reorder.error.message : "순서를 바꾸지 못했습니다."}</Alert>
         )}
         {!isLoading && !error && favorites.length === 0 ? (
-          <Text size="sm" c="dimmed">즐겨찾기한 페이지가 없습니다. 페이지 오른쪽 위의 ☆를 누르면 여기에 추가됩니다.</Text>
+          <Text size="sm" c="dimmed">즐겨찾기한 페이지가 없습니다.</Text>
         ) : (
           // 테두리 없이 줄만 두고, 왼쪽 ⠿ 손잡이로 끌어서 순서 변경 (손잡이는 줄 왼쪽 바깥, 화면 여백 안에 표시)
           <Box>

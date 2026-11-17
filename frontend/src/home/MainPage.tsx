@@ -87,22 +87,22 @@ function WeekStatuses() {
   );
 }
 
-// 최근 만든 페이지·파일 (누르면 그 페이지로)
+// 최근 수정한 페이지·파일과 마지막 수정자 (누르면 그 페이지로)
 function RecentPosts() {
   const navigate = useNavigate();
   const { data: posts = [], isError, isLoading } = useQuery({ queryKey: ["documents", "recent"], queryFn: listRecentDocuments });
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
 
   return (
-    <Panel title="새 게시글">
-      {isError && <Text size="sm" c="red">새 게시글을 불러오지 못했습니다.</Text>}
-      {!isLoading && !isError && posts.length === 0 && <Text size="sm" c="dimmed">새 게시글이 없습니다.</Text>}
+    <Panel title="최근 수정된 게시글">
+      {isError && <Text size="sm" c="red">최근 수정된 게시글을 불러오지 못했습니다.</Text>}
+      {!isLoading && !isError && posts.length === 0 && <Text size="sm" c="dimmed">최근 수정된 게시글이 없습니다.</Text>}
       <Stack gap={0}>
         {posts.map((post) => (
           <UnstyledButton key={post.id} className="update-item" px="xs" py={6} onClick={() => navigate(updatePath(post, spaces))}>
             <Text size="sm" truncate><PageIcon icon={post.icon} project={isProjectHome(post, spaces)} /> {post.title}</Text>
             <Text size="xs" c="dimmed" truncate>
-              {post.spaceName} · {post.createdByName || "알 수 없음"} · {formatRelative(post.createdAt)}
+              {post.spaceName} · {post.updatedByName || "알 수 없음"} · {formatRelative(post.updatedAt)}
             </Text>
           </UnstyledButton>
         ))}
@@ -111,7 +111,7 @@ function RecentPosts() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 새 게시글, 신규 CS(연동 예정), 이번 주 주간보고·모니터링(추후 구현)
+// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS(연동 예정), 이번 주 주간보고·모니터링(추후 구현)
 export function MainPage() {
   return (
     <Stack maw={1300} gap="md">

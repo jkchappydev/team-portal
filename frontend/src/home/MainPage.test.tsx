@@ -34,7 +34,7 @@ describe("MainPage", () => {
     vi.mocked(listHolidays).mockResolvedValue([]);
     vi.mocked(listSpaces).mockResolvedValue([]);
     vi.mocked(listRecentDocuments).mockResolvedValue([
-      { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", createdByName: "이영희", createdAt: new Date().toISOString() },
+      { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", updatedByName: "이영희", updatedAt: new Date().toISOString() },
     ]);
   });
   afterEach(cleanup);
@@ -64,8 +64,9 @@ describe("MainPage", () => {
     expect(within(screen.getByLabelText(`${days[0].month}/${days[0].day} (월)`)).getByText("없음")).toBeTruthy();
   });
 
-  it("새 게시글을 만든 사람과 함께 보여주고 누르면 그 페이지로 간다", async () => {
+  it("최근 수정된 게시글을 마지막 수정자와 함께 보여주고 누르면 그 페이지로 간다", async () => {
     renderPage();
+    expect(await screen.findByRole("region", { name: "최근 수정된 게시글" })).toBeTruthy();
     const post = await screen.findByText("배포 절차");
     expect(screen.getByText("개발 · 이영희 · 방금 전")).toBeTruthy();
     fireEvent.click(post);

@@ -135,7 +135,7 @@ export function purgeTrashItem(kind: TrashItemDto["kind"], id: number): Promise<
   return apiFetch<void>(`/api/trash/${path}/${id}`, { method: "DELETE" });
 }
 
-// 메인 화면 새 게시글 한 줄 (만든 사람·만든 시각 기준)
+// 메인 화면 최근 수정된 게시글 한 줄 (마지막 수정자·수정 시각 기준)
 export interface RecentDocumentDto {
   id: number;
   spaceId: number;
@@ -143,11 +143,12 @@ export interface RecentDocumentDto {
   title: string;
   icon: string | null;
   kind: DocumentKind;
-  createdByName: string;
-  createdAt: string;
+  // 마지막으로 수정한 사람과 시각
+  updatedByName: string;
+  updatedAt: string;
 }
 
-// 최근 만든 페이지·파일 10개 (최신순)
+// 최근 수정한 페이지·파일 10개 (수정 시각 최신순)
 export function listRecentDocuments(): Promise<RecentDocumentDto[]> {
   return apiFetch<RecentDocumentDto[]>("/api/documents/recent");
 }

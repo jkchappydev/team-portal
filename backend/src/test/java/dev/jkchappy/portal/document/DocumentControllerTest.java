@@ -148,7 +148,7 @@ class DocumentControllerTest {
       .andExpect(jsonPath("$.data.icon").value("🚀"));
   }
 
-  // 메인 화면 새 게시글은 10개까지 (주소 recent가 문서 번호 자리로 해석되지 않음)
+  // 메인 화면 최근 수정된 게시글은 10개까지 (주소 recent가 문서 번호 자리로 해석되지 않음)
   @Test
   void recent_returnsLatestTen() throws Exception {
     when(documentService.findRecent(10)).thenReturn(List.of());

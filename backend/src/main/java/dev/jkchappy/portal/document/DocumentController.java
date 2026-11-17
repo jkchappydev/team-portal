@@ -46,7 +46,7 @@ public class DocumentController {
     return ApiResponse.ok(documentService.create(spaceId, title, parentId, kind, userId));
   }
 
-  // 메인 화면 새 게시글 (최근 만든 페이지·파일 10개)
+  // 메인 화면 최근 수정된 게시글 (최근 수정한 페이지·파일 10개)
   @GetMapping("/api/documents/recent")
   public ApiResponse<List<RecentDocument>> recent() {
     return ApiResponse.ok(documentService.findRecent(RECENT_LIMIT));
