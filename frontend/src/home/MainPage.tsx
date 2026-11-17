@@ -7,7 +7,7 @@ import { listHolidays } from "../api/holidays";
 import { listSpaces } from "../api/spaces";
 import { listWorkStatuses } from "../api/workStatuses";
 import { PageIcon } from "../documents/PageIconView";
-import { formatRelative, updatePath } from "../notifications/updateFormat";
+import { formatRelative, isProjectHome, updatePath } from "../notifications/updateFormat";
 import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
 
@@ -112,7 +112,7 @@ function RecentPosts() {
       <Stack gap={0}>
         {posts.map((post) => (
           <UnstyledButton key={post.id} className="update-item" px="xs" py={6} onClick={() => navigate(updatePath(post, spaces))}>
-            <Text size="sm" truncate><PageIcon icon={post.icon} /> {post.title}</Text>
+            <Text size="sm" truncate><PageIcon icon={post.icon} project={isProjectHome(post, spaces)} /> {post.title}</Text>
             <Text size="xs" c="dimmed" truncate>
               {post.spaceName} · {post.createdByName || "알 수 없음"} · {formatRelative(post.createdAt)}
             </Text>

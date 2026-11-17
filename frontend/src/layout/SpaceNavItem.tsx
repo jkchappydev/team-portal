@@ -124,7 +124,7 @@ export function SpaceNavItem({ space, reorderable = false, dropLine = null }: Sp
           }}
           leftSection={
             <Box className="tree-slot" w={22} h={22}>
-              <span aria-hidden className="tree-slot-icon"><PageIcon icon={space.icon} /></span>
+              <span aria-hidden className="tree-slot-icon"><PageIcon icon={space.icon} project /></span>
             </Box>
           }
           rightSection={hovered || menuOpened ? (

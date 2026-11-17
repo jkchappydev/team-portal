@@ -4,6 +4,8 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { searchDocuments } from "../api/documents";
+import { listSpaces } from "../api/spaces";
+import { isProjectHome } from "../notifications/updateFormat";
 import type { DocumentSummaryDto } from "../api/documents";
 import { formatDateTime } from "./format";
 import { itemPath } from "./itemPath";
@@ -61,6 +63,9 @@ function SearchBody({ onClose }: { onClose: () => void }) {
     queryFn: () => searchDocuments(query),
     enabled: query.length >= MIN_QUERY_LENGTH,
   });
+
+  // 프로젝트 본문 결과는 아이콘이 없으면 사이드바처럼 폴더 아이콘
+  const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
 
   // 방향키로 고른 항목이 목록 밖에 있으면 보이도록 스크롤
   useEffect(() => {
@@ -155,7 +160,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
                   border: "1px solid var(--mantine-color-default-border)",
                 }}
               >
-                <PageIcon icon={doc.icon} />
+                <PageIcon icon={doc.icon} project={isProjectHome(doc, spaces)} />
               </Box>
               <Box style={{ flex: 1, minWidth: 0 }}>
                 <Highlight highlight={query} fz="sm" fw={500} truncate

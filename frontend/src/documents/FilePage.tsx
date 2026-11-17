@@ -35,7 +35,7 @@ export function FilePage() {
     <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
       <Group gap={8} wrap="nowrap" mb="lg">
         <Anchor component={Link} to={`/spaces/${doc.spaceId}`} size="sm" c="dimmed" truncate>
-          <span style={{ marginRight: 6 }}><PageIcon icon={spaceIcon} /></span>{doc.spaceName ?? "페이지"}
+          <span style={{ marginRight: 6 }}><PageIcon icon={spaceIcon} project /></span>{doc.spaceName ?? "페이지"}
         </Anchor>
         {doc.path.map((ancestor) => (
           <Group key={ancestor.id} gap={8} wrap="nowrap">

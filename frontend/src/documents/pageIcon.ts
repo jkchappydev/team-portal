@@ -40,7 +40,10 @@ export function iconImageSrc(icon: string | null | undefined): string | null {
   return icon.startsWith("https://") ? icon : null;
 }
 
-// 아이콘이 없으면 기본 아이콘
-export function pageIcon(icon: string | null | undefined): string {
-  return icon || DEFAULT_PAGE_ICON;
+// 아이콘이 없는 프로젝트(사이드바 최상위)에 쓰는 기본 아이콘
+export const DEFAULT_PROJECT_ICON = "📁";
+
+// 아이콘이 없으면 기본 아이콘 (프로젝트는 폴더, 그 외는 페이지)
+export function pageIcon(icon: string | null | undefined, project = false): string {
+  return icon || (project ? DEFAULT_PROJECT_ICON : DEFAULT_PAGE_ICON);
 }

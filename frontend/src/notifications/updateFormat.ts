@@ -12,8 +12,13 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
+// 프로젝트 본문 페이지인지 (목록에서 프로젝트 아이콘·주소로 보여 줄 때)
+export function isProjectHome(doc: Pick<DocumentSummaryDto, "id" | "kind">, spaces: SpaceDto[]): boolean {
+  return doc.kind === "PAGE" && spaces.some((s) => s.homeDocumentId === doc.id);
+}
+
 // 최상위 페이지 본문은 /spaces, 그 외는 종류별 화면 (파일은 미리보기, WBS는 일정표)
 export function updatePath(doc: Pick<DocumentSummaryDto, "id" | "kind" | "spaceId">, spaces: SpaceDto[]): string {
-  if (doc.kind === "PAGE" && spaces.some((s) => s.homeDocumentId === doc.id)) return `/spaces/${doc.spaceId}`;
+  if (isProjectHome(doc, spaces)) return `/spaces/${doc.spaceId}`;
   return itemPath(doc.kind, doc.id);
 }

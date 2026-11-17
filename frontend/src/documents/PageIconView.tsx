@@ -4,12 +4,14 @@ interface Props {
   icon: string | null | undefined;
   // 이미지 아이콘 크기 (기본은 주변 글자 크기)
   size?: number | string;
+  // 프로젝트(또는 프로젝트 본문)면 아이콘이 없을 때 폴더 아이콘
+  project?: boolean;
 }
 
 // 페이지 아이콘 표시: 이모지는 글자로, 업로드 이미지·이미지 주소는 글자 크기에 맞춘 그림으로
-export function PageIcon({ icon, size = "1em" }: Props) {
+export function PageIcon({ icon, size = "1em", project = false }: Props) {
   const src = iconImageSrc(icon);
-  if (!src) return <span aria-hidden>{pageIcon(icon)}</span>;
+  if (!src) return <span aria-hidden>{pageIcon(icon, project)}</span>;
   return (
     <img
       src={src}

@@ -134,7 +134,7 @@ export function FavoritesPage() {
                     <DragHandleIcon />
                   </span>
                   <UnstyledButton component={Link} to={favoritePath(favorite)} style={rowStyle} draggable={false}>
-                    <Text size="sm"><PageIcon icon={favorite.icon} />{" "}<span>{favorite.title}</span></Text>
+                    <Text size="sm"><PageIcon icon={favorite.icon} project={favorite.home} />{" "}<span>{favorite.title}</span></Text>
                   </UnstyledButton>
                 </Box>
               ))}

@@ -35,7 +35,7 @@ function TrashRow({ item, pending, onRestore, onPurge }: TrashRowProps) {
       <Group justify="space-between" wrap="nowrap">
         <Stack gap={0} style={{ minWidth: 0 }}>
           <Text size="sm" truncate>
-            <span style={{ marginRight: 6 }}><PageIcon icon={item.icon} /></span>
+            <span style={{ marginRight: 6 }}><PageIcon icon={item.icon} project={item.kind === "space"} /></span>
             <span>{item.name}</span>
           </Text>
           <Text size="xs" c="dimmed">삭제 {formatDateTime(item.deletedAt)}</Text>

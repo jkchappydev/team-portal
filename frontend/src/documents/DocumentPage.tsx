@@ -17,10 +17,10 @@ import { PageIcon } from "./PageIconView";
 import { PageView } from "./PageView";
 
 // 경로의 아이콘과 제목 사이 간격을 띄워 표시 (아이콘이 없으면 기본 아이콘)
-function IconLabel({ icon, title }: { icon: string | null | undefined; title: string }) {
+function IconLabel({ icon, title, project = false }: { icon: string | null | undefined; title: string; project?: boolean }) {
   return (
     <>
-      <span style={{ marginRight: 6 }}><PageIcon icon={icon} /></span>
+      <span style={{ marginRight: 6 }}><PageIcon icon={icon} project={project} /></span>
       {title}
     </>
   );
@@ -121,7 +121,7 @@ export function DocumentPage() {
         breadcrumb={
           <Group gap={8} wrap="nowrap">
             <Anchor component={Link} to={`/spaces/${doc.spaceId}`} size="sm" c="dimmed" truncate>
-              <IconLabel icon={spaceIcon} title={doc.spaceName ?? "페이지"} />
+              <IconLabel icon={spaceIcon} title={doc.spaceName ?? "페이지"} project />
             </Anchor>
             {/* 상위 페이지 경로 */}
             {doc.path.map((ancestor) => (

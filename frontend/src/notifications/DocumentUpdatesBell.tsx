@@ -6,7 +6,7 @@ import { listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead 
 import { WorkStatusNotices } from "./WorkStatusNotices";
 import { listSpaces } from "../api/spaces";
 import { PageIcon } from "../documents/PageIconView";
-import { formatRelative, updatePath } from "./updateFormat";
+import { formatRelative, isProjectHome, updatePath } from "./updateFormat";
 import { DOCUMENT_UPDATES_KEY, WORK_STATUS_NOTICES_KEY } from "./useMarkDocumentRead";
 import { countPendingSignups } from "../api/admin";
 import { useCurrentUser } from "../user/currentUser";
@@ -102,7 +102,7 @@ export function DocumentUpdatesBell() {
                     navigate(updatePath(doc, spaces));
                   }}
                 >
-                  <Text size="sm" truncate><PageIcon icon={doc.icon} /> {doc.title}</Text>
+                  <Text size="sm" truncate><PageIcon icon={doc.icon} project={isProjectHome(doc, spaces)} /> {doc.title}</Text>
                   <Text size="xs" c="dimmed" truncate>
                     {doc.spaceName} · {doc.updatedByName || "알 수 없음"} · {formatRelative(doc.updatedAt)}
                   </Text>

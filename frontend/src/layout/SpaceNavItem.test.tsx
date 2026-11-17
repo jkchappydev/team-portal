@@ -60,9 +60,9 @@ describe("SpaceNavItem", () => {
     expect(screen.getByLabelText("스쿨북스 메뉴")).toBeTruthy();
   });
 
-  it("아이콘이 없는 프로젝트는 기본 아이콘을 보이고, 누르면 프로젝트 화면으로 간다", async () => {
+  it("아이콘이 없는 프로젝트는 폴더 아이콘을 보이고, 누르면 프로젝트 화면으로 간다", async () => {
     renderItem({ ...space, icon: null });
-    expect(screen.getByText("📄")).toBeTruthy();
+    expect(screen.getByText("📁")).toBeTruthy();
     fireEvent.click(screen.getByText("스쿨북스"));
     expect(await screen.findByText("프로젝트 화면")).toBeTruthy();
   });
