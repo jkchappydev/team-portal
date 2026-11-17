@@ -13,8 +13,8 @@ vi.mock("../api/contacts", () => ({
   deleteContact: vi.fn(),
 }));
 
-const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", phone2: "02-555-1234", project: "교과서 개발, 전자책", memo: "오전에만 통화 가능", color: "#2f9e44" };
-const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, phone2: null, project: null, memo: null, color: null };
+const hong = { id: 1, name: "홍길동", company: "가나출판", email: "hong@example.com", phone: "010-1234-5678", phone2: "02-555-1234", project: "교과서 개발, 전자책", memo: "오전에만 통화 가능", color: "#2f9e44", updatedAt: "2026-11-17T03:00:00Z" };
+const kim = { id: 2, name: "김철수", company: "다라인쇄", email: null, phone: null, phone2: null, project: null, memo: null, color: null, updatedAt: "2026-10-02T03:00:00Z" };
 
 describe("ContactsPage", () => {
   beforeAll(() => {
@@ -48,6 +48,9 @@ describe("ContactsPage", () => {
     // 전화번호 2와 메모도 카드에 보임
     expect(screen.getByText("02-555-1234").closest("a")!.getAttribute("href")).toBe("tel:02-555-1234");
     expect(screen.getByText("오전에만 통화 가능")).toBeTruthy();
+    // 카드마다 최종 수정일
+    expect(screen.getByText("최종 수정 2026-11-17")).toBeTruthy();
+    expect(screen.getByText("최종 수정 2026-10-02")).toBeTruthy();
   });
 
   it("검색하면 업체·프로젝트·전화번호 숫자로 거른다", async () => {

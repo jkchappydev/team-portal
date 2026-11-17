@@ -54,6 +54,8 @@ class ExternalContactServiceTest {
     // 색을 고르지 않으면 null (화면에서 자동 색)
     assertThat(created.color()).isNull();
     assertThat(created.project()).isEqualTo("교과서 개발, 전자책");
+    // 새로 만든 연락처의 최종 수정일은 만든 시각
+    assertThat(created.updatedAt()).isNotNull();
     verify(contactRepository).save(org.mockito.ArgumentMatchers.argThat(c -> c.getSortOrder() == 4));
   }
 
@@ -72,6 +74,7 @@ class ExternalContactServiceTest {
     ExternalContact existing = ExternalContact.create(
       new ContactValues("홍길동", null, null, null, null, "예전 프로젝트", null, null), 0, 1L);
     ReflectionTestUtils.setField(existing, "id", 7L);
+    ReflectionTestUtils.setField(existing, "updatedAt", java.time.Instant.parse("2026-01-01T00:00:00Z"));
     when(contactRepository.findById(7L)).thenReturn(Optional.of(existing));
 
     ContactResponse updated = service().update(7L,
@@ -84,6 +87,8 @@ class ExternalContactServiceTest {
     assertThat(updated.phone2()).isEqualTo("031-123-4567");
     assertThat(updated.memo()).isEqualTo("오전에만 통화 가능");
     assertThat(updated.color()).isEqualTo("#1971c2");
+    // 수정하면 최종 수정일이 바뀜
+    assertThat(updated.updatedAt()).isAfter(java.time.Instant.parse("2026-01-01T00:00:00Z"));
   }
 
   @Test

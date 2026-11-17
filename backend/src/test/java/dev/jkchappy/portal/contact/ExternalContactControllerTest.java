@@ -83,4 +83,16 @@ class ExternalContactControllerTest {
       .andExpect(status().isBadRequest())
       .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
   }
+
+  // 목록의 각 연락처에 최종 수정 시각(ISO)을 함께 내려 카드에 표시
+  @Test
+  void list_includesUpdatedAt() throws Exception {
+    org.mockito.Mockito.when(contactService.findAll()).thenReturn(java.util.List.of(
+      new dev.jkchappy.portal.contact.dto.ContactResponse(1L, "홍길동", "가나출판", null, null, null, null, null, null,
+        java.time.Instant.parse("2026-11-17T05:30:00Z"))));
+
+    mockMvc.perform(get("/api/contacts").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data[0].updatedAt").value("2026-11-17T05:30:00Z"));
+  }
 }

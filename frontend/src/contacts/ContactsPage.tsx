@@ -7,6 +7,7 @@ import { CONTACTS_KEY, deleteContact, listContacts } from "../api/contacts";
 import type { ContactDto } from "../api/contacts";
 import { ContactDialog } from "./ContactDialog";
 import { contactColor } from "./contactColor";
+import { formatDate } from "../documents/format";
 
 // 검색어가 이름·업체·이메일·전화번호 1·2·연관 프로젝트·메모 중 하나에 들어 있으면 표시
 function matches(contact: ContactDto, query: string): boolean {
@@ -109,6 +110,8 @@ function ContactCard({ contact, onEdit, onDelete }: {
       radius="md"
       p="md"
       className="contact-card"
+      // 최종 수정일을 카드 맨 아래에 붙이도록 세로로 채움 (같은 줄 카드끼리 높이가 같음)
+      style={{ display: "flex", flexDirection: "column" }}
     >
       <Group justify="space-between" wrap="nowrap" align="flex-start" mb="sm">
         <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
@@ -160,6 +163,8 @@ function ContactCard({ contact, onEdit, onDelete }: {
           )}
         </Stack>
       )}
+      {/* 오른쪽 아래 최종 수정일 */}
+      <Text size="xs" c="dimmed" ta="right" mt="auto" pt="sm">최종 수정 {formatDate(contact.updatedAt)}</Text>
     </Paper>
   );
 }

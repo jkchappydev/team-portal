@@ -15,6 +15,8 @@ export interface ContactDto {
   memo: string | null;
   // 카드 이름 동그라미 색 (#RRGGBB, null이면 자동 색)
   color: string | null;
+  // 마지막으로 추가·수정한 시각 (ISO, 카드의 최종 수정일)
+  updatedAt: string;
 }
 
 export interface ContactRequest {
