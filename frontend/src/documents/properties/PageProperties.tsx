@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
-import { Anchor, Box, Checkbox, Menu, MultiSelect, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Box, Checkbox, Menu, MultiSelect, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../api/client";
 import { listMembers } from "../../api/members";
@@ -45,6 +45,8 @@ function writeCollapsed(documentId: number, collapsed: boolean) {
 // 글로 입력하는 값(텍스트·숫자·URL·날짜): 입력 중에는 화면만 바꾸고 포커스를 벗어나거나 Enter면 저장
 function TextValue({ property, editable, onSave }: { property: PropertyDto; editable: boolean; onSave: (value: string | null) => void }) {
   const [draft, setDraft] = useState<string | null>(null);
+  // 빈 날짜는 다른 속성처럼 "비어 있음"으로 보이고, 누르면 날짜 입력으로 바뀜 (브라우저 기본 "연도-월-일" 대신)
+  const [focused, setFocused] = useState(false);
   const value = draft ?? property.value ?? "";
   const save = () => {
     if (draft === null) return;
@@ -58,14 +60,18 @@ function TextValue({ property, editable, onSave }: { property: PropertyDto; edit
       <TextInput
         variant="unstyled"
         size="sm"
-        type={property.type === "DATE" ? "date" : "text"}
+        type={property.type === "DATE" && (focused || value) ? "date" : "text"}
         inputMode={property.type === "NUMBER" ? "decimal" : undefined}
         placeholder="비어 있음"
         value={value}
         readOnly={!editable}
         aria-label={property.name}
         onChange={(e) => setDraft(e.currentTarget.value)}
-        onBlur={save}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          save();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
           if (e.key === "Escape") {
@@ -317,6 +323,21 @@ export function PageProperties({ documentId, editable = true }: { documentId: nu
             />
           </div>
           <div className="page-property-value">{valueEditor(property)}</div>
+          {/* 줄에 마우스를 올리면 보이는 ⋯ 메뉴 (이름을 눌러도 같은 메뉴) */}
+          {editable && renamingId !== property.id && (
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <ActionIcon className="page-property-more" variant="subtle" color="gray" size="sm" aria-label={`${property.name} 속성 더보기`}>
+                  ⋯
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => setRenamingId(property.id)}>이름 바꾸기</Menu.Item>
+                <Menu.Divider />
+                <Menu.Item color="red" onClick={() => remove.mutate(property.id)}>속성 삭제</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
         </div>
       ))}
       {!collapsed && editable && (

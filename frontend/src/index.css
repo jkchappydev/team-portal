@@ -1630,12 +1630,42 @@ body.bn-column-resizing {
   max-width: 720px;
 }
 
+/* 모든 줄(속성·속성 추가·토글)을 같은 34px 높이로, 값 입력 컨트롤은 30px로 맞춤 (담당자가 많아 줄이 넘칠 때만 늘어남) */
 .page-property-row {
   position: relative;
   display: flex;
   align-items: center;
   min-height: 34px;
   border-radius: 4px;
+}
+
+.page-property-value .mantine-Input-input,
+.page-property-value .mantine-PillsInput-input {
+  --input-height: 30px;
+  min-height: 30px;
+  height: auto;
+  padding-block: 0;
+}
+
+.page-property-value .mantine-Input-input:not(.mantine-PillsInput-input) {
+  height: 30px;
+}
+
+.page-property-value .mantine-Checkbox-root {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+}
+
+.page-property-more {
+  flex: 0 0 auto;
+  margin-inline-end: 4px;
+  opacity: 0;
+}
+
+.page-property-row:hover .page-property-more,
+.page-property-more[aria-expanded="true"] {
+  opacity: 1;
 }
 
 .page-property-row:hover {
@@ -1725,8 +1755,11 @@ body.bn-column-resizing {
 
 .page-property-add,
 .page-property-toggle {
-  display: block;
-  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 6px;
   border-radius: 4px;
 }
 

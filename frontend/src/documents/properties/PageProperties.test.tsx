@@ -153,6 +153,26 @@ describe("PageProperties", () => {
     await waitFor(() => expect([...document.querySelectorAll(".page-property-row")].map((r) => r.textContent?.includes("상태"))[0]).toBe(true));
   });
 
+  it("줄 오른쪽 ⋯ 메뉴에서도 속성을 삭제할 수 있다", async () => {
+    store = [{ id: 1, name: "담당자", type: "PERSON", value: null }, { id: 2, name: "상태", type: "TEXT", value: null }];
+    renderProperties();
+    fireEvent.click(await screen.findByLabelText("담당자 속성 더보기"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "속성 삭제" }));
+
+    await waitFor(() => expect(api.deleteProperty).toHaveBeenCalledWith(5, 1));
+    await waitFor(() => expect(screen.queryByLabelText("담당자 속성 더보기")).toBeNull());
+  });
+
+  it("빈 날짜는 비어 있음으로 보이고, 누르면 날짜 입력으로 바뀐다", async () => {
+    store = [{ id: 1, name: "마감", type: "DATE", value: null }];
+    renderProperties();
+    const input = await screen.findByLabelText("마감");
+    expect(input.getAttribute("type")).toBe("text");
+    expect(input.getAttribute("placeholder")).toBe("비어 있음");
+    fireEvent.focus(input);
+    expect(screen.getByLabelText("마감").getAttribute("type")).toBe("date");
+  });
+
   it("속성 메뉴에서 삭제하면 목록에서 뺀다", async () => {
     store = [{ id: 1, name: "담당자", type: "PERSON", value: null }, { id: 2, name: "상태", type: "TEXT", value: null }];
     renderProperties();
