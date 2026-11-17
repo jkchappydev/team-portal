@@ -35,6 +35,7 @@ import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
 import type { PageEditor } from "./editor/pageCommand";
 import { pageSlashItem } from "./editor/pageSlashItem";
+import { insertColumns, isInsideColumn } from "./editor/columnCommand";
 import { placeScheduleBlock } from "./editor/scheduleCommand";
 import type { ScheduleEditor } from "./editor/scheduleCommand";
 import { editorSchema } from "./editor/schema";
@@ -325,6 +326,16 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     },
   };
 
+  // "/2단"·"/3단": 블록을 가로로 나란히 놓는 열 묶음 (열 안에서는 메뉴에 보이지 않음)
+  const columnItems: DefaultReactSuggestionItem[] = [2, 3].map((count) => ({
+    title: `${count}단`,
+    subtext: `블록을 ${count}개 열로 나란히 놓기`,
+    aliases: [`${count}단`, `${count}열`, "열", "단", "columns", `${count}columns`],
+    group: ko.slash_menu.quote.group,
+    icon: <span aria-hidden>{count === 2 ? "◫" : "▥"}</span>,
+    onItemClick: () => insertColumns(editor as unknown as Parameters<typeof insertColumns>[0], count),
+  }));
+
   const scheduleItem: DefaultReactSuggestionItem = {
     title: "일정",
     subtext: "WBS 표와 간트 차트",
@@ -441,13 +452,14 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
         <TableHandlesController tableCellHandle={HiddenCellButton} />
         {/* 여러 칸을 고르면 선택 범위 옆에 색·셀 병합·콘텐츠 삭제 메뉴 버튼 */}
         <CellSelectionMenu />
-        {/* 기본 슬래시 메뉴에 "/콜아웃"(인용 아래)과 "/페이지"·"/일정" 추가 */}
+        {/* 기본 슬래시 메뉴에 "/콜아웃"(인용 아래), "/2단"·"/3단", "/페이지"·"/일정" 추가 */}
         <SuggestionMenuController
           triggerCharacter="/"
           shouldOpen={isOutsideTable}
           getItems={async (query) => filterSuggestionItems(
             [
               ...withCalloutItem(getDefaultReactSlashMenuItems(editor), calloutItem, ko.slash_menu.quote.title),
+              ...(isInsideColumn(editor as unknown as Parameters<typeof isInsideColumn>[0]) ? [] : columnItems),
               ...(pageItem === null ? [] : [pageItem, scheduleItem]),
             ],
             query,

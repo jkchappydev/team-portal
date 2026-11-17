@@ -46,6 +46,11 @@ const blocks: ExportBlock[] = [
   { type: "codeBlock", props: { language: "mermaid", mermaidView: "preview", mermaidImage: { src: PIXEL, width: 900, height: 300 } },
     content: [{ type: "text", text: "graph TD; A-->B" }] },
   { type: "divider" },
+  // 열 묶음: 두 열을 가로로 (이미지·글)
+  { type: "columnList", children: [
+    { type: "column", props: { width: 1 }, children: [{ type: "image", props: { url: PIXEL } }] },
+    { type: "column", props: { width: 2 }, children: [{ type: "paragraph", content: [{ type: "text", text: "오른쪽 열" }] }] },
+  ] },
   { type: "table", content: {
     type: "tableContent",
     headerRows: 1,

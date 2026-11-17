@@ -582,6 +582,16 @@ button.cell-selection-handle[aria-expanded="true"] svg {
   --level: 1.875em;
 }
 
+/* 배경색을 넣은 제목: BlockNote는 제목 위 간격을 안쪽 여백(padding-top 18px)으로 줘 배경이 위 빈 공간까지 칠해짐
+   배경은 블록(.bn-block)과 내용 둘 다에 칠해지므로, 본문처럼 배경이 글자에 붙도록 간격을 색이 없는 바깥 줄(.bn-block-outer)로 옮김 (제목 사이 간격은 같음) */
+:root .bn-root .bn-block-content[data-content-type="heading"][data-background-color]:not([data-background-color="default"]) {
+  padding-top: 3px;
+}
+
+:root .bn-root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"][data-background-color]:not([data-background-color="default"])) {
+  padding-top: 15px;
+}
+
 /* 굵기는 h1~h6 태그의 브라우저 기본값(bold)이 적용되므로 태그에 직접 지정 */
 :root .bn-root .bn-block-content[data-content-type="heading"] > :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 600;
@@ -1527,3 +1537,72 @@ html.block-marquee-dragging .bn-side-menu {
 /* 외부 연락처 명함 카드: 연관 프로젝트·메모는 구분선 아래 */
 .contact-card { position: relative; }
 .contact-card-notes { border-top: 1px solid var(--mantine-color-default-border); }
+
+/* 열 묶음(columnList): 열을 가로로 나란히 둠, 열 사이 경계에서 너비 조절 */
+.bn-column-list {
+  display: flex;
+  gap: 48px;
+  width: 100%;
+}
+
+.bn-column {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* 열 사이 간격 가운데의 너비 조절 손잡이: 블록 메뉴(+·⠿)보다 위에 두어 간격 가운데 줄은 항상 잡힘 */
+.bn-column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -28px;
+  width: 8px;
+  z-index: 5;
+  cursor: col-resize;
+}
+
+.bn-column-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  border-radius: 1px;
+}
+
+.bn-column-resize-handle:hover::after,
+body.bn-column-resizing .bn-column-resize-handle::after {
+  background: var(--mantine-color-default-border);
+}
+
+/* 손잡이 위에서는 블록 메뉴(+·⠿)가 손잡이를 덮지 않게 숨김 */
+body.bn-column-resize-hover .bn-side-menu,
+body.bn-column-resizing .bn-side-menu {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 블록 메뉴를 감싼 떠 있는 틀(두 겹)도 마우스를 통과시킴 */
+body.bn-column-resize-hover div:has(> .bn-side-menu),
+body.bn-column-resize-hover div:not(.bn-root):has(> div > .bn-side-menu),
+body.bn-column-resizing div:has(> .bn-side-menu),
+body.bn-column-resizing div:not(.bn-root):has(> div > .bn-side-menu) {
+  pointer-events: none;
+}
+
+body.bn-column-resize-hover .bn-column-resize-handle:hover::after {
+  background: var(--mantine-color-default-border);
+}
+
+/* 첫 열 왼쪽에는 앞 열이 없고, 읽기 전용(버전 미리보기 등)에서는 너비를 바꿀 수 없어 손잡이를 숨김 */
+.bn-editor[contenteditable="false"] .bn-column-resize-handle,
+.bn-column-list > .bn-column:first-child > .bn-column-resize-handle {
+  display: none;
+}
+
+body.bn-column-resizing {
+  cursor: col-resize;
+  user-select: none;
+}

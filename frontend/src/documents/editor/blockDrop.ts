@@ -18,9 +18,16 @@ export interface DropRow {
   hasChildren: boolean;
   // 콜아웃처럼 하위 블록을 상자 안에 담는 블록 (자기 줄 대신 상자 전체 기준)
   container: boolean;
+  // 가로 범위: 열 안의 줄은 그 열의 좌우, 그 밖은 블록 줄의 좌우 (없으면 가로 위치를 따지지 않음)
+  left?: number;
+  right?: number;
+  // 이 줄을 담은 열(column) id, 열 밖이면 null
+  columnId?: string | null;
+  // 옆에 놓아 열을 만들 수 있는 줄 (최상위 블록 또는 열 바로 안의 블록)
+  sideAllowed?: boolean;
 }
 
-export type DropPlacement = "before" | "after" | "firstChild";
+export type DropPlacement = "before" | "after" | "firstChild" | "left" | "right";
 export interface DropTarget {
   blockId: string;
   placement: DropPlacement;
@@ -54,7 +61,32 @@ export function pickDropTarget(rows: DropRow[], y: number): DropTarget | null {
   return { blockId: target.id, placement: "after" };
 }
 
+// 블록 줄 좌우 가장자리 중 옆에 놓기로 보는 폭 (줄 너비의 20%, 최대 120px)
+const SIDE_ZONE_RATIO = 0.2;
+const SIDE_ZONE_MAX = 120;
+// 열 사이 간격의 절반: 열 경계 근처도 그 열로 봄
+const COLUMN_GAP_HALF = 12;
+
+// 노션처럼 마우스 가로·세로 위치로 놓을 자리를 정함
+// 열 안의 줄은 마우스가 있는 열의 줄만 대상으로 하고, 블록 줄 안쪽 좌우 가장자리면 그 블록 옆(새 열)에 놓음
+// 손잡이로 끌 때 마우스는 블록 글 왼쪽 바깥에 있으므로 줄 바깥 왼쪽은 옆 놓기로 보지 않음
+export function pickDropTargetAt(rows: DropRow[], x: number, y: number, allowSide = true): DropTarget | null {
+  const visible = rows.filter((row) => !row.columnId || row.left === undefined || row.right === undefined
+    || (x >= row.left - COLUMN_GAP_HALF && x <= row.right + COLUMN_GAP_HALF));
+  const target = pickDropTarget(visible, y);
+  if (!target || !allowSide) return target;
+  const row = visible.find((r) => r.id === target.blockId);
+  if (!row?.sideAllowed || row.left === undefined || row.right === undefined) return target;
+  // 블록 자기 줄 높이 안에서만 (콜아웃은 상자 전체)
+  if (y < row.top || y > (row.container ? row.blockBottom : row.bottom)) return target;
+  const zone = Math.min(SIDE_ZONE_MAX, (row.right - row.left) * SIDE_ZONE_RATIO);
+  if (x >= row.left && x <= row.left + zone) return { blockId: row.id, placement: "left" };
+  if (x >= row.right - zone && x <= row.right + COLUMN_GAP_HALF) return { blockId: row.id, placement: "right" };
+  return target;
+}
+
 const BLOCK_SELECTOR = ".bn-block[data-id]";
+const COLUMN_SELECTOR = ".bn-column[data-id]";
 
 function ownContent(block: Element): Element | null {
   return block.querySelector(":scope > .bn-block-content, :scope > .react-renderer > .bn-block-content");
@@ -75,6 +107,10 @@ export function collectDropRows(root: Element, excludedIds: ReadonlySet<string>)
     const group = block.querySelector(":scope > .bn-block-group");
     const parent = block.parentElement?.closest<HTMLElement>(BLOCK_SELECTOR);
     const container = own.getAttribute("data-content-type") === "callout";
+    // 이 블록을 바로 담은 열 (부모 블록보다 가까운 열만)
+    const column = block.parentElement?.closest<HTMLElement>(COLUMN_SELECTOR);
+    const inColumn = !!column && (!parent || parent.contains(column));
+    const span = inColumn ? column!.getBoundingClientRect() : blockRect;
     rows.push({
       id,
       parentId: parent && root.contains(parent) ? parent.dataset.id! : null,
@@ -83,6 +119,10 @@ export function collectDropRows(root: Element, excludedIds: ReadonlySet<string>)
       blockBottom: blockRect.bottom,
       hasChildren: !!group && group.getBoundingClientRect().height > 0,
       container,
+      left: span.left,
+      right: span.right,
+      columnId: inColumn ? column!.dataset.id! : null,
+      sideAllowed: inColumn || !parent || !root.contains(parent),
     });
   }
   return rows;
@@ -105,7 +145,7 @@ function blockPositions(doc: PMNode, id: string): Record<DropPlacement, number> 
     if (found) return false;
     if (node.type.isInGroup("bnBlock") && node.attrs.id === id) {
       const content = node.firstChild;
-      found = { before: pos, after: pos + node.nodeSize, firstChild: pos + 1 + (content?.nodeSize ?? 0) + 1 };
+      found = { before: pos, after: pos + node.nodeSize, firstChild: pos + 1 + (content?.nodeSize ?? 0) + 1, left: pos, right: pos };
       return false;
     }
     return true;
@@ -129,9 +169,11 @@ export function isOverDragged(root: Element, ids: string[], y: number): boolean 
 }
 
 // 끄는 블록 자기 영역 위에서는 놓을 자리 없음 (선도 안 그리고 놓아도 그대로): 콜아웃 제목은 자기 본문으로 들어갈 수 없음
-function dropTargetAt(view: EditorView, ids: string[], y: number): DropTarget | null {
+function dropTargetAt(editor: BlockNoteEditor<any, any, any>, view: EditorView, ids: string[], x: number, y: number): DropTarget | null {
   if (isOverDragged(view.dom, ids, y)) return null;
-  return pickDropTarget(collectDropRows(view.dom, new Set(ids)), y);
+  // 열 묶음은 열 안에 넣을 수 없어 옆 놓기를 하지 않음
+  const allowSide = ids.every((id) => editor.getBlock(id)?.type !== "columnList");
+  return pickDropTargetAt(collectDropRows(view.dom, new Set(ids)), x, y, allowSide);
 }
 
 // 놓기선 위치: 실제 놓는 자리(drop 처리)와 같은 계산을 씀
@@ -139,9 +181,12 @@ export const notionDropCursor: DropCursorOptions["hooks"] = {
   computeDropPosition: ({ editor, event, view, defaultPosition }) => {
     const ids = internalDrag(editor, view, event);
     if (!ids) return defaultPosition;
-    const target = dropTargetAt(view, ids, event.clientY);
+    const target = dropTargetAt(editor, view, ids, event.clientX, event.clientY);
     const positions = target && blockPositions(view.state.doc, target.blockId);
-    return positions ? { pos: positions[target.placement], orientation: "block-horizontal" } : null;
+    if (!positions) return null;
+    // 옆에 놓을 때는 블록 왼쪽·오른쪽 세로선, 그 밖은 가로선
+    const orientation = target.placement === "left" ? "block-vertical-left" : target.placement === "right" ? "block-vertical-right" : "block-horizontal";
+    return { pos: positions[target.placement], orientation };
   },
 };
 
@@ -153,7 +198,9 @@ export function moveBlocks(editor: BlockNoteEditor<any, any, any>, ids: string[]
     editor.removeBlocks(blocks);
     const reference = editor.getBlock(target.blockId);
     if (!reference) return;
-    if (target.placement !== "firstChild") {
+    if (target.placement === "left" || target.placement === "right") {
+      placeBeside(editor, blocks, reference, target.placement);
+    } else if (target.placement !== "firstChild") {
       editor.insertBlocks(blocks, reference, target.placement);
     } else if (reference.children.length > 0) {
       editor.insertBlocks(blocks, reference.children[0], "before");
@@ -161,6 +208,22 @@ export function moveBlocks(editor: BlockNoteEditor<any, any, any>, ids: string[]
       editor.updateBlock(reference, { children: blocks });
     }
   });
+}
+
+// 노션처럼 블록 옆에 놓으면 열로 나눔
+// 열 안의 블록 옆이면 그 열 옆에 새 열을 더하고(너비는 기존 열 평균), 그 밖이면 두 블록을 열 묶음으로 감쌈
+function placeBeside(editor: BlockNoteEditor<any, any, any>, blocks: any[], reference: any, side: "left" | "right"): void {
+  const parent = editor.getParentBlock(reference);
+  if (parent?.type === "column") {
+    const list = editor.getParentBlock(parent);
+    const widths = (list?.children ?? [parent]).map((column: any) => Number(column.props.width) || 1);
+    const width = widths.reduce((sum: number, w: number) => sum + w, 0) / widths.length;
+    editor.insertBlocks([{ type: "column", props: { width }, children: blocks }], parent, side === "left" ? "before" : "after");
+    return;
+  }
+  const dragged = { type: "column", props: { width: 1 }, children: blocks };
+  const existing = { type: "column", props: { width: 1 }, children: [reference] };
+  editor.replaceBlocks([reference], [{ type: "columnList", children: side === "left" ? [dragged, existing] : [existing, dragged] }]);
 }
 
 // 끌어 놓은 뒤 노션처럼 옮긴 블록 선택 표시와 커서를 해제
@@ -194,7 +257,7 @@ export const blockDropExtension = createExtension(({ editor }) => ({
             const ids = internalDrag(editor, view, event);
             if (!ids) return false;
             event.preventDefault();
-            const target = dropTargetAt(view, ids, event.clientY);
+            const target = dropTargetAt(editor, view, ids, event.clientX, event.clientY);
             if (target) moveBlocks(editor, ids, target);
             releaseAfterDrop(view);
             return true;

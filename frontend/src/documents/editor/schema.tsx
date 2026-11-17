@@ -4,6 +4,7 @@ import { codeStyleSpec } from "./codeStyle";
 import { backgroundColorSpec, textColorSpec } from "./colorStyles";
 import { codeBlockSpec } from "./codeBlock";
 import { toggleListItemSpec } from "./toggleListItem";
+import { createColumnBlock, createColumnListBlock } from "./columns";
 import { createReactBlockSpec } from "@blocknote/react";
 import { ScheduleBlockView } from "./ScheduleBlockView";
 import { PageBlockView } from "./PageBlockView";
@@ -69,7 +70,7 @@ export const editorSchema = BlockNoteSchema.create({
   // 코드 블록은 문법 색칠 언어 목록 + 노션식 언어·복사 도구 막대 (색칠 자체는 편집기의 syntaxHighlighter 확장이 담당)
   blockSpecs: {
     ...defaultBlockSpecs, codeBlock: codeBlockSpec, toggleListItem: toggleListItemSpec, schedule: createScheduleBlock(), page: createPageBlock(),
-    callout: createCalloutBlock(),
+    callout: createCalloutBlock(), columnList: createColumnListBlock(), column: createColumnBlock(),
   },
   // 다른 서식과 함께 쓸 수 있는 코드 서식, 붙여넣은 색을 노션 색 이름으로 바꾸는 글자색·배경색 서식
   styleSpecs: { ...defaultStyleSpecs, code: codeStyleSpec, textColor: textColorSpec, backgroundColor: backgroundColorSpec },

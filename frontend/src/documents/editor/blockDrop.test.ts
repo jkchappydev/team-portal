@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { pickDropTarget } from "./blockDrop";
+import { afterEach } from "vitest";
+import { BlockNoteEditor } from "@blocknote/core";
+import { moveBlocks, pickDropTarget, pickDropTargetAt } from "./blockDrop";
+import { editorSchema } from "./schema";
 import type { DropRow } from "./blockDrop";
 
 function row(id: string, top: number, bottom: number, extra: Partial<DropRow> = {}): DropRow {
@@ -48,5 +51,113 @@ describe("pickDropTarget", () => {
 
   it("놓을 블록이 없으면 null", () => {
     expect(pickDropTarget([], 10)).toBeNull();
+  });
+});
+
+describe("pickDropTargetAt", () => {
+  // 0~300px 너비 줄: a(0~30), b(30~60)
+  const wide = (id: string, top: number, bottom: number, extra: Partial<DropRow> = {}) =>
+    row(id, top, bottom, { left: 0, right: 300, columnId: null, sideAllowed: true, ...extra });
+
+  it("줄 안쪽 왼쪽·오른쪽 가장자리면 그 블록 옆, 가운데면 기존처럼 위아래", () => {
+    const rows = [wide("a", 0, 30), wide("b", 30, 60)];
+    expect(pickDropTargetAt(rows, 20, 40)).toEqual({ blockId: "b", placement: "left" });
+    expect(pickDropTargetAt(rows, 290, 40)).toEqual({ blockId: "b", placement: "right" });
+    expect(pickDropTargetAt(rows, 150, 40)).toEqual({ blockId: "b", placement: "before" });
+  });
+
+  it("손잡이처럼 줄 왼쪽 바깥에서 끌면 옆에 놓지 않는다", () => {
+    expect(pickDropTargetAt([wide("a", 0, 30)], -20, 10)).toEqual({ blockId: "a", placement: "before" });
+  });
+
+  it("옆에 놓을 수 없는 줄(목록 하위 등)이나 옆 놓기를 막으면 위아래로만 놓는다", () => {
+    expect(pickDropTargetAt([wide("a", 0, 30, { sideAllowed: false })], 290, 10)).toEqual({ blockId: "a", placement: "before" });
+    expect(pickDropTargetAt([wide("a", 0, 30)], 290, 10, false)).toEqual({ blockId: "a", placement: "before" });
+  });
+
+  it("열 안에서는 마우스가 있는 열의 줄만 대상으로 한다", () => {
+    const rows = [
+      wide("l1", 0, 30, { left: 0, right: 140, columnId: "L" }),
+      wide("l2", 30, 60, { left: 0, right: 140, columnId: "L" }),
+      wide("r1", 0, 30, { left: 160, right: 300, columnId: "R" }),
+    ];
+    expect(pickDropTargetAt(rows, 220, 50)).toEqual({ blockId: "r1", placement: "after" });
+    expect(pickDropTargetAt(rows, 70, 50)).toEqual({ blockId: "l2", placement: "after" });
+    expect(pickDropTargetAt(rows, 295, 10)).toEqual({ blockId: "r1", placement: "right" });
+  });
+});
+
+describe("moveBlocks 옆에 놓기", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  function mount(initialContent: any[]) {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    return editor;
+  }
+
+  const shape = (blocks: any[]): any[] => blocks.map((b) => ({
+    type: b.type,
+    ...(Array.isArray(b.content) && b.content.length ? { text: b.content.map((c: any) => c.text).join("") } : {}),
+    ...(b.type === "column" ? { width: b.props.width } : {}),
+    ...(b.children.length ? { children: shape(b.children) } : {}),
+  }));
+
+  it("블록 오른쪽에 놓으면 두 블록을 열 묶음으로 감싼다", () => {
+    const editor = mount([
+      { id: "a", type: "paragraph", content: "가" },
+      { id: "b", type: "paragraph", content: "나" },
+      { id: "c", type: "paragraph", content: "다" },
+    ]);
+    moveBlocks(editor, ["c"], { blockId: "a", placement: "right" });
+    expect(shape(editor.document)).toEqual([
+      { type: "columnList", children: [
+        { type: "column", width: 1, children: [{ type: "paragraph", text: "가" }] },
+        { type: "column", width: 1, children: [{ type: "paragraph", text: "다" }] },
+      ] },
+      { type: "paragraph", text: "나" },
+    ]);
+    expect(editor.getBlock("c")).toBeDefined();
+    editor.unmount();
+  });
+
+  it("열 안의 블록 왼쪽에 놓으면 그 열 앞에 새 열을 더한다", () => {
+    const editor = mount([
+      { type: "columnList", children: [
+        { type: "column", props: { width: 1 }, children: [{ id: "a", type: "paragraph", content: "가" }] },
+        { type: "column", props: { width: 2 }, children: [{ id: "b", type: "paragraph", content: "나" }] },
+      ] },
+      { id: "c", type: "paragraph", content: "다" },
+    ]);
+    moveBlocks(editor, ["c"], { blockId: "b", placement: "left" });
+    expect(shape(editor.document)).toEqual([
+      { type: "columnList", children: [
+        { type: "column", width: 1, children: [{ type: "paragraph", text: "가" }] },
+        { type: "column", width: 1.5, children: [{ type: "paragraph", text: "다" }] },
+        { type: "column", width: 2, children: [{ type: "paragraph", text: "나" }] },
+      ] },
+    ]);
+    editor.unmount();
+  });
+
+  it("두 열 중 한 열의 마지막 블록을 밖으로 빼면 열 묶음이 풀린다", () => {
+    const editor = mount([
+      { type: "columnList", children: [
+        { type: "column", children: [{ id: "a", type: "paragraph", content: "가" }] },
+        { type: "column", children: [{ id: "b", type: "paragraph", content: "나" }] },
+      ] },
+      { id: "c", type: "paragraph", content: "다" },
+    ]);
+    moveBlocks(editor, ["b"], { blockId: "c", placement: "after" });
+    expect(shape(editor.document)).toEqual([
+      { type: "paragraph", text: "가" },
+      { type: "paragraph", text: "다" },
+      { type: "paragraph", text: "나" },
+    ]);
+    editor.unmount();
   });
 });

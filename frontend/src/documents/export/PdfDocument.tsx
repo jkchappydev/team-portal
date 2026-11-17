@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
   caption: { fontSize: 9, color: "#787774" },
   fileLink: { color: "#787774", textDecoration: "underline" },
   diagram: { alignItems: "center", marginVertical: 4 },
+  columnList: { flexDirection: "row", columnGap: 18 },
 });
 
 // A4(595pt)에서 좌우 여백(56pt씩)을 뺀 본문 폭
@@ -150,6 +151,19 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
     case "quote":
       body = <Text style={[styles.quote, blockStyle(block)]}><Runs content={block.content} /></Text>;
       break;
+    case "columnList":
+      // 열 묶음: 열을 가로로 나란히, 열 너비는 저장된 비율대로
+      return (
+        <View style={[styles.block, styles.columnList]}>
+          {(block.children ?? []).map((column, i) => (
+            <View key={column.id ?? i} style={{ flex: Number(column.props?.width) || 1, minWidth: 0 }}>
+              <Blocks blocks={column.children ?? []} />
+            </View>
+          ))}
+        </View>
+      );
+    case "column":
+      return <View style={styles.block}><Blocks blocks={block.children ?? []} /></View>;
     case "callout": {
       // 안의 글(하위 블록)을 들여쓰지 않고 배경색 상자 안에 그림 (한글 글꼴에 이모지가 없어 아이콘은 생략, 노션처럼 기본 배경도 회색)
       const background = backgroundColorOf(props.backgroundColor === "default" ? "gray" : props.backgroundColor);
@@ -172,7 +186,7 @@ function BlockView({ block, number }: { block: ExportBlock; number?: number }) {
       const width = Math.min(image.width * 0.75, CONTENT_WIDTH);
       const diagram = (
         <View wrap={false} style={styles.diagram}>
-          <Image src={image.src} style={{ width, height: (width * image.height) / image.width }} />
+          <Image src={image.src} style={{ width, maxWidth: "100%", height: (width * image.height) / image.width }} />
         </View>
       );
       body = props.mermaidView === "preview" ? diagram : <>{code}{diagram}</>;
