@@ -164,7 +164,7 @@ function ContactCard({ contact, onEdit, onDelete }: {
         </Stack>
       )}
       {/* 오른쪽 아래 최종 수정일 */}
-      <Text size="xs" c="dimmed" ta="right" mt="auto" pt="sm">최종 수정 {formatDate(contact.updatedAt)}</Text>
+      <Text size="xs" c="dimmed" ta="right" mt="auto" pt="sm">최종 수정일 : {formatDate(contact.updatedAt)}</Text>
     </Paper>
   );
 }

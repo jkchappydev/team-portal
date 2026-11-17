@@ -49,8 +49,8 @@ describe("ContactsPage", () => {
     expect(screen.getByText("02-555-1234").closest("a")!.getAttribute("href")).toBe("tel:02-555-1234");
     expect(screen.getByText("오전에만 통화 가능")).toBeTruthy();
     // 카드마다 최종 수정일
-    expect(screen.getByText("최종 수정 2026-11-17")).toBeTruthy();
-    expect(screen.getByText("최종 수정 2026-10-02")).toBeTruthy();
+    expect(screen.getByText("최종 수정일 : 2026-11-17")).toBeTruthy();
+    expect(screen.getByText("최종 수정일 : 2026-10-02")).toBeTruthy();
   });
 
   it("검색하면 업체·프로젝트·전화번호 숫자로 거른다", async () => {
