@@ -9,6 +9,7 @@ import dev.jkchappy.portal.document.dto.DocumentMoveRequest;
 import dev.jkchappy.portal.document.dto.DocumentSummary;
 import dev.jkchappy.portal.document.dto.DocumentTitleRequest;
 import dev.jkchappy.portal.document.dto.RecentDocument;
+import dev.jkchappy.portal.document.property.DocumentPropertyService;
 import dev.jkchappy.portal.member.CurrentUser;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -29,6 +30,7 @@ public class DocumentController {
   private static final int RECENT_LIMIT = 10;
 
   private final DocumentService documentService;
+  private final DocumentPropertyService propertyService;
 
   @GetMapping("/api/spaces/{spaceId}/documents")
   public ApiResponse<List<DocumentSummary>> listBySpace(@PathVariable Long spaceId) {
@@ -69,7 +71,10 @@ public class DocumentController {
   // 본문 페이지 블록 복제용 페이지 사본 생성
   @PostMapping("/api/documents/{id}/duplicate")
   public ApiResponse<DocumentSummary> duplicate(@PathVariable Long id, @CurrentUser Long userId) {
-    return ApiResponse.ok(documentService.duplicate(id, userId));
+    // 복제본에 속성(담당자 등)도 같은 값으로 복사
+    DocumentSummary copied = documentService.duplicate(id, userId);
+    propertyService.copyProperties(id, copied.id());
+    return ApiResponse.ok(copied);
   }
 
   @PatchMapping("/api/documents/{id}/title")

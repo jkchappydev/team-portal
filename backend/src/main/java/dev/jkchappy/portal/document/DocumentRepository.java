@@ -10,6 +10,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
+  // 기본 속성을 아직 만들지 않은 페이지만 표시를 바꿈 (바꾼 행 수가 1일 때만 기본 속성을 만들어 동시 요청에도 한 번만)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("update Document d set d.propertiesInitialized = true where d.id = :id and d.propertiesInitialized = false")
+  int markPropertiesInitialized(@Param("id") Long id);
+
   // 최상위 페이지 안의 모든 페이지 (삭제 여부 무관, 영구 삭제 대상 수집용)
   List<Document> findBySpaceId(Long spaceId);
 

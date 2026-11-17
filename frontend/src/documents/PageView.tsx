@@ -12,6 +12,7 @@ import { PageIcon } from "./PageIconView";
 import { PresenceAvatars } from "./PresenceAvatars";
 import type { Viewer } from "./presence";
 import { formatDateTime } from "./format";
+import { PageProperties } from "./properties/PageProperties";
 import { shouldFocusTitle } from "./titleFocus";
 
 // 편집기 번들은 페이지 화면에서만 로드
@@ -198,6 +199,8 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
         마지막 수정 {doc.updatedByName ?? "-"} · {formatDateTime(doc.updatedAt)}
       </Text>
       {renameError && <Alert color="red" mb="sm">{renameError}</Alert>}
+      {/* 노션처럼 제목 아래 속성 (기본 담당자, 사용자가 추가) */}
+      <PageProperties documentId={doc.id} />
       {/* 첨부 파일은 본문에 끌어다 놓아 넣으므로 별도 첨부 패널 없이 본문만 표시 */}
       {/* 페이지 본문에서는 "/일정"으로 이 페이지 아래에 일정 블록을 넣을 수 있음 */}
       <Box className="page-editor">

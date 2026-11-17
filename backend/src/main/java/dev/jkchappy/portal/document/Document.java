@@ -123,6 +123,10 @@ public class Document {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
+  // 기본 속성(담당자)을 이미 만들었는지 (DocumentRepository.markPropertiesInitialized로만 바꿈)
+  @Column(name = "properties_initialized", nullable = false)
+  private boolean propertiesInitialized;
+
   public static Document create(Long spaceId, String title, Long createdBy) {
     Document doc = new Document();
     doc.spaceId = spaceId;

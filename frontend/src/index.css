@@ -1611,3 +1611,119 @@ body.bn-column-resizing {
   cursor: col-resize;
   user-select: none;
 }
+
+/* 페이지 속성: 제목 아래 이름(왼쪽 고정 폭)·값 줄, 노션처럼 줄에 마우스를 올리면 끌기 손잡이 */
+.page-properties {
+  max-width: 720px;
+}
+
+.page-property-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  border-radius: 4px;
+}
+
+.page-property-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.page-property-row[data-dragging] {
+  opacity: 0.5;
+}
+
+/* 놓일 자리: 줄 위·아래 가로선 */
+.page-property-row[data-drop="before"]::before,
+.page-property-row[data-drop="after"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--mantine-primary-color-filled);
+  pointer-events: none;
+}
+
+.page-property-row[data-drop="before"]::before {
+  top: -1px;
+}
+
+.page-property-row[data-drop="after"]::after {
+  bottom: -1px;
+}
+
+.page-property-handle {
+  position: absolute;
+  left: -22px;
+  width: 18px;
+  text-align: center;
+  color: var(--mantine-color-dimmed);
+  cursor: grab;
+  opacity: 0;
+  user-select: none;
+}
+
+.page-property-row:hover .page-property-handle {
+  opacity: 1;
+}
+
+.page-property-label {
+  flex: 0 0 160px;
+  min-width: 0;
+  padding-inline: 6px;
+}
+
+.page-property-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  color: var(--mantine-color-dimmed);
+}
+
+.page-property-name-button {
+  display: block;
+  max-width: 100%;
+  padding: 4px 6px;
+  margin-inline: -6px;
+  border-radius: 4px;
+}
+
+.page-property-name-button:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.page-property-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: 6px;
+}
+
+.page-property-value-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-property-value-input .mantine-TextInput-root {
+  flex: 1 1 auto;
+}
+
+.page-property-add,
+.page-property-toggle {
+  display: block;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.page-property-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-property-add:hover,
+.page-property-toggle:hover {
+  background: var(--mantine-color-default-hover);
+}

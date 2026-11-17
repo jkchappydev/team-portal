@@ -56,6 +56,9 @@ class DocumentControllerTest {
   @MockitoBean
   private TrashService trashService;
 
+  @MockitoBean
+  private dev.jkchappy.portal.document.property.DocumentPropertyService propertyService;
+
   @Test
   void deleteDocument_withoutUser_returns401() throws Exception {
     mockMvc.perform(delete("/api/documents/1"))
@@ -87,6 +90,8 @@ class DocumentControllerTest {
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.data.id").value(20))
       .andExpect(jsonPath("$.data.title").value("회의록 (사본)"));
+    // 복제본에 원본 속성(담당자 등)을 복사
+    org.mockito.Mockito.verify(propertyService).copyProperties(7L, 20L);
   }
 
   // 프로젝트 커버 변경: 바뀐 문서 상세(커버 포함)를 돌려줌
