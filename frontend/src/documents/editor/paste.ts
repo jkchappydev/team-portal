@@ -1,4 +1,6 @@
-import { createExtension } from "@blocknote/core";
+import { blockToNode, createExtension } from "@blocknote/core";
+import type { BlockNoteEditor } from "@blocknote/core";
+import { foldCallouts, NOTION_BLOCKS_TYPE, notionBlocksInOrder, prepareNotionHtml } from "./notionPaste";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorState } from "@tiptap/pm/state";
 import { Fragment, Slice } from "@tiptap/pm/model";
@@ -11,10 +13,40 @@ export function pasteOptions(types: readonly string[]): { prioritizeMarkdownOver
   return { prioritizeMarkdownOverHTML: !types.includes("text/html") };
 }
 
-export const editorPasteHandler = ({ event, defaultPasteHandler }: {
+type AnyEditor = BlockNoteEditor<any, any, any>;
+
+// 노션에서 복사한 표·콜아웃은 노션 HTML이 깨져 있어(칸 안 줄바꿈에서 행이 끊김, 콜아웃이 "<aside>" 글자로 옴)
+// 함께 실린 원본 블록 데이터로 고친 HTML을 블록으로 바꾸고 콜아웃은 콜아웃 블록으로 묶어 붙여넣음
+export function pasteFromNotion(editor: AnyEditor, data: Pick<DataTransfer, "types" | "getData">): boolean {
+  if (!data.types.includes(NOTION_BLOCKS_TYPE) || !data.types.includes("text/html")) return false;
+  if (editor.prosemirrorState.selection.$from.parent.type.spec.code) return false;
+  const notionBlocks = notionBlocksInOrder(data.getData(NOTION_BLOCKS_TYPE));
+  if (!notionBlocks.some((block) => block.type === "table" || block.type === "callout")) return false;
+  const { html, callouts } = prepareNotionHtml(data.getData("text/html"), notionBlocks);
+  const blocks = foldCallouts(editor.tryParseHTMLToBlocks(html), callouts);
+  if (blocks.length === 0) return false;
+  // 블록을 문서 노드로 바로 바꿔 붙여넣기처럼 넣음 (콜아웃은 React로 그리는 블록이라 HTML로 되돌리지 않음)
+  const view = editor.prosemirrorView;
+  if (!view) return false;
+  const { schema } = view.state;
+  const group = schema.nodes.blockGroup.create(null, blocks.map((block) => blockToNode(block, schema, editor.schema.styleSchema)));
+  // 실제 붙여넣기처럼 모든 transformPasted(줄 종류 유지 등)를 차례로 거침
+  let slice = new Slice(Fragment.from(group), 1, 1);
+  view.someProp("transformPasted", (transform) => {
+    slice = transform(slice, view, false);
+  });
+  view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView().setMeta("paste", true).setMeta("uiEvent", "paste"));
+  return true;
+}
+
+export const editorPasteHandler = ({ event, editor, defaultPasteHandler }: {
   event: ClipboardEvent;
+  editor: AnyEditor;
   defaultPasteHandler: (options?: { prioritizeMarkdownOverHTML?: boolean }) => boolean | undefined;
-}) => defaultPasteHandler(pasteOptions(Array.from(event.clipboardData?.types ?? [])));
+}) => {
+  if (event.clipboardData && pasteFromNotion(editor, event.clipboardData)) return true;
+  return defaultPasteHandler(pasteOptions(Array.from(event.clipboardData?.types ?? [])));
+};
 
 // 붙여넣은 내용이 하위 블록 없는 글 블록 하나뿐이면 그 블록의 글줄을 돌려줌
 function singleTextblock(fragment: Fragment): PMNode | null {
