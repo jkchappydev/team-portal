@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { listNewCs } from "../api/cs";
 import { listRecentDocuments } from "../api/documents";
 import { listHolidays } from "../api/holidays";
 import { listSpaces } from "../api/spaces";
@@ -10,6 +11,7 @@ import { listWorkStatuses } from "../api/workStatuses";
 import { MainPage } from "./MainPage";
 import { thisWeekDays } from "./thisWeek";
 
+vi.mock("../api/cs", () => ({ listNewCs: vi.fn() }));
 vi.mock("../api/documents", () => ({ listRecentDocuments: vi.fn() }));
 vi.mock("../api/holidays", () => ({ listHolidays: vi.fn() }));
 vi.mock("../api/spaces", () => ({ listSpaces: vi.fn() }));
@@ -36,6 +38,7 @@ describe("MainPage", () => {
     vi.mocked(listRecentDocuments).mockResolvedValue([
       { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", updatedByName: "이영희", updatedAt: new Date().toISOString() },
     ]);
+    vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [] });
   });
   afterEach(cleanup);
 
@@ -73,9 +76,38 @@ describe("MainPage", () => {
     expect(await screen.findByText("문서 화면")).toBeTruthy();
   });
 
-  it("신규 CS·주간보고·모니터링은 영역만 잡아 둔다", async () => {
+  it("신규 CS를 기관·요청자·등록 시각과 함께 보여주고 CS 시스템 상세 화면을 새 탭으로 연결한다", async () => {
+    vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [
+      { id: 3, title: "로그인 오류", groupName: "A기관", requesterName: "홍길동", createdAt: new Date().toISOString(),
+        detailUrl: "https://cs.example.com/detail?boardKey=3" },
+    ] });
     renderPage();
-    expect(within(screen.getByRole("region", { name: "신규 CS" })).getByText("CS 시스템과 연동 예정입니다.")).toBeTruthy();
+    const panel = screen.getByRole("region", { name: "신규 CS" });
+    const link = (await within(panel).findByText("로그인 오류")).closest("a");
+    expect(link?.getAttribute("href")).toBe("https://cs.example.com/detail?boardKey=3");
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(within(panel).getByText("A기관 · 홍길동 · 방금 전")).toBeTruthy();
+  });
+
+  it("신규 CS가 없으면 없다고 안내한다", async () => {
+    renderPage();
+    expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("새로 요청된 CS가 없습니다.")).toBeTruthy();
+  });
+
+  it("CS 연동 설정이 없으면 미설정 안내를 보여준다", async () => {
+    vi.mocked(listNewCs).mockResolvedValue({ configured: false, items: [] });
+    renderPage();
+    expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("CS 시스템 연동 설정이 없습니다.")).toBeTruthy();
+  });
+
+  it("신규 CS 조회에 실패하면 오류를 보여준다", async () => {
+    vi.mocked(listNewCs).mockRejectedValue(new Error("CS 시스템에서 목록을 가져오지 못했습니다."));
+    renderPage();
+    expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("신규 CS를 불러오지 못했습니다.")).toBeTruthy();
+  });
+
+  it("주간보고·모니터링은 영역만 잡아 둔다", async () => {
+    renderPage();
     expect(within(screen.getByRole("region", { name: "이번 주 주간보고" })).getByText("준비 중입니다.")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "모니터링" })).getByText("준비 중입니다.")).toBeTruthy();
   });

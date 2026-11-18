@@ -1,6 +1,7 @@
 import { Anchor, Badge, Box, Group, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+import { listNewCs } from "../api/cs";
 import { listRecentDocuments } from "../api/documents";
 import { listHolidays } from "../api/holidays";
 import { listSpaces } from "../api/spaces";
@@ -111,7 +112,32 @@ function RecentPosts() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS(연동 예정), 이번 주 주간보고·모니터링(추후 구현)
+// CS 시스템에 새로 요청된 CS (누르면 CS 시스템 상세 화면을 새 탭으로)
+function NewCsList() {
+  const { data, isError, isLoading } = useQuery({ queryKey: ["cs", "new"], queryFn: listNewCs });
+  const items = data?.items ?? [];
+
+  return (
+    <Panel title="신규 CS">
+      {isError && <Text size="sm" c="red">신규 CS를 불러오지 못했습니다.</Text>}
+      {data && !data.configured && <Upcoming message="CS 시스템 연동 설정이 없습니다." />}
+      {!isLoading && data?.configured && items.length === 0 && <Text size="sm" c="dimmed">새로 요청된 CS가 없습니다.</Text>}
+      <Stack gap={0}>
+        {items.map((cs) => (
+          <UnstyledButton key={cs.id} component="a" href={cs.detailUrl} target="_blank" rel="noopener noreferrer"
+            className="update-item" px="xs" py={6} style={{ color: "inherit", textDecoration: "none" }}>
+            <Text size="sm" truncate>{cs.title}</Text>
+            <Text size="xs" c="dimmed" truncate>
+              {[cs.groupName, cs.requesterName || "알 수 없음", cs.createdAt && formatRelative(cs.createdAt)].filter(Boolean).join(" · ")}
+            </Text>
+          </UnstyledButton>
+        ))}
+      </Stack>
+    </Panel>
+  );
+}
+
+// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS, 이번 주 주간보고·모니터링(추후 구현)
 export function MainPage() {
   return (
     <Stack maw={1300} gap="md">
@@ -120,8 +146,7 @@ export function MainPage() {
       <ProjectGallery />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         <RecentPosts />
-        {/* 다른 프로젝트에서 만드는 CS API와 연동할 자리 */}
-        <Panel title="신규 CS"><Upcoming message="CS 시스템과 연동 예정입니다." /></Panel>
+        <NewCsList />
         <Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel>
         <Panel title="모니터링"><Upcoming message="준비 중입니다." /></Panel>
       </SimpleGrid>

@@ -47,3 +47,8 @@ app:
   internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
   holiday:
     api-key: ${HOLIDAY_API_KEY:}
+  # CS 시스템(cs-board) 연동. api-url·api-key가 비면 메인 신규 CS 칸에 미설정 안내
+  cs:
+    api-url: ${CS_API_URL:}
+    api-key: ${CS_API_KEY:}
+    web-url: ${CS_WEB_URL:}
