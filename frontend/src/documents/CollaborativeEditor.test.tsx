@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { claimPageBlockBackfill } from "../api/documents";
 import CollaborativeEditor from "./CollaborativeEditor";
@@ -150,7 +151,9 @@ function renderEditor(onViewersChange?: (viewers: unknown[]) => void, spaceId?: 
     <StrictMode>
       <MantineProvider>
         <QueryClientProvider client={new QueryClient()}>
-          <CollaborativeEditor documentId={42} user={user} spaceId={spaceId} onViewersChange={onViewersChange} />
+          <MemoryRouter>
+            <CollaborativeEditor documentId={42} user={user} spaceId={spaceId} onViewersChange={onViewersChange} />
+          </MemoryRouter>
         </QueryClientProvider>
       </MantineProvider>
     </StrictMode>,

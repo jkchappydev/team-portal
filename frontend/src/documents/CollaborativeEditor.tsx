@@ -6,6 +6,7 @@ import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme 
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
 import { BlockNoteView } from "@blocknote/mantine";
+import { useNavigate } from "react-router-dom";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import { isOutsideTable, NEW_CALLOUT, withCalloutItem } from "./editor/calloutCommand";
 import { AlignedSideMenuController } from "./editor/AlignedSideMenuController";
@@ -35,6 +36,8 @@ import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
 import type { PageEditor } from "./editor/pageCommand";
 import { pageSlashItem } from "./editor/pageSlashItem";
+import { waitUntilSynced } from "./collabSession";
+import { openCreatedPage } from "./titleFocus";
 import { insertColumns, isInsideColumn } from "./editor/columnCommand";
 import { placeScheduleBlock } from "./editor/scheduleCommand";
 import type { ScheduleEditor } from "./editor/scheduleCommand";
@@ -230,6 +233,7 @@ interface EditorViewProps {
 }
 
 function EditorView({ session, documentId, user, editable, spaceId }: EditorViewProps) {
+  const navigate = useNavigate();
   // 편집기 테마를 앱의 라이트/다크 설정에 맞춤
   const colorScheme = useComputedColorScheme("light");
   const editor = useCreateBlockNote(
@@ -365,10 +369,12 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     editor: editor as unknown as Parameters<typeof pageSlashItem>[0]["editor"],
     spaceId,
     documentId,
-    onCreated: () => {
+    onCreated: (createdId) => {
       setScheduleError(null);
       void queryClient.invalidateQueries({ queryKey: ["documents", spaceId] });
       void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+      // 노션처럼 만든 페이지로 바로 이동하고 제목 칸에 커서 (넣은 페이지 블록이 협업 서버에 저장된 뒤)
+      void openCreatedPage(() => waitUntilSynced(session.provider), navigate, createdId);
     },
     onError: setScheduleError,
   });

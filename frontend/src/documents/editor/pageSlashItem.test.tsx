@@ -32,7 +32,9 @@ describe("pageSlashItem", () => {
     await vi.waitFor(() => expect(editor.updateBlock).toHaveBeenCalledWith(
       { id: "cur", content: [] }, { type: "page", props: { documentId: 77 } }));
     expect(createDocument).toHaveBeenCalledWith(3, 42);
-    expect(onCreated).toHaveBeenCalled();
+    // 페이지 블록을 넣은 뒤 만든 페이지 id로 알림 (호출한 쪽이 그 페이지로 이동)
+    expect(onCreated).toHaveBeenCalledWith(77);
+    expect(vi.mocked(editor.updateBlock).mock.invocationCallOrder[0]).toBeLessThan(onCreated.mock.invocationCallOrder[0]);
   });
 
   it("만들지 못하면 서버 안내 문구(없으면 기본 문구)를 알린다", async () => {
