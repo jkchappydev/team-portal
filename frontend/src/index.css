@@ -1068,6 +1068,22 @@ html.table-handle-dragging-cursor * {
   margin-inline-end: 6px;
 }
 
+/* 사이드바·설정 창 등 NavLink의 지금 선택된 줄: 파란 칠 대신 노션처럼 옅은 회색 배경과 굵은 글자 */
+.mantine-NavLink-root:is([data-active], [aria-current="page"]) {
+  --nl-bg: rgba(55, 53, 47, 0.08);
+  --nl-hover: rgba(55, 53, 47, 0.12);
+  --nl-color: var(--mantine-color-text);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-NavLink-root:is([data-active], [aria-current="page"]) {
+  --nl-bg: rgba(255, 255, 255, 0.08);
+  --nl-hover: rgba(255, 255, 255, 0.12);
+}
+
+.mantine-NavLink-root:is([data-active], [aria-current="page"]) .mantine-NavLink-label {
+  font-weight: 600;
+}
+
 /* 수정 알림 목록 줄: 사이드바 줄과 같은 옅은 강조 */
 .update-item {
   display: block;
