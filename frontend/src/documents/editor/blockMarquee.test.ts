@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickMarqueeBlocks } from "./blockMarquee";
+import { anchorAt, marqueeRect, pickMarqueeBlocks } from "./blockMarquee";
 import type { MarqueeBlock } from "./blockMarquee";
 
 const rect = (top: number, bottom: number) => ({ left: 100, right: 600, top, bottom });
@@ -29,5 +29,19 @@ describe("끌어서 여러 블록 고르기", () => {
 
   it("콜아웃 위 끝을 넘어 끌면 콜아웃 통째로 고른다", () => {
     expect(pickMarqueeBlocks(doc, { left: 50, right: 300, top: 35, bottom: 100 })).toEqual(["callout"]);
+  });
+});
+
+describe("끄는 도중 스크롤", () => {
+  it("시작점을 본문 기준으로 기억해 본문이 위로 스크롤돼도 처음 누른 자리에서 사각형이 시작된다", () => {
+    // 본문 위 끝이 화면 100px일 때 (20, 150)을 누름
+    const anchor = anchorAt({ left: 0, top: 100 }, 20, 150);
+    // 마우스는 그대로 (300, 400)인데 휠로 200px 내려 본문 위 끝이 화면 -100px이 됨
+    expect(marqueeRect(anchor, { left: 0, top: -100 }, 300, 400)).toEqual({ left: 20, top: -50, right: 300, bottom: 400 });
+  });
+
+  it("위로 끌면 시작점이 아래쪽 끝이 된다", () => {
+    const anchor = anchorAt({ left: 10, top: 0 }, 50, 500);
+    expect(marqueeRect(anchor, { left: 10, top: 0 }, 30, 200)).toEqual({ left: 30, top: 200, right: 50, bottom: 500 });
   });
 });
