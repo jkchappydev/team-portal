@@ -106,8 +106,8 @@ describe("MainPage", () => {
     ] });
     renderPage();
     const panel = screen.getByRole("region", { name: "신규 CS" });
-    expect(within((await within(panel).findByText("새 문의")).closest("a")!).getByLabelText("새로 접수된 CS")).toBeTruthy();
-    expect(within(within(panel).getByText("진행 문의").closest("a")!).queryByLabelText("새로 접수된 CS")).toBeNull();
+    expect(within((await within(panel).findByText("새 문의")).closest("a")!).getByAltText("새로 접수된 CS")).toBeTruthy();
+    expect(within(within(panel).getByText("진행 문의").closest("a")!).queryByAltText("새로 접수된 CS")).toBeNull();
   });
 
   it("CS가 없으면 없다고 안내한다", async () => {

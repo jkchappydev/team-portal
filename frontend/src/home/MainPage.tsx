@@ -130,10 +130,14 @@ function NewCsList() {
           <UnstyledButton key={cs.id} component="a" href={cs.detailUrl} target="_blank" rel="noopener noreferrer"
             className="update-item" px="xs" py={6} style={{ color: "inherit", textDecoration: "none" }}>
             <Group gap={6} wrap="nowrap">
-              {cs.status === "REQS" && (
-                <Badge size="xs" circle color="red" variant="filled" aria-label="새로 접수된 CS">N</Badge>
-              )}
-              <Text size="sm" truncate style={{ flex: 1, minWidth: 0 }}>{cs.title}</Text>
+              {/* N 아이콘은 제목 바로 뒤 (제목이 길면 제목만 줄임), 한글 제목 가운데에 맞춰 1px 내림 */}
+              <Group gap={4} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                <Text size="sm" truncate style={{ minWidth: 0 }}>{cs.title}</Text>
+                {cs.status === "REQS" && (
+                  <img src="/ic_new.png" alt="새로 접수된 CS" width={14} height={14}
+                    style={{ flexShrink: 0, display: "block", position: "relative", top: 1 }} />
+                )}
+              </Group>
               <Text size="xs" fw={500} c={`${CS_STATUS_COLORS[cs.status] ?? "gray"}.7`} style={{ flexShrink: 0 }}>
                 {cs.statusName || cs.status}
               </Text>
