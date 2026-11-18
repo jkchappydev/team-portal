@@ -3,6 +3,7 @@ import { SimpleGrid, Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listSpaces } from "../api/spaces";
+import { sectionOf, SPACE_SECTIONS } from "../documents/spaceKind";
 import type { SpaceDto } from "../api/spaces";
 import { Panel } from "./Panel";
 import { DEFAULT_PROJECT_COVER, GALLERY_LIMIT, projectPreview } from "./projectPreview";
@@ -23,15 +24,22 @@ function CardPreview({ space }: { space: SpaceDto }) {
   );
 }
 
-// 메인 화면 프로젝트 카드 모음 (노션 갤러리 보기처럼 사이드바 순서 상위 10개)
+// 메인 화면 프로젝트 카드 모음 (사이드바처럼 내부·외부 프로젝트 칸을 나눠 칸마다 사이드바 순서 상위 10개)
 export function ProjectGallery() {
   // 사이드바와 같은 조회 키라 순서·아이콘·이름이 같이 바뀜
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
   // 메인 화면에는 프로젝트만 (최상위 페이지는 사이드바에만)
   const projects = spaces.filter((space) => space.kind === "PROJECT");
-  if (projects.length === 0) return null;
+  return SPACE_SECTIONS.map(({ value, label }) => {
+    const inSection = projects.filter((space) => sectionOf(space) === value);
+    if (inSection.length === 0) return null;
+    return <ProjectCards key={value} title={label} projects={inSection} />;
+  });
+}
+
+function ProjectCards({ title, projects }: { title: string; projects: SpaceDto[] }) {
   return (
-    <Panel title="프로젝트">
+    <Panel title={title}>
       <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="sm">
         {projects.slice(0, GALLERY_LIMIT).map((space) => (
           <Link key={space.id} to={`/spaces/${space.id}`} className="project-card" draggable={false}>

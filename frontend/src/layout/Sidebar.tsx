@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Box, Button, Group, Kbd, ScrollArea, Stack, Text } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useNavigate } from "react-router-dom";
 import { createSpace, listSpaces, moveSpace } from "../api/spaces";
-import type { SpaceDto, SpaceKind } from "../api/spaces";
+import type { SpaceDto, SpaceKind, SpaceSection } from "../api/spaces";
+import { moveToSection, sectionOf, SPACE_SECTIONS } from "../documents/spaceKind";
 import { CreateSpaceModal } from "./CreateSpaceModal";
 import type { MemberDto } from "../api/members";
 import { SearchDialog } from "../documents/SearchDialog";
@@ -30,29 +31,25 @@ export function Sidebar({ user }: Props) {
   // 노션처럼 어디서든 Ctrl/Cmd+K로 검색 창 열기
   useHotkeys([["mod+K", () => setSearching(true)]], []);
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
-  // 프로젝트·페이지 중 고르는 창 (이름은 만든 뒤 열린 화면의 제목 칸에서 입력)
-  const [choosingKind, setChoosingKind] = useState(false);
+  // 프로젝트·페이지 중 고르는 창을 연 칸 (내부/외부 프로젝트, 이름은 만든 뒤 열린 화면의 제목 칸에서 입력)
+  const [creatingIn, setCreatingIn] = useState<SpaceSection | null>(null);
   // 이름 입력 창 없이 "제목 없음"으로 바로 만들고, 열린 화면의 제목 칸에서 이름을 입력
   const create = useMutation({
-    mutationFn: (kind: SpaceKind) => createSpace(undefined, undefined, kind),
+    mutationFn: ({ kind, section }: { kind: SpaceKind; section: SpaceSection }) => createSpace(undefined, undefined, kind, section),
     onSuccess: (space) => {
-      setChoosingKind(false);
+      setCreatingIn(null);
       markNewItem(`space-${space.id}`);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       navigate(`/spaces/${space.id}`, space.homeDocumentId ? focusTitleState(space.homeDocumentId) : undefined);
     },
   });
 
-  // 최상위 페이지 순서 변경: 화면 순서를 먼저 바꾸고 서버 반영 후 다시 조회 (실패 시 서버 순서로 복구)
+  // 최상위 항목 순서·칸 변경: 화면 순서를 먼저 바꾸고 서버 반영 후 다시 조회 (실패 시 서버 순서로 복구)
   const reorder = useMutation({
-    mutationFn: ({ id, index }: { id: number; index: number }) => moveSpace(id, index),
-    onMutate: ({ id, index }) => {
+    mutationFn: ({ id, index, section }: { id: number; index: number; section: SpaceSection }) => moveSpace(id, index, section),
+    onMutate: ({ id, index, section }) => {
       const current = queryClient.getQueryData<SpaceDto[]>(["spaces"]) ?? [];
-      const moving = current.find((s) => s.id === id);
-      if (!moving) return;
-      const others = current.filter((s) => s.id !== id);
-      others.splice(index, 0, moving);
-      queryClient.setQueryData(["spaces"], others);
+      queryClient.setQueryData(["spaces"], moveToSection(current, id, index, section));
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["spaces"] }),
   });
@@ -97,12 +94,20 @@ export function Sidebar({ user }: Props) {
             <SidebarMenuLink to="/contacts" label="외부 연락처" icon={<span aria-hidden>📒</span>} />
             {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
           </Stack>
-          <Group justify="space-between" mt="sm">
-            <Text size="xs" c="dimmed">프로젝트</Text>
-            <Button size="compact-xs" variant="subtle" loading={create.isPending} onClick={() => { create.reset(); setChoosingKind(true); }}>+ 새로 만들기</Button>
-          </Group>
+          {/* 내부 프로젝트·외부 프로젝트 칸 (각 칸에서 만들고, 칸 사이로 끌어 옮기면 구분이 바뀜) */}
+          {SPACE_SECTIONS.map(({ value, label }) => (
+            <Fragment key={value}>
+              <Group justify="space-between" mt="sm">
+                <Text size="xs" c="dimmed">{label}</Text>
+                <Button size="compact-xs" variant="subtle" aria-label={`${label} 새로 만들기`}
+                  loading={create.isPending && create.variables?.section === value}
+                  onClick={() => { create.reset(); setCreatingIn(value); }}>+ 새로 만들기</Button>
+              </Group>
+              <SpaceList spaces={spaces.filter((space) => sectionOf(space) === value)}
+                onMove={(id, index) => reorder.mutate({ id, index, section: value })} />
+            </Fragment>
+          ))}
           {/* 링크는 프로젝트 목록 바로 아래에 붙음 */}
-          <SpaceList spaces={spaces} onMove={(id, index) => reorder.mutate({ id, index })} />
           {/* 팀이 함께 쓰는 외부 주소 (새 탭으로 열림) */}
           {user && <LinkList />}
           {/* 다른 고정 메뉴와 같은 컬러 이모지 아이콘 */}
@@ -124,8 +129,9 @@ export function Sidebar({ user }: Props) {
         <Button size="compact-xs" variant="subtle" onClick={() => void logout()}>로그아웃</Button>
       </Group>
       {user && <ProfileSettingsModal user={user} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
-      <CreateSpaceModal opened={choosingKind} pending={create.isPending} error={create.error ? "만들지 못했습니다." : null}
-        onClose={() => setChoosingKind(false)} onCreate={(kind) => create.mutate(kind)} />
+      <CreateSpaceModal opened={creatingIn !== null} pending={create.isPending} error={create.error ? "만들지 못했습니다." : null}
+        title={`${SPACE_SECTIONS.find((section) => section.value === creatingIn)?.label ?? ""}에 새로 만들기`}
+        onClose={() => setCreatingIn(null)} onCreate={(kind) => creatingIn && create.mutate({ kind, section: creatingIn })} />
     </Stack>
   );
 }

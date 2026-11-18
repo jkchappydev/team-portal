@@ -67,6 +67,15 @@ public class Space {
   @Column(nullable = false, length = 10, updatable = false)
   private SpaceKind kind = SpaceKind.PROJECT;
 
+  // 내부 프로젝트 또는 외부 프로젝트 구분 (사이드바에서 끌어 옮기면 바뀜)
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 10)
+  private SpaceSection section = SpaceSection.INTERNAL;
+
+  public void changeSection(SpaceSection section) {
+    this.section = section;
+  }
+
   public boolean isProject() {
     return kind == SpaceKind.PROJECT;
   }
@@ -76,8 +85,13 @@ public class Space {
   }
 
   public static Space create(String name, String description, SpaceKind kind, Long createdBy) {
+    return create(name, description, kind, SpaceSection.INTERNAL, createdBy);
+  }
+
+  public static Space create(String name, String description, SpaceKind kind, SpaceSection section, Long createdBy) {
     Space space = new Space();
     space.kind = kind == null ? SpaceKind.PROJECT : kind;
+    space.section = section == null ? SpaceSection.INTERNAL : section;
     space.name = name;
     space.description = description;
     space.createdBy = createdBy;

@@ -48,7 +48,7 @@ public class SpaceService {
   public SpaceResponse create(SpaceCreateRequest request, Long userId) {
     String name = request.name() == null || request.name().isBlank()
       ? Document.DEFAULT_TITLE : request.name().trim();
-    Space space = Space.create(name, request.description(), request.kind(), userId);
+    Space space = Space.create(name, request.description(), request.kind(), request.section(), userId);
     // 새 최상위 페이지는 사이드바 맨 아래
     space.changeSortOrder(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc().stream()
       .mapToInt(Space::getSortOrder).max().orElse(-1) + 1);
@@ -58,15 +58,26 @@ public class SpaceService {
     return SpaceResponse.from(saved, 0, home);
   }
 
-  // 사이드바에서 끌어 옮긴 최상위 페이지를 index 위치에 끼워 넣고 0부터 다시 번호를 매김
+  // 사이드바에서 끌어 옮긴 최상위 항목을 section 목록의 index 위치에 끼워 넣음 (section이 없으면 지금 구분 안에서)
+  // 순서는 내부 → 외부 순으로 이어 0부터 다시 번호를 매김
   @Transactional
-  public void move(Long id, int index) {
+  public void move(Long id, int index, SpaceSection section) {
     Space target = getLiveSpace(id);
-    List<Space> spaces = new ArrayList<>(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()
-      .stream().filter(s -> !s.getId().equals(id)).toList());
-    spaces.add(Math.clamp(index, 0, spaces.size()), target);
-    for (int i = 0; i < spaces.size(); i++) {
-      spaces.get(i).changeSortOrder(i);
+    if (section != null) {
+      target.changeSection(section);
+    }
+    List<Space> others = spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()
+      .stream().filter(s -> !s.getId().equals(id)).toList();
+    List<Space> ordered = new ArrayList<>();
+    for (SpaceSection each : SpaceSection.values()) {
+      List<Space> inSection = new ArrayList<>(others.stream().filter(s -> s.getSection() == each).toList());
+      if (each == target.getSection()) {
+        inSection.add(Math.clamp(index, 0, inSection.size()), target);
+      }
+      ordered.addAll(inSection);
+    }
+    for (int i = 0; i < ordered.size(); i++) {
+      ordered.get(i).changeSortOrder(i);
     }
   }
 

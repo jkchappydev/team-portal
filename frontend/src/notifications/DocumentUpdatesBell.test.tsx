@@ -190,8 +190,8 @@ describe("DocumentUpdatesBell", () => {
 describe("updateFormat", () => {
   it("최상위 페이지 본문은 /spaces, 파일은 /files, 나머지는 /documents로 연결한다", () => {
     const spaces: SpaceDto[] = [
-      { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", icon: null, cover: null },
-      { id: 2, name: "메모", description: null, documentCount: 1, homeDocumentId: 20, kind: "PAGE", icon: null, cover: null },
+      { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", section: "INTERNAL", icon: null, cover: null },
+      { id: 2, name: "메모", description: null, documentCount: 1, homeDocumentId: 20, kind: "PAGE", section: "INTERNAL", icon: null, cover: null },
     ];
     expect(updatePath(update(10, "스쿨북스"), spaces)).toBe("/spaces/1");
     expect(updatePath(update(15, "양식.xlsx", "FILE"), spaces)).toBe("/files/15");

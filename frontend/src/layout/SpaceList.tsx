@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { Box } from "@mantine/core";
+import { Box, Text } from "@mantine/core";
 import type { SpaceDto } from "../api/spaces";
 import { dropSlotAt, moveIndexOf } from "../documents/dropSlot";
 import { draggingSpace, SpaceNavItem } from "./SpaceNavItem";
@@ -8,7 +8,7 @@ import { useReorderAnimation } from "./reorderAnimation";
 
 interface Props {
   spaces: SpaceDto[];
-  // 끌고 있던 최상위 페이지를 끌던 줄을 뺀 목록의 index 위치로
+  // 끌고 있던 최상위 항목을 이 목록(끌던 줄은 뺀)의 index 위치로 (다른 칸에서 끌어 온 항목도 받음)
   onMove: (id: number, index: number) => void;
 }
 
@@ -49,7 +49,9 @@ export function SpaceList({ spaces, onMove }: Props) {
         setSlot(null);
         if (draggedId === null) return;
         e.preventDefault();
-        const index = moveIndexOf(slotOf(e), spaces.findIndex((s) => s.id === draggedId));
+        const from = spaces.findIndex((s) => s.id === draggedId);
+        // 다른 칸에서 끌어 온 항목은 가로선 위치 그대로
+        const index = from === -1 ? slotOf(e) : moveIndexOf(slotOf(e), from);
         if (index !== null) onMove(draggedId, index);
       }}
       onDragEnd={() => setSlot(null)}
@@ -58,6 +60,13 @@ export function SpaceList({ spaces, onMove }: Props) {
         {spaces.map((space, index) => (
           <SpaceNavItem key={space.id} space={space} reorderable dropLine={lineOf(index)} />
         ))}
+        {/* 빈 칸도 다른 칸 항목을 끌어 놓을 수 있게 자리를 둠 (끌어 오는 동안 강조) */}
+        {spaces.length === 0 && (
+          <Text size="xs" c="dimmed" px={8} py={4} data-testid="space-list-empty"
+            style={{ borderRadius: 4, background: slot !== null ? "var(--mantine-color-default-hover)" : undefined }}>
+            비어 있음
+          </Text>
+        )}
       </Box>
     </Box>
   );

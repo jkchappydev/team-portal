@@ -10,15 +10,17 @@ interface Props {
   pending: boolean;
   // 만들기 실패 메시지 (없으면 미표시)
   error?: string | null;
+  // 창 제목 (어느 칸에 만드는지, 없으면 "새로 만들기")
+  title?: string;
   onClose: () => void;
   onCreate: (kind: SpaceKind) => void;
 }
 
 // 사이드바 "+ 새로 만들기": 프로젝트(메인 화면 갤러리에 보임)와 페이지 중 골라 최상위에 만듦
-export function CreateSpaceModal({ opened, pending, error, onClose, onCreate }: Props) {
+export function CreateSpaceModal({ opened, pending, error, title = "새로 만들기", onClose, onCreate }: Props) {
   const [kind, setKind] = useState<SpaceKind>("PROJECT");
   return (
-    <Modal opened={opened} onClose={onClose} title="새로 만들기" centered size="sm">
+    <Modal opened={opened} onClose={onClose} title={title} centered size="sm">
       <Stack>
         <Radio.Group value={kind} onChange={(value) => setKind(value as SpaceKind)} aria-label="만들 종류">
           <Stack gap="sm">

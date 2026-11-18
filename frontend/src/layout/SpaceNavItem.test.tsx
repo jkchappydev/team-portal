@@ -11,7 +11,7 @@ import type { SpaceDto } from "../api/spaces";
 
 vi.mock("../api/spaces", () => ({ deleteSpace: vi.fn(() => Promise.resolve()) }));
 
-const space: SpaceDto = { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", icon: "🏫", cover: null };
+const space: SpaceDto = { id: 1, name: "스쿨북스", description: null, documentCount: 1, homeDocumentId: 10, kind: "PROJECT", section: "INTERNAL", icon: "🏫", cover: null };
 
 function renderItem(target: SpaceDto = space) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -149,6 +149,62 @@ describe("SpaceNavItem", () => {
     const transfer = dataTransfer();
     fireEvent.dragStart(row("양식"), { dataTransfer: transfer });
     expect(transfer.clearData).toHaveBeenCalled();
+    fireEvent.dragEnd(row("양식"));
+  });
+
+  // 내부 프로젝트 칸 [양식, 더북리스트]와 외부 프로젝트 칸 [회계] (외부 칸 줄은 위에서 100px부터)
+  const renderTwoSections = (onInternal: (id: number, index: number) => void, onExternal: (id: number, index: number) => void, external = [{ ...space, id: 3, name: "회계", section: "EXTERNAL" as const }]) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MantineProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <SpaceList spaces={[{ ...space, id: 1, name: "양식" }, { ...space, id: 2, name: "더북리스트" }]} onMove={onInternal} />
+            <SpaceList spaces={external} onMove={onExternal} />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
+    const [internalList, externalList] = screen.getAllByTestId("space-list");
+    internalList.querySelectorAll("[data-space-row]").forEach((el, i) => {
+      el.getBoundingClientRect = () => ({ top: i * 30, height: 30, bottom: i * 30 + 30, left: 0, right: 200, width: 200 }) as DOMRect;
+    });
+    externalList.querySelectorAll("[data-space-row]").forEach((el, i) => {
+      el.getBoundingClientRect = () => ({ top: 100 + i * 30, height: 30, bottom: 130 + i * 30, left: 0, right: 200, width: 200 }) as DOMRect;
+    });
+    return { externalList };
+  };
+
+  it("다른 칸 줄 위쪽 절반에 놓으면 그 칸의 그 줄 앞으로 옮긴다", () => {
+    const onInternal = vi.fn();
+    const onExternal = vi.fn();
+    renderTwoSections(onInternal, onExternal);
+    fireEvent.dragStart(row("양식"), { dataTransfer: dataTransfer() });
+    dragAt("dragOver", row("회계"), 105);
+    expect(row("회계").getAttribute("data-drop-position")).toBe("before");
+    dragAt("drop", row("회계"), 105);
+    expect(onExternal).toHaveBeenCalledWith(1, 0);
+    expect(onInternal).not.toHaveBeenCalled();
+    fireEvent.dragEnd(row("양식"));
+  });
+
+  it("다른 칸 맨 아래에 놓으면 그 칸 맨 뒤로 옮긴다 (제자리로 보지 않음)", () => {
+    const onExternal = vi.fn();
+    renderTwoSections(vi.fn(), onExternal);
+    fireEvent.dragStart(row("더북리스트"), { dataTransfer: dataTransfer() });
+    dragAt("drop", row("회계"), 125);
+    expect(onExternal).toHaveBeenCalledWith(2, 1);
+    fireEvent.dragEnd(row("더북리스트"));
+  });
+
+  it("빈 칸에도 끌어 놓을 수 있다", () => {
+    const onExternal = vi.fn();
+    renderTwoSections(vi.fn(), onExternal, []);
+    const empty = screen.getByTestId("space-list-empty");
+    fireEvent.dragStart(row("양식"), { dataTransfer: dataTransfer() });
+    dragAt("dragOver", empty, 100);
+    dragAt("drop", empty, 100);
+    expect(onExternal).toHaveBeenCalledWith(1, 0);
     fireEvent.dragEnd(row("양식"));
   });
 

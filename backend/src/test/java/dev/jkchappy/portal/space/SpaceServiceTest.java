@@ -66,7 +66,7 @@ class SpaceServiceTest {
         return doc;
       });
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("스쿨북스", null, null), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("스쿨북스", null, null, null), 1L);
 
     assertThat(result.homeDocumentId()).isEqualTo(50L);
     org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
@@ -84,7 +84,7 @@ class SpaceServiceTest {
     when(documentRepository.save(org.mockito.ArgumentMatchers.any(dev.jkchappy.portal.document.Document.class)))
       .thenAnswer(inv -> inv.getArgument(0));
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("  ", null, null), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("  ", null, null, null), 1L);
 
     assertThat(result.name()).isEqualTo("제목 없음");
     org.mockito.Mockito.verify(documentRepository).save(org.mockito.ArgumentMatchers.argThat(
@@ -104,7 +104,7 @@ class SpaceServiceTest {
         return doc;
       });
 
-    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest(null, null, SpaceKind.PAGE), 1L);
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest(null, null, SpaceKind.PAGE, null), 1L);
 
     assertThat(result.kind()).isEqualTo("PAGE");
     assertThat(result.homeDocumentId()).isEqualTo(60L);
@@ -174,6 +174,53 @@ class SpaceServiceTest {
     assertThat(result.get(1).cover()).isNull();
   }
 
+  // 내부 항목을 외부 구분 맨 앞으로 끌어 옮기면 구분이 바뀌고, 순서는 내부 → 외부로 이어 다시 매김
+  @Test
+  void move_toOtherSection_changesSectionAndInsertsAtIndex() {
+    Space a = space(1L, "가 프로젝트", 0);
+    Space b = space(2L, "나 프로젝트", 1);
+    Space c = space(3L, "다 프로젝트", 2);
+    c.changeSection(SpaceSection.EXTERNAL);
+    when(spaceRepository.findById(1L)).thenReturn(Optional.of(a));
+    when(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()).thenReturn(List.of(a, b, c));
+
+    service().move(1L, 0, SpaceSection.EXTERNAL);
+
+    assertThat(a.getSection()).isEqualTo(SpaceSection.EXTERNAL);
+    assertThat(List.of(b, a, c)).extracting(Space::getSortOrder).containsExactly(0, 1, 2);
+  }
+
+  // 구분을 주지 않으면 지금 구분 안에서만 순서를 바꿈 (다른 구분 항목이 사이에 있어도 index는 같은 구분 기준)
+  @Test
+  void move_withinSection_usesIndexInsideSection() {
+    Space a = space(1L, "가 프로젝트", 0);
+    Space b = space(2L, "나 프로젝트", 1);
+    Space c = space(3L, "다 프로젝트", 2);
+    b.changeSection(SpaceSection.EXTERNAL);
+    when(spaceRepository.findById(3L)).thenReturn(Optional.of(c));
+    when(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()).thenReturn(List.of(a, b, c));
+
+    service().move(3L, 0, null);
+
+    assertThat(c.getSection()).isEqualTo(SpaceSection.INTERNAL);
+    assertThat(List.of(c, a, b)).extracting(Space::getSortOrder).containsExactly(0, 1, 2);
+  }
+
+  // 외부 프로젝트 칸에서 만들면 외부 구분으로 생성
+  @Test
+  void create_withExternalSection_keepsSection() {
+    when(spaceRepository.save(org.mockito.ArgumentMatchers.any(Space.class))).thenAnswer(inv -> {
+      Space saved = inv.getArgument(0);
+      ReflectionTestUtils.setField(saved, "id", 7L);
+      return saved;
+    });
+    when(documentRepository.save(org.mockito.ArgumentMatchers.any(dev.jkchappy.portal.document.Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var result = service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest(null, null, SpaceKind.PROJECT, SpaceSection.EXTERNAL), 1L);
+
+    assertThat(result.section()).isEqualTo("EXTERNAL");
+  }
+
   private Space space(Long id, String name, int sortOrder) {
     Space space = Space.create(name, null, 1L);
     ReflectionTestUtils.setField(space, "id", id);
@@ -190,7 +237,7 @@ class SpaceServiceTest {
     when(spaceRepository.findById(1L)).thenReturn(Optional.of(a));
     when(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()).thenReturn(List.of(a, b, c));
 
-    service().move(1L, 2);
+    service().move(1L, 2, null);
 
     assertThat(List.of(b, c, a)).extracting(Space::getSortOrder).containsExactly(0, 1, 2);
   }
@@ -202,7 +249,7 @@ class SpaceServiceTest {
     when(spaceRepository.findById(2L)).thenReturn(Optional.of(b));
     when(spaceRepository.findByDeletedAtIsNullOrderBySortOrderAscNameAscIdAsc()).thenReturn(List.of(a, b));
 
-    service().move(2L, 0);
+    service().move(2L, 0, null);
 
     assertThat(b.getSortOrder()).isEqualTo(0);
     assertThat(a.getSortOrder()).isEqualTo(1);
@@ -214,7 +261,7 @@ class SpaceServiceTest {
     a.softDelete();
     when(spaceRepository.findById(1L)).thenReturn(Optional.of(a));
 
-    assertThatThrownBy(() -> service().move(1L, 0))
+    assertThatThrownBy(() -> service().move(1L, 0, null))
       .isInstanceOfSatisfying(BusinessException.class,
         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
   }
@@ -233,7 +280,7 @@ class SpaceServiceTest {
       .thenAnswer(inv -> inv.getArgument(0));
     org.mockito.ArgumentCaptor<Space> saved = org.mockito.ArgumentCaptor.forClass(Space.class);
 
-    service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("새 페이지", null, null), 1L);
+    service().create(new dev.jkchappy.portal.space.dto.SpaceCreateRequest("새 페이지", null, null, null), 1L);
 
     org.mockito.Mockito.verify(spaceRepository).save(saved.capture());
     assertThat(saved.getValue().getSortOrder()).isEqualTo(5);

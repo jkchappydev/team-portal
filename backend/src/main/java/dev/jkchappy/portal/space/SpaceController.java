@@ -46,7 +46,7 @@ public class SpaceController {
   @PatchMapping("/{id}/position")
   public ApiResponse<Void> move(@PathVariable Long id, @Valid @RequestBody SpacePositionRequest request,
     @CurrentUser Long userId) {
-    spaceService.move(id, request.index());
+    spaceService.move(id, request.index(), request.section());
     return ApiResponse.ok(null);
   }
 

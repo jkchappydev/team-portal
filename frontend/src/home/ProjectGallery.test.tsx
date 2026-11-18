@@ -10,7 +10,7 @@ const spaces = vi.hoisted(() => ({ listSpaces: vi.fn() }));
 vi.mock("../api/spaces", () => spaces);
 
 const project = (id: number, over: Partial<SpaceDto> = {}): SpaceDto => ({
-  id, name: `프로젝트 ${id}`, description: null, documentCount: 0, homeDocumentId: id * 10, kind: "PROJECT", icon: "📘",
+  id, name: `프로젝트 ${id}`, description: null, documentCount: 0, homeDocumentId: id * 10, kind: "PROJECT", section: "INTERNAL", icon: "📘",
   cover: null, ...over,
 });
 
@@ -86,6 +86,27 @@ describe("ProjectGallery", () => {
     spaces.listSpaces.mockResolvedValue([]);
     renderGallery();
     await Promise.resolve();
-    expect(screen.queryByRole("region", { name: "프로젝트" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "내부 프로젝트" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "외부 프로젝트" })).toBeNull();
+  });
+
+  it("사이드바처럼 내부·외부 프로젝트 칸을 나눠 보이고, 비어 있는 칸은 그리지 않는다", async () => {
+    spaces.listSpaces.mockResolvedValue([
+      project(1, { name: "가 프로젝트" }),
+      project(2, { name: "나 프로젝트", section: "EXTERNAL" }),
+      project(3, { name: "다 프로젝트" }),
+    ]);
+    renderGallery();
+
+    const internal = await screen.findByRole("region", { name: "내부 프로젝트" });
+    const external = screen.getByRole("region", { name: "외부 프로젝트" });
+    expect(Array.from(internal.querySelectorAll(".project-card-name")).map((card) => card.textContent)).toEqual(["가 프로젝트", "다 프로젝트"]);
+    expect(Array.from(external.querySelectorAll(".project-card-name")).map((card) => card.textContent)).toEqual(["나 프로젝트"]);
+
+    cleanup();
+    spaces.listSpaces.mockResolvedValue([project(1, { name: "가 프로젝트" })]);
+    renderGallery();
+    expect(await screen.findByRole("region", { name: "내부 프로젝트" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "외부 프로젝트" })).toBeNull();
   });
 });

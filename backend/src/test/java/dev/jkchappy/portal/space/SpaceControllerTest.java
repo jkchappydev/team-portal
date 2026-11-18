@@ -78,6 +78,18 @@ class SpaceControllerTest {
       org.mockito.ArgumentMatchers.argThat(r -> r.kind() == SpaceKind.PAGE), org.mockito.ArgumentMatchers.eq(1L));
   }
 
+  // 사이드바에서 다른 구분 칸으로 끌어 놓으면 구분과 위치를 함께 넘김
+  @Test
+  void moveSpace_withSection_passesSection() throws Exception {
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/spaces/5/position")
+        .with(loginAs(1L))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"index\":1,\"section\":\"EXTERNAL\"}"))
+      .andExpect(status().isOk());
+
+    org.mockito.Mockito.verify(spaceService).move(5L, 1, SpaceSection.EXTERNAL);
+  }
+
   @Test
   void createSpace_unknownKind_returns400() throws Exception {
     mockMvc.perform(post("/api/spaces")
