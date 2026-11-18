@@ -95,6 +95,8 @@ export function Sidebar({ user }: Props) {
             <SidebarMenuLink to="/team" label="팀원 목록" icon={<span aria-hidden>📇</span>} />
             {/* 회사 밖 업체 담당자 연락처 (팀 공용) */}
             <SidebarMenuLink to="/contacts" label="외부 연락처" icon={<span aria-hidden>📒</span>} />
+            {/* 팀이 함께 쓰는 양식·자료 파일 (올리기·미리보기·다운로드) */}
+            <SidebarMenuLink to="/forms" label="공유 보관함" icon={<span aria-hidden>💼</span>} />
             {user?.admin && <SidebarMenuLink to="/members" label="팀원 관리 (관리자 전용)" icon={<span aria-hidden>👥</span>} />}
           </Stack>
           {/* 내부 프로젝트·외부 프로젝트 칸 (각 칸에서 만들고, 칸 사이로 끌어 옮기면 구분이 바뀜) */}

@@ -10,6 +10,7 @@ import { TrashPage } from "./documents/TrashPage";
 import { FavoritesPage } from "./documents/FavoritesPage";
 import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { ContactsPage } from "./contacts/ContactsPage";
+import { FormsPage } from "./forms/FormsPage";
 import { MainPage } from "./home/MainPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/team" element={<MembersPage mode="list" />} />
               <Route path="/contacts" element={<ContactsPage />} />
+              <Route path="/forms" element={<FormsPage />} />
               <Route path="/members" element={<MembersPage />} />
             </Route>
           </Routes>
