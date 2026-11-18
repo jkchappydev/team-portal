@@ -13,3 +13,7 @@ storage/
 CLAUDE.local.md
 .gradle-cache/
 .npm-cache/
+CLAUDE.md
+AGENTS.md
+HANDOFF.md
+docs/superpowers/
