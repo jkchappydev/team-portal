@@ -76,12 +76,12 @@ describe("MainPage", () => {
     expect(await screen.findByText("문서 화면")).toBeTruthy();
   });
 
-  it("최근 CS를 상태·요청자·담당자·등록 시각과 함께 보여주고 CS 시스템 상세 화면을 새 탭으로 연결한다", async () => {
+  it("최근 CS를 상태·요청자·등록 시각과 함께(담당자 제외) 보여주고 CS 시스템 상세 화면을 새 탭으로 연결한다", async () => {
     const now = new Date().toISOString();
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [
       { id: 3, title: "로그인 오류", groupName: "A기관", requesterName: "홍길동", managerName: null, status: "REQS", statusName: "요청",
         createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=3" },
-      { id: 2, title: "계정 초기화", groupName: "A기관", requesterName: "윤소은", managerName: "구슬기", status: "COMP", statusName: "완료",
+      { id: 2, title: "계정 초기화", groupName: "A기관", requesterName: "김영희", managerName: "이철수", status: "COMP", statusName: "완료",
         createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=2" },
     ] });
     renderPage();
@@ -90,10 +90,10 @@ describe("MainPage", () => {
     expect(link.getAttribute("href")).toBe("https://cs.example.com/detail?boardKey=3");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(within(link).getByText("요청")).toBeTruthy();
-    expect(within(link).getByText("홍길동 · 담당자 미지정 · 방금 전")).toBeTruthy();
+    expect(within(link).getByText("홍길동 · 방금 전")).toBeTruthy();
     const done = within(panel).getByText("계정 초기화").closest("a")!;
     expect(within(done).getByText("완료")).toBeTruthy();
-    expect(within(done).getByText("윤소은 · 구슬기 · 방금 전")).toBeTruthy();
+    expect(within(done).getByText("김영희 · 방금 전")).toBeTruthy();
   });
 
   it("요청 상태(새로 접수된) CS에만 N 표시를 붙인다", async () => {
@@ -101,7 +101,7 @@ describe("MainPage", () => {
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [
       { id: 3, title: "새 문의", groupName: null, requesterName: "홍길동", managerName: null, status: "REQS", statusName: "요청",
         createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=3" },
-      { id: 2, title: "진행 문의", groupName: null, requesterName: "홍길동", managerName: "구슬기", status: "PROG", statusName: "진행중",
+      { id: 2, title: "진행 문의", groupName: null, requesterName: "홍길동", managerName: "이철수", status: "PROG", statusName: "진행중",
         createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=2" },
     ] });
     renderPage();

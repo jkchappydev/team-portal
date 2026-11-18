@@ -134,12 +134,12 @@ function NewCsList() {
                 <Badge size="xs" circle color="red" variant="filled" aria-label="새로 접수된 CS">N</Badge>
               )}
               <Text size="sm" truncate style={{ flex: 1, minWidth: 0 }}>{cs.title}</Text>
-              <Badge size="sm" variant="light" color={CS_STATUS_COLORS[cs.status] ?? "gray"} style={{ flexShrink: 0 }}>
+              <Text size="xs" fw={500} c={`${CS_STATUS_COLORS[cs.status] ?? "gray"}.7`} style={{ flexShrink: 0 }}>
                 {cs.statusName || cs.status}
-              </Badge>
+              </Text>
             </Group>
             <Text size="xs" c="dimmed" truncate>
-              {[cs.requesterName || "알 수 없음", cs.managerName || "담당자 미지정", cs.createdAt && formatRelative(cs.createdAt)]
+              {[cs.requesterName || "알 수 없음", cs.createdAt && formatRelative(cs.createdAt)]
                 .filter(Boolean).join(" · ")}
             </Text>
           </UnstyledButton>
