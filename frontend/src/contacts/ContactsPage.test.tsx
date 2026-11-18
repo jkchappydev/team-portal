@@ -137,6 +137,22 @@ describe("ContactsPage", () => {
     })));
   });
 
+  // 닫히는 동안 내용을 유지하도록 바꿨으므로, 수정 창을 닫고 추가 창을 열면 빈 입력으로 시작해야 함
+  it("수정 창을 닫은 뒤 추가 창을 열면 이전 값 없이 빈 입력으로 시작한다", async () => {
+    renderPage();
+    await screen.findByText("홍길동");
+    fireEvent.click(screen.getByLabelText("홍길동 메뉴"));
+    fireEvent.click(await screen.findByText("연락처 수정"));
+    expect(await screen.findByDisplayValue("hong@example.com")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    await waitFor(() => expect(screen.queryByDisplayValue("hong@example.com")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "+ 연락처 추가" }));
+    expect(await screen.findByRole("dialog", { name: "연락처 추가" })).toBeTruthy();
+    expect(screen.queryByDisplayValue("hong@example.com")).toBeNull();
+    expect(screen.queryByDisplayValue("가나출판")).toBeNull();
+  });
+
   it("처음에는 이름 가나다순이고, 정렬 버튼을 누를 때마다 오름차순·내림차순이 번갈아 바뀐다", async () => {
     renderPage();
     await screen.findByText("홍길동");

@@ -10,6 +10,7 @@ import { showToast } from "../toast/toastStore";
 import { LinkDialog } from "./LinkDialog";
 import { LinkInfoDialog } from "./LinkInfoDialog";
 import { isNewItem, useReorderAnimation } from "./reorderAnimation";
+import { useLastValue } from "./useLastValue";
 
 const DRAG_TYPE = "application/x-portal-link";
 
@@ -24,6 +25,8 @@ export function LinkList() {
   const queryClient = useQueryClient();
   // 링크 팝업: null = 닫힘, editing 없음 = 추가, 있음 = 그 링크 수정
   const [dialog, setDialog] = useState<{ editing: LinkDto | null } | null>(null);
+  // 창이 닫히는 동안에도 추가·수정 모드와 입력 내용을 유지
+  const shownDialog = useLastValue(dialog);
   // 계정 정보가 있는 링크를 눌렀을 때 뜨는 팝업
   const [infoLink, setInfoLink] = useState<LinkDto | null>(null);
   const { data: links = [] } = useQuery({ queryKey: LINKS_KEY, queryFn: listLinks });
@@ -97,7 +100,7 @@ export function LinkList() {
           ))}
         </Box>
       </Box>
-      <LinkDialog opened={dialog !== null} editing={dialog?.editing} onClose={() => setDialog(null)} />
+      <LinkDialog opened={dialog !== null} editing={shownDialog?.editing} onClose={() => setDialog(null)} />
       <LinkInfoDialog link={infoLink} onClose={() => setInfoLink(null)} />
     </>
   );

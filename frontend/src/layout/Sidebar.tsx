@@ -15,6 +15,7 @@ import { SidebarMenuLink } from "./SidebarMenuLink";
 import { SpaceList } from "./SpaceList";
 import { LinkList } from "./LinkList";
 import { markNewItem } from "./reorderAnimation";
+import { useLastValue } from "./useLastValue";
 import { logout } from "../api/auth";
 import { ProfileSettingsModal } from "../user/ProfileSettingsModal";
 import { RankBadge } from "../members/RankBadge";
@@ -33,6 +34,8 @@ export function Sidebar({ user }: Props) {
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
   // 프로젝트·페이지 중 고르는 창을 연 칸 (내부/외부 프로젝트, 이름은 만든 뒤 열린 화면의 제목 칸에서 입력)
   const [creatingIn, setCreatingIn] = useState<SpaceSection | null>(null);
+  // 창이 닫히는 동안에도 제목의 칸 이름을 유지
+  const shownSection = useLastValue(creatingIn);
   // 이름 입력 창 없이 "제목 없음"으로 바로 만들고, 열린 화면의 제목 칸에서 이름을 입력
   const create = useMutation({
     mutationFn: ({ kind, section }: { kind: SpaceKind; section: SpaceSection }) => createSpace(undefined, undefined, kind, section),
@@ -130,7 +133,7 @@ export function Sidebar({ user }: Props) {
       </Group>
       {user && <ProfileSettingsModal user={user} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
       <CreateSpaceModal opened={creatingIn !== null} pending={create.isPending} error={create.error ? "만들지 못했습니다." : null}
-        title={`${SPACE_SECTIONS.find((section) => section.value === creatingIn)?.label ?? ""}에 새로 만들기`}
+        title={`${SPACE_SECTIONS.find((section) => section.value === shownSection)?.label ?? ""}에 새로 만들기`}
         onClose={() => setCreatingIn(null)} onCreate={(kind) => creatingIn && create.mutate({ kind, section: creatingIn })} />
     </Stack>
   );

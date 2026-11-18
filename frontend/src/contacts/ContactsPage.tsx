@@ -9,6 +9,7 @@ import type { ContactDto } from "../api/contacts";
 import { ContactDialog } from "./ContactDialog";
 import { contactColor } from "./contactColor";
 import { formatDate } from "../documents/format";
+import { useLastValue } from "../layout/useLastValue";
 
 // 검색어가 이름·업체·이메일·전화번호 1·2·연관 프로젝트·메모 중 하나에 들어 있으면 표시
 function matches(contact: ContactDto, query: string): boolean {
@@ -270,6 +271,9 @@ export function ContactsPage() {
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<{ editing: ContactDto | null } | null>(null);
   const [deleting, setDeleting] = useState<ContactDto | null>(null);
+  // 창이 닫히는 동안에도 수정 중이던 연락처·삭제할 이름을 그대로 보임
+  const shownDialog = useLastValue(dialog);
+  const shownDeleting = useLastValue(deleting);
   // 처음에는 이름 가나다순
   const [sort, setSort] = useState<SortState>({ key: "name", direction: "asc" });
   const [view, setView] = useState<ContactView>(readView);
@@ -330,12 +334,12 @@ export function ContactsPage() {
         </SimpleGrid>
       )}
 
-      <ContactDialog opened={dialog !== null} editing={dialog?.editing ?? null} onClose={() => setDialog(null)} />
+      <ContactDialog opened={dialog !== null} editing={shownDialog?.editing ?? null} onClose={() => setDialog(null)} />
 
       {/* 삭제 확인 (링크 삭제 확인 창과 같은 모양) */}
       <Modal opened={deleting !== null} onClose={() => { setDeleting(null); remove.reset(); }} title="연락처 삭제" centered>
         <Stack>
-          <Text size="sm">"{deleting?.name}" 연락처를 삭제할까요? 팀원 모두의 목록에서 사라지며 되돌릴 수 없습니다.</Text>
+          <Text size="sm">"{shownDeleting?.name}" 연락처를 삭제할까요? 팀원 모두의 목록에서 사라지며 되돌릴 수 없습니다.</Text>
           {remove.error && <Alert color="red">연락처를 삭제하지 못했습니다.</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => { setDeleting(null); remove.reset(); }}>취소</Button>

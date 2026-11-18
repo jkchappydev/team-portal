@@ -7,6 +7,7 @@ import type { TrashItemDto } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { formatDateTime } from "./format";
 import { PageIcon } from "./PageIconView";
+import { useLastValue } from "../layout/useLastValue";
 
 // 하위 페이지 한 단계당 들여쓰기 폭
 const INDENT = 20;
@@ -109,11 +110,13 @@ interface PurgeModalProps {
 
 // 영구 삭제 확인 창 (하위 페이지와 첨부 파일까지 지워져 되돌릴 수 없음을 안내)
 function PurgeModal({ item, pending, error, onClose, onConfirm }: PurgeModalProps) {
+  // 닫히는 동안에도 지울 이름을 유지
+  const shown = useLastValue(item);
   return (
     <Modal opened={item !== null} onClose={onClose} title="영구 삭제" centered>
       <Stack>
         <Text size="sm">
-          {`"${item?.name ?? ""}" 페이지를 영구 삭제할까요? 하위 페이지, 수정 이력, 첨부 파일과 이미지까지 모두 지워지며 되돌릴 수 없습니다.`}
+          {`"${shown?.name ?? ""}" 페이지를 영구 삭제할까요? 하위 페이지, 수정 이력, 첨부 파일과 이미지까지 모두 지워지며 되돌릴 수 없습니다.`}
         </Text>
         {error && <Alert color="red">{error}</Alert>}
         <Group justify="flex-end">

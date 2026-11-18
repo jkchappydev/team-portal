@@ -3,6 +3,7 @@ import type { LinkDto } from "../api/links";
 import { copyText } from "../documents/clipboard";
 import { showToast } from "../toast/toastStore";
 import { LinkIcon } from "./LinkDialog";
+import { useLastValue } from "./useLastValue";
 
 interface Props {
   // 보여 줄 링크 (null이면 닫힘)
@@ -12,6 +13,8 @@ interface Props {
 
 // 계정 정보가 있는 사이드바 링크를 눌렀을 때 뜨는 팝업 (링크 이동 + 계정 정보)
 export function LinkInfoDialog({ link, onClose }: Props) {
+  // 닫히는 동안에도 내용을 유지 (바로 지우면 창이 빈 채로 줄어들며 사라짐)
+  const shown = useLastValue(link);
   return (
     <Modal
       opened={link !== null}
@@ -24,7 +27,7 @@ export function LinkInfoDialog({ link, onClose }: Props) {
       overlayProps={{ backgroundOpacity: 0.35 }}
       returnFocus={false}
     >
-      {link && <LinkInfoBody link={link} onClose={onClose} />}
+      {shown && <LinkInfoBody link={shown} onClose={onClose} />}
     </Modal>
   );
 }

@@ -61,7 +61,8 @@ export function LinkDialog({ opened, onClose, editing = null }: Props) {
       returnFocus={false}
     >
       {/* 열 때마다 입력을 초기화 */}
-      {opened && <LinkBody onClose={onClose} editing={editing} />}
+      {/* 닫힌 뒤에는 Modal이 내용을 지워 다시 열면 새 입력으로 시작 (닫히는 동안에는 입력 내용 유지) */}
+      <LinkBody key={editing?.id ?? "new"} onClose={onClose} editing={editing} />
     </Modal>
   );
 }

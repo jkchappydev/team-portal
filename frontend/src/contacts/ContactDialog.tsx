@@ -12,7 +12,8 @@ export function ContactDialog({ opened, editing, onClose }: { opened: boolean; e
   return (
     <Modal opened={opened} onClose={onClose} title={editing ? "연락처 수정" : "연락처 추가"} centered>
       {/* 열릴 때마다 입력값을 새로 잡도록 key로 다시 만듦 */}
-      {opened && <ContactForm key={editing?.id ?? "new"} editing={editing} onClose={onClose} />}
+      {/* 닫힌 뒤에는 Modal이 내용을 지워 다시 열면 새 입력으로 시작 (닫히는 동안에는 입력 내용 유지) */}
+      <ContactForm key={editing?.id ?? "new"} editing={editing} onClose={onClose} />
     </Modal>
   );
 }

@@ -19,6 +19,7 @@ import {
 import type { WbsDropTarget } from "./wbsTree";
 import type { GanttDay } from "./wbsTree";
 import { blockWbsDragOutside, stopWbsDragAtBoard, WBS_DRAG_TYPE } from "./dragIsolation";
+import { useLastValue } from "../layout/useLastValue";
 
 // 표와 간트 차트가 같은 높이를 쓰도록 고정
 const ROW_H = 36;
@@ -700,11 +701,13 @@ function GanttBar({ row, rangeStart, summary }: { row: WbsRowDto; rangeStart: st
 function DeleteTaskModal({ row, pending, error, onClose, onConfirm }: {
   row: WbsRowDto | null; pending: boolean; error: string | null; onClose: () => void; onConfirm: () => void;
 }) {
+  // 닫히는 동안에도 지울 작업 이름을 유지
+  const shown = useLastValue(row);
   return (
     <Modal opened={row !== null} onClose={onClose} title="작업 삭제" centered>
       <Stack>
         <Text size="sm">
-          {`"${row?.name ?? ""}" 작업을 삭제할까요?${row?.hasChildren ? " 하위 작업도 함께 삭제되며" : ""} 되돌릴 수 없습니다.`}
+          {`"${shown?.name ?? ""}" 작업을 삭제할까요?${shown?.hasChildren ? " 하위 작업도 함께 삭제되며" : ""} 되돌릴 수 없습니다.`}
         </Text>
         {error && <Alert color="red">{error}</Alert>}
         <Group justify="flex-end">
