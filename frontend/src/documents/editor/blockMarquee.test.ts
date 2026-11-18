@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { anchorAt, marqueeRect, pickMarqueeBlocks } from "./blockMarquee";
+import { describe, expect, it, vi } from "vitest";
+import { BlockNoteEditor } from "@blocknote/core";
+import { anchorAt, copyBlocks, marqueeRect, pickMarqueeBlocks } from "./blockMarquee";
 import type { MarqueeBlock } from "./blockMarquee";
 
 const rect = (top: number, bottom: number) => ({ left: 100, right: 600, top, bottom });
@@ -43,5 +44,36 @@ describe("끄는 도중 스크롤", () => {
   it("위로 끌면 시작점이 아래쪽 끝이 된다", () => {
     const anchor = anchorAt({ left: 10, top: 0 }, 50, 500);
     expect(marqueeRect(anchor, { left: 10, top: 0 }, 30, 200)).toEqual({ left: 30, top: 200, right: 50, bottom: 500 });
+  });
+});
+
+describe("고른 블록 복사", () => {
+  // 고른 뒤 편집기 포커스를 빼 두므로 포커스를 먼저 돌려준 뒤 블록 범위를 선택하고 복사해야 클립보드에 들어감
+  it("편집기 포커스를 돌려준 뒤 첫 블록 처음~마지막 블록 끝을 선택하고 복사한다", () => {
+    const editor = BlockNoteEditor.create({
+      initialContent: [{ type: "paragraph", content: "줄 1" }, { type: "paragraph", content: "줄 2" }, { type: "paragraph", content: "줄 3" }],
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    const view = editor.prosemirrorView!;
+    const order: string[] = [];
+    const focus = vi.spyOn(view, "focus").mockImplementation(() => { order.push("focus"); });
+    const execCommand = vi.fn(() => {
+      order.push("copy");
+      const { from, to } = view.state.selection;
+      order.push(view.state.doc.textBetween(from, to, "|"));
+      return true;
+    });
+    document.execCommand = execCommand;
+    const ids = editor.document.slice(0, 2).map((block) => block.id);
+
+    copyBlocks(editor, ids);
+
+    expect(focus).toHaveBeenCalled();
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(order).toEqual(["focus", "copy", "줄 1|줄 2"]);
+    editor.unmount();
+    host.remove();
   });
 });

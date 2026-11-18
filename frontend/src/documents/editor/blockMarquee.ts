@@ -91,6 +91,14 @@ export function selectBlockRange(editor: AnyEditor, ids: string[]): void {
   view.dispatch(view.state.tr.setSelection(TextSelection.between(doc.resolve(first.from + 1), doc.resolve(last.to - 1))));
 }
 
+// 고른 블록을 클립보드로 복사 (BlockNote 복사 처리를 그대로 씀)
+// 고른 뒤에는 편집기 포커스를 빼 두어 선택만 바꾸면 화면 선택이 따라오지 않고 복사도 비어 버림 → 먼저 포커스를 돌려줌
+export function copyBlocks(editor: AnyEditor, ids: string[]): void {
+  editor.prosemirrorView.focus();
+  selectBlockRange(editor, ids);
+  document.execCommand("copy");
+}
+
 // 시작점을 본문(편집기) 기준 위치로 기억해 두고 지금 본문 위치로 화면 좌표를 되살림
 // 끄는 도중 휠로 스크롤해도 시작점이 처음 누른 블록에 붙어 있어 이미 고른 블록이 빠지지 않음
 export interface MarqueeAnchor {
@@ -227,16 +235,14 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
       e.preventDefault();
       e.stopPropagation();
       // 블록 범위를 잠깐 선택해 복사한 뒤 블록을 지움
-      selectBlockRange(editor, ids);
-      document.execCommand("copy");
+      copyBlocks(editor, ids);
       clear();
       editor.removeBlocks(ids.filter((id) => editor.getBlock(id)));
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
       e.preventDefault();
-      selectBlockRange(editor, ids);
-      document.execCommand("copy");
+      copyBlocks(editor, ids);
       editor.prosemirrorView.dom.blur();
       document.getSelection()?.removeAllRanges();
       return;
