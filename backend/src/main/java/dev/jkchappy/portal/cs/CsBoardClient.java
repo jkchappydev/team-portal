@@ -39,7 +39,7 @@ public class CsBoardClient {
     return apiUrl;
   }
 
-  // 요청 상태 CS를 등록일 최신순으로 size건 조회
+  // 전체 상태 CS를 등록일 최신순으로 size건 조회
   public List<CsBoardItem> fetchNew(int size) {
     if (!isEnabled()) return List.of();
     HttpRequest request = HttpRequest.newBuilder(URI.create(apiUrl + "/api/external/cs/new?size=" + size))

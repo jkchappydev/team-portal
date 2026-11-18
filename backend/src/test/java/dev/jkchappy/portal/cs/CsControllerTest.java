@@ -54,7 +54,7 @@ class CsControllerTest {
   @Test
   void listNew_returnsNewCsList() throws Exception {
     when(csService.findNew()).thenReturn(new NewCsListResponse(true, List.of(
-      new NewCsResponse(3L, "로그인 오류", "A기관", "홍길동",
+      new NewCsResponse(3L, "로그인 오류", "A기관", "홍길동", "구슬기", "REQS", "요청",
         OffsetDateTime.of(2026, 11, 18, 10, 0, 0, 0, ZoneOffset.ofHours(9)),
         "https://cs.example.com/detail?boardKey=3"))));
 
@@ -66,6 +66,9 @@ class CsControllerTest {
       .andExpect(jsonPath("$.data.items[0].title").value("로그인 오류"))
       .andExpect(jsonPath("$.data.items[0].groupName").value("A기관"))
       .andExpect(jsonPath("$.data.items[0].requesterName").value("홍길동"))
+      .andExpect(jsonPath("$.data.items[0].managerName").value("구슬기"))
+      .andExpect(jsonPath("$.data.items[0].status").value("REQS"))
+      .andExpect(jsonPath("$.data.items[0].statusName").value("요청"))
       .andExpect(jsonPath("$.data.items[0].detailUrl").value("https://cs.example.com/detail?boardKey=3"));
   }
 

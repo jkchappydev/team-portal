@@ -1,10 +1,17 @@
 import { apiFetch } from "./client";
 
+// CS 상태 코드 (REQS 요청, PROG 진행중, FEED 피드백, COMP 완료, HOLD 보류)
+export type CsStatus = "REQS" | "PROG" | "FEED" | "COMP" | "HOLD";
+
 export interface NewCsDto {
   id: number;
   title: string;
   groupName: string | null;
   requesterName: string | null;
+  // 미지정이면 null
+  managerName: string | null;
+  status: CsStatus | string;
+  statusName: string | null;
   createdAt: string | null;
   detailUrl: string;
 }
@@ -15,7 +22,7 @@ export interface NewCsListDto {
   items: NewCsDto[];
 }
 
-// CS 시스템의 요청 상태 CS 최신 10건
+// CS 시스템의 최근 등록 CS 10건 (전체 상태)
 export function listNewCs(): Promise<NewCsListDto> {
   return apiFetch<NewCsListDto>("/api/cs/new");
 }

@@ -76,22 +76,43 @@ describe("MainPage", () => {
     expect(await screen.findByText("문서 화면")).toBeTruthy();
   });
 
-  it("신규 CS를 기관·요청자·등록 시각과 함께 보여주고 CS 시스템 상세 화면을 새 탭으로 연결한다", async () => {
+  it("최근 CS를 상태·요청자·담당자·등록 시각과 함께 보여주고 CS 시스템 상세 화면을 새 탭으로 연결한다", async () => {
+    const now = new Date().toISOString();
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [
-      { id: 3, title: "로그인 오류", groupName: "A기관", requesterName: "홍길동", createdAt: new Date().toISOString(),
-        detailUrl: "https://cs.example.com/detail?boardKey=3" },
+      { id: 3, title: "로그인 오류", groupName: "A기관", requesterName: "홍길동", managerName: null, status: "REQS", statusName: "요청",
+        createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=3" },
+      { id: 2, title: "계정 초기화", groupName: "A기관", requesterName: "윤소은", managerName: "구슬기", status: "COMP", statusName: "완료",
+        createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=2" },
     ] });
     renderPage();
     const panel = screen.getByRole("region", { name: "신규 CS" });
-    const link = (await within(panel).findByText("로그인 오류")).closest("a");
-    expect(link?.getAttribute("href")).toBe("https://cs.example.com/detail?boardKey=3");
-    expect(link?.getAttribute("target")).toBe("_blank");
-    expect(within(panel).getByText("A기관 · 홍길동 · 방금 전")).toBeTruthy();
+    const link = (await within(panel).findByText("로그인 오류")).closest("a")!;
+    expect(link.getAttribute("href")).toBe("https://cs.example.com/detail?boardKey=3");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(within(link).getByText("요청")).toBeTruthy();
+    expect(within(link).getByText("홍길동 · 담당자 미지정 · 방금 전")).toBeTruthy();
+    const done = within(panel).getByText("계정 초기화").closest("a")!;
+    expect(within(done).getByText("완료")).toBeTruthy();
+    expect(within(done).getByText("윤소은 · 구슬기 · 방금 전")).toBeTruthy();
   });
 
-  it("신규 CS가 없으면 없다고 안내한다", async () => {
+  it("요청 상태(새로 접수된) CS에만 N 표시를 붙인다", async () => {
+    const now = new Date().toISOString();
+    vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [
+      { id: 3, title: "새 문의", groupName: null, requesterName: "홍길동", managerName: null, status: "REQS", statusName: "요청",
+        createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=3" },
+      { id: 2, title: "진행 문의", groupName: null, requesterName: "홍길동", managerName: "구슬기", status: "PROG", statusName: "진행중",
+        createdAt: now, detailUrl: "https://cs.example.com/detail?boardKey=2" },
+    ] });
     renderPage();
-    expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("새로 요청된 CS가 없습니다.")).toBeTruthy();
+    const panel = screen.getByRole("region", { name: "신규 CS" });
+    expect(within((await within(panel).findByText("새 문의")).closest("a")!).getByLabelText("새로 접수된 CS")).toBeTruthy();
+    expect(within(within(panel).getByText("진행 문의").closest("a")!).queryByLabelText("새로 접수된 CS")).toBeNull();
+  });
+
+  it("CS가 없으면 없다고 안내한다", async () => {
+    renderPage();
+    expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("등록된 CS가 없습니다.")).toBeTruthy();
   });
 
   it("CS 연동 설정이 없으면 미설정 안내를 보여준다", async () => {

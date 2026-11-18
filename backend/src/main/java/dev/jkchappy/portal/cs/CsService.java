@@ -31,7 +31,7 @@ public class CsService {
     this.webUrl = trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
   }
 
-  // CS 시스템의 요청 상태 CS 최신 10건 (연동 미설정이면 빈 목록)
+  // CS 시스템의 최근 등록 CS 10건, 전체 상태 (연동 미설정이면 빈 목록)
   public NewCsListResponse findNew() {
     if (!csBoardClient.isEnabled()) {
       return new NewCsListResponse(false, List.of());
@@ -48,6 +48,7 @@ public class CsService {
 
   private NewCsResponse toResponse(CsBoardItem item) {
     return new NewCsResponse(item.boardKey(), item.boardTitle(), item.groupName(), item.csUserName(),
+      item.managerName(), item.csStatus(), item.csStatusName(),
       parseCreatedAt(item.createDate()), detailUrl(item.boardKey()));
   }
 

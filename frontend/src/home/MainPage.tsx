@@ -112,7 +112,10 @@ function RecentPosts() {
   );
 }
 
-// CS 시스템에 새로 요청된 CS (누르면 CS 시스템 상세 화면을 새 탭으로)
+// CS 시스템 상태 색 (CS 게시판 목록과 같은 계열)
+const CS_STATUS_COLORS: Record<string, string> = { REQS: "blue", PROG: "green", FEED: "orange", COMP: "indigo", HOLD: "gray" };
+
+// CS 시스템에 최근 등록된 CS (요청 상태는 N 표시, 누르면 CS 시스템 상세 화면을 새 탭으로)
 function NewCsList() {
   const { data, isError, isLoading } = useQuery({ queryKey: ["cs", "new"], queryFn: listNewCs });
   const items = data?.items ?? [];
@@ -121,14 +124,23 @@ function NewCsList() {
     <Panel title="신규 CS">
       {isError && <Text size="sm" c="red">신규 CS를 불러오지 못했습니다.</Text>}
       {data && !data.configured && <Upcoming message="CS 시스템 연동 설정이 없습니다." />}
-      {!isLoading && data?.configured && items.length === 0 && <Text size="sm" c="dimmed">새로 요청된 CS가 없습니다.</Text>}
+      {!isLoading && data?.configured && items.length === 0 && <Text size="sm" c="dimmed">등록된 CS가 없습니다.</Text>}
       <Stack gap={0}>
         {items.map((cs) => (
           <UnstyledButton key={cs.id} component="a" href={cs.detailUrl} target="_blank" rel="noopener noreferrer"
             className="update-item" px="xs" py={6} style={{ color: "inherit", textDecoration: "none" }}>
-            <Text size="sm" truncate>{cs.title}</Text>
+            <Group gap={6} wrap="nowrap">
+              {cs.status === "REQS" && (
+                <Badge size="xs" circle color="red" variant="filled" aria-label="새로 접수된 CS">N</Badge>
+              )}
+              <Text size="sm" truncate style={{ flex: 1, minWidth: 0 }}>{cs.title}</Text>
+              <Badge size="sm" variant="light" color={CS_STATUS_COLORS[cs.status] ?? "gray"} style={{ flexShrink: 0 }}>
+                {cs.statusName || cs.status}
+              </Badge>
+            </Group>
             <Text size="xs" c="dimmed" truncate>
-              {[cs.groupName, cs.requesterName || "알 수 없음", cs.createdAt && formatRelative(cs.createdAt)].filter(Boolean).join(" · ")}
+              {[cs.requesterName || "알 수 없음", cs.managerName || "담당자 미지정", cs.createdAt && formatRelative(cs.createdAt)]
+                .filter(Boolean).join(" · ")}
             </Text>
           </UnstyledButton>
         ))}

@@ -36,17 +36,17 @@ class CsServiceTest {
   void findNew_mapsItemsWithKstTimeAndDetailUrl() {
     when(client.isEnabled()).thenReturn(true);
     when(client.fetchNew(CsService.NEW_CS_LIMIT)).thenReturn(List.of(
-      new CsBoardItem(3L, "로그인 오류", "A기관", "홍길동", "2026-11-18 10:00:00"),
-      new CsBoardItem(2L, "날짜 없음", "B기관", "김철수", "잘못된 값")));
+      new CsBoardItem(3L, "로그인 오류", "A기관", "홍길동", "구슬기", "REQS", "요청", "2026-11-18 10:00:00"),
+      new CsBoardItem(2L, "날짜 없음", "B기관", "김철수", null, "COMP", "완료", "잘못된 값")));
 
     NewCsListResponse result = new CsService(client, "https://cs.example.com/").findNew();
 
     assertThat(result.configured()).isTrue();
     assertThat(result.items()).containsExactly(
-      new NewCsResponse(3L, "로그인 오류", "A기관", "홍길동",
+      new NewCsResponse(3L, "로그인 오류", "A기관", "홍길동", "구슬기", "REQS", "요청",
         OffsetDateTime.of(2026, 11, 18, 10, 0, 0, 0, ZoneOffset.ofHours(9)),
         "https://cs.example.com/detail?boardKey=3"),
-      new NewCsResponse(2L, "날짜 없음", "B기관", "김철수", null,
+      new NewCsResponse(2L, "날짜 없음", "B기관", "김철수", null, "COMP", "완료", null,
         "https://cs.example.com/detail?boardKey=2"));
   }
 
@@ -55,7 +55,7 @@ class CsServiceTest {
     when(client.isEnabled()).thenReturn(true);
     when(client.apiUrl()).thenReturn("http://localhost:1031");
     when(client.fetchNew(CsService.NEW_CS_LIMIT)).thenReturn(List.of(
-      new CsBoardItem(7L, "문의", "A기관", "홍길동", "2026-11-18 10:00:00")));
+      new CsBoardItem(7L, "문의", "A기관", "홍길동", null, "PROG", "진행중", "2026-11-18 10:00:00")));
 
     NewCsListResponse result = new CsService(client, " ").findNew();
 

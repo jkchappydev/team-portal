@@ -12,12 +12,12 @@ class CsBoardClientTest {
     String json = """
       {"httpStatus":"OK","message":"OK","data":[
         {"boardKey":3,"boardTitle":"로그인 오류","groupName":"A기관","csUserName":"홍길동",
-         "createDate":"2026-11-18 10:00:00","extra":"무시"}
+         "managerName":"구슬기","csStatus":"REQS","csStatusName":"요청","createDate":"2026-11-18 10:00:00","extra":"무시"}
       ]}
       """;
 
     assertThat(CsBoardClient.parse(json))
-      .containsExactly(new CsBoardItem(3L, "로그인 오류", "A기관", "홍길동", "2026-11-18 10:00:00"));
+      .containsExactly(new CsBoardItem(3L, "로그인 오류", "A기관", "홍길동", "구슬기", "REQS", "요청", "2026-11-18 10:00:00"));
   }
 
   @Test
