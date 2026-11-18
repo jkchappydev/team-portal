@@ -47,14 +47,14 @@ describe("FormsPage", () => {
     );
   }
 
-  it("처음에는 맨 위 양식을 미리보고, 다른 줄을 누르면 그 양식으로 바뀌며 다운로드 주소도 따라간다", async () => {
+  it("처음에는 맨 위 양식을 미리보고, 다른 줄을 누르면 그 양식으로 바뀐다", async () => {
     renderPage();
     expect(await screen.findByTestId("preview")).toHaveProperty("textContent", "휴가 신청서.hwp");
-    const download = screen.getByRole("link", { name: "다운로드" });
-    expect(download.getAttribute("href")).toBe("/api/forms/1/download");
-    expect(download.getAttribute("download")).toBe("휴가 신청서.hwp");
-    // 올린 사람과 크기
-    expect(screen.getByText(/20KB · 가나다 · 2026-11-17/)).toBeTruthy();
+    // 미리보기 위에는 다운로드 버튼이 없음 (⋯ 메뉴에서 내려받음)
+    expect(screen.queryByRole("link", { name: "다운로드" })).toBeNull();
+    // 미리보기 위 정보는 크기와 올린 날짜만 (올린 사람은 보이지 않음)
+    expect(screen.getAllByText("20KB · 2026-11-17").length).toBe(2);
+    expect(screen.queryByText(/가나다/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf" }));
     expect(screen.getByTestId("preview").textContent).toBe("지출 결의서.pdf");
@@ -122,7 +122,12 @@ describe("FormsPage", () => {
     renderPage();
     await screen.findByTestId("preview");
     fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf 메뉴" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "파일 삭제" }));
+    const removeItem = await screen.findByRole("menuitem", { name: "파일 삭제" });
+    // ⋯ 메뉴의 다운로드는 한글 파일명을 유지해 내려받음
+    const download = screen.getByText("다운로드").closest("a")!;
+    expect(download.getAttribute("href")).toBe("/api/forms/2/download");
+    expect(download.getAttribute("download")).toBe("지출 결의서.pdf");
+    fireEvent.click(removeItem);
     const dialog = await screen.findByRole("dialog", { name: "파일 삭제" });
     expect(within(dialog).getByText(/"지출 결의서.pdf" 파일을 삭제할까요?/)).toBeTruthy();
     expect(deleteForm).not.toHaveBeenCalled();

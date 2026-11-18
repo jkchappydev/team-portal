@@ -383,9 +383,37 @@ a:not([draggable="true"]) {
   text-overflow: ellipsis;
 }
 
-/* 워드 미리보기는 종이 모양 그대로 회색 바탕 위에 표시 */
+/* 워드 미리보기: 회색 바탕·짙은 그림자 없이 종이만 얇은 테두리로 담담하게 (넓은 칸에서는 가운데) */
 .docx-preview .docx-wrapper {
-  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+}
+
+.docx-preview .docx-wrapper > section.docx {
+  box-shadow: none;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.docx-preview .docx-wrapper > section.docx:last-child {
+  margin-bottom: 0;
+}
+
+/* 미리볼 수 없는 형식: 회색 칸 가운데에 "미리보기 없음" */
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-gray-1);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+[data-mantine-color-scheme="dark"] .preview-empty {
+  background: var(--mantine-color-dark-6);
 }
 
 /* 텍스트 파일 미리보기 */

@@ -83,7 +83,7 @@ describe("FilePage", () => {
 
     renderPage();
 
-    expect(await screen.findByText(/미리보기를 지원하지 않습니다/)).toBeTruthy();
+    expect(await screen.findByText("미리보기 없음")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

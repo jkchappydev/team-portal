@@ -139,7 +139,6 @@ export function FormsPage() {
             void upload(files);
           }} />
       </Group>
-      <Text size="sm" c="dimmed">파일을 이 화면에 끌어다 놓아도 올라가고, 목록 줄을 끌어 순서를 바꿀 수 있습니다.</Text>
       {error && <Alert color="red">공유 보관함 목록을 불러오지 못했습니다.</Alert>}
 
       <Box className="forms-layout" data-file-over={fileOver || undefined}>
@@ -184,19 +183,15 @@ export function FormsPage() {
         <Paper withBorder radius="md" p="md" className="forms-preview">
           {selected ? (
             <Stack gap="md">
-              <Group justify="space-between" align="flex-start" wrap="nowrap">
-                <Box style={{ minWidth: 0 }}>
-                  <Title order={4} style={{ wordBreak: "break-all" }}>
-                    <span aria-hidden style={{ marginRight: 8 }}>{fileIconOf(selected.name)}</span>{selected.name}
-                  </Title>
-                  <Text size="xs" c="dimmed" mt={4}>
-                    {formatFileSize(selected.size)} · {selected.uploadedByName || "알 수 없음"} · {formatDate(selected.createdAt)}
-                  </Text>
-                </Box>
-                <Button component="a" href={selected.url} download={selected.name} variant="light" style={{ flexShrink: 0 }}>
-                  다운로드
-                </Button>
-              </Group>
+              {/* 다운로드는 목록 줄의 ⋯ 메뉴에서 */}
+              <Box style={{ minWidth: 0 }}>
+                <Title order={4} style={{ wordBreak: "break-all" }}>
+                  <span aria-hidden style={{ marginRight: 8 }}>{fileIconOf(selected.name)}</span>{selected.name}
+                </Title>
+                <Text size="xs" c="dimmed" mt={4}>
+                  {formatFileSize(selected.size)} · {formatDate(selected.createdAt)}
+                </Text>
+              </Box>
               <FilePreview url={selected.url} fileName={selected.name} />
             </Stack>
           ) : (

@@ -44,15 +44,33 @@ function DocxPreview({ buffer }: { buffer: ArrayBuffer }) {
     const body = bodyRef.current;
     if (!body) return;
     const run: Run = { cancelled: false };
+    // 종이 폭이 미리보기 칸보다 넓으면 칸에 맞게 통째로 줄임 (좁은 창에서 종이가 칸 밖으로 튀어나오지 않게)
+    const fit = () => {
+      const wrapper = body.querySelector<HTMLElement>(".docx-wrapper");
+      if (!wrapper) return;
+      wrapper.style.zoom = "";
+      // 가운데 정렬된 종이가 왼쪽으로 넘친 폭은 scrollWidth에 잡히지 않으므로 종이 폭을 직접 잼
+      const pages = Array.from(wrapper.querySelectorAll<HTMLElement>(":scope > section"));
+      const pageWidth = Math.max(1, ...pages.map((page) => page.offsetWidth));
+      const scale = Math.min(1, body.clientWidth / pageWidth);
+      wrapper.style.zoom = scale < 1 ? String(scale) : "";
+    };
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
     import("docx-preview")
       .then(({ renderAsync }) => {
         if (run.cancelled) return;
         body.innerHTML = "";
         return renderAsync(buffer, body, undefined, { inWrapper: true, ignoreLastRenderedPageBreak: true });
       })
+      .then(() => {
+        if (run.cancelled) return;
+        fit();
+        observer?.observe(body);
+      })
       .catch(() => !run.cancelled && setError(true));
     return () => {
       run.cancelled = true;
+      observer?.disconnect();
     };
   }, [buffer]);
   if (error) return <Alert color="red">워드 문서를 표시하지 못했습니다. 다운로드해서 열어 주세요.</Alert>;
@@ -152,7 +170,8 @@ export function FilePreview({ url, fileName }: Props) {
   const { buffer, error } = useFileBuffer(url, kind !== "none");
 
   if (kind === "none") {
-    return <Alert color="gray">이 형식은 미리보기를 지원하지 않습니다. 다운로드해서 열어 주세요.</Alert>;
+    // zip 등 미리볼 수 없는 형식은 회색 칸 가운데에 짧게 표시 (공유 보관함·파일 화면 공용)
+    return <Box className="preview-empty">미리보기 없음</Box>;
   }
   if (error) return <Alert color="red">파일을 불러오지 못했습니다.</Alert>;
   if (!buffer) return <Loader size="sm" />;
