@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { anchorAt, copyBlocks, marqueeRect, pickMarqueeBlocks } from "./blockMarquee";
+import { anchorAt, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks } from "./blockMarquee";
 import type { MarqueeBlock } from "./blockMarquee";
 
 const rect = (top: number, bottom: number) => ({ left: 100, right: 600, top, bottom });
@@ -75,5 +75,98 @@ describe("고른 블록 복사", () => {
     expect(order).toEqual(["focus", "copy", "줄 1|줄 2"]);
     editor.unmount();
     host.remove();
+  });
+});
+
+describe("고른 블록 단축키", () => {
+  const key = (key: string, code: string, ctrlKey = false) => ({ key, code, ctrlKey, metaKey: false });
+
+  // 한글 입력 상태에서는 Ctrl+C·X의 key가 자모나 "Process"로 오므로 자판 위치로도 판단
+  it("한글 입력 상태의 Ctrl+C·X도 복사·잘라내기로 본다", () => {
+    expect(marqueeKeyAction(key("ㅊ", "KeyC", true))).toBe("copy");
+    expect(marqueeKeyAction(key("Process", "KeyC", true))).toBe("copy");
+    expect(marqueeKeyAction(key("ㅌ", "KeyX", true))).toBe("cut");
+    expect(marqueeKeyAction(key("Process", "KeyX", true))).toBe("cut");
+  });
+
+  it("영문 입력 상태와 Cmd 조합도 그대로 처리한다", () => {
+    expect(marqueeKeyAction(key("c", "KeyC", true))).toBe("copy");
+    expect(marqueeKeyAction(key("C", "KeyC", true))).toBe("copy");
+    expect(marqueeKeyAction({ key: "x", code: "KeyX", ctrlKey: false, metaKey: true })).toBe("cut");
+  });
+
+  it("Ctrl 없이 누른 c는 아무것도 하지 않고 Delete·Backspace·Esc는 각각 처리한다", () => {
+    expect(marqueeKeyAction(key("ㅊ", "KeyC"))).toBeNull();
+    expect(marqueeKeyAction(key("c", "KeyC"))).toBeNull();
+    expect(marqueeKeyAction(key("Delete", "Delete"))).toBe("delete");
+    expect(marqueeKeyAction(key("Process", "Backspace"))).toBe("delete");
+    expect(marqueeKeyAction(key("Escape", "Escape"))).toBe("escape");
+  });
+});
+
+describe("고른 블록을 손잡이로 끌기", () => {
+  // 블록 i는 화면 위 i*30 ~ i*30+30에 있다고 보고, 사각형으로 2~4번째 블록을 고른 상태를 만듦
+  const setup = () => {
+    const editor = BlockNoteEditor.create({
+      initialContent: Array.from({ length: 6 }, (_, i) => ({ type: "paragraph" as const, content: `줄 ${i + 1}` })),
+    });
+    const area = document.createElement("main");
+    const host = document.createElement("div");
+    const sideMenu = document.createElement("div");
+    sideMenu.className = "bn-side-menu";
+    const handle = document.createElement("div");
+    handle.setAttribute("draggable", "true");
+    sideMenu.appendChild(handle);
+    area.append(host, sideMenu);
+    document.body.appendChild(area);
+    editor.mount(host);
+    const ids = editor.document.map((block) => block.id);
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      const index = ids.indexOf(this.getAttribute("data-id") ?? "");
+      if (index < 0 || !this.classList.contains("bn-block")) return new DOMRect(0, 0, 700, 0);
+      return new DOMRect(100, index * 30, 500, 30);
+    });
+    const controller = new AbortController();
+    installBlockMarquee(editor, area, controller.signal);
+    const mouse = (type: string, target: EventTarget, x: number, y: number) =>
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y }));
+    mouse("mousedown", area, 20, 35);
+    mouse("mousemove", document, 400, 100);
+    mouse("mouseup", document, 400, 100);
+    const cleanup = () => {
+      controller.abort();
+      editor.unmount();
+      area.remove();
+      vi.restoreAllMocks();
+    };
+    return { editor, ids, area, handle, mouse, cleanup };
+  };
+
+  // 예전에는 손잡이를 누르는 순간 고른 블록이 풀려 손잡이 블록 하나만 옮겨졌음
+  it("고른 블록이 있을 때 손잡이를 눌러도 선택이 남아 함께 끌 수 있다", () => {
+    const { editor, ids, handle, mouse, cleanup } = setup();
+    expect(marqueeSelection(editor)).toEqual(ids.slice(1, 4));
+
+    mouse("mousedown", handle, 130, 45);
+    expect(marqueeSelection(editor)).toEqual(ids.slice(1, 4));
+
+    handle.dispatchEvent(new Event("dragend", { bubbles: true }));
+    expect(marqueeSelection(editor)).toEqual([]);
+    cleanup();
+  });
+
+  it("손잡이를 누르고 끌지 않고 떼면 선택을 푼다", () => {
+    const { editor, handle, mouse, cleanup } = setup();
+    mouse("mousedown", handle, 130, 45);
+    mouse("mouseup", document, 130, 45);
+    expect(marqueeSelection(editor)).toEqual([]);
+    cleanup();
+  });
+
+  it("손잡이가 아닌 곳을 누르면 바로 선택을 푼다", () => {
+    const { editor, area, mouse, cleanup } = setup();
+    mouse("mousedown", area, 20, 300);
+    expect(marqueeSelection(editor)).toEqual([]);
+    cleanup();
   });
 });

@@ -99,6 +99,24 @@ export function copyBlocks(editor: AnyEditor, ids: string[]): void {
   document.execCommand("copy");
 }
 
+// 고른 블록에 대한 단축키 (한글 입력 상태에서는 Ctrl+C의 key가 "ㅊ"이나 "Process"로 와서 key만 보면 복사가 되다 말다 함 → 자판 위치 code로 판단)
+export type MarqueeKeyAction = "delete" | "cut" | "copy" | "escape" | null;
+export function marqueeKeyAction(e: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey">): MarqueeKeyAction {
+  if (e.key === "Delete" || e.key === "Backspace" || e.code === "Delete" || e.code === "Backspace") return "delete";
+  if (e.key === "Escape" || e.code === "Escape") return "escape";
+  if (!e.ctrlKey && !e.metaKey) return null;
+  if (e.code === "KeyX" || e.key.toLowerCase() === "x") return "cut";
+  if (e.code === "KeyC" || e.key.toLowerCase() === "c") return "copy";
+  return null;
+}
+
+// 복사하느라 잡은 블록 범위 선택을 첫 위치로 접음
+// 남겨 두면 나중에 그 범위 안 블록 손잡이를 끌 때 BlockNote가 고르지 않은 블록까지 함께 옮김
+function collapseSelection(editor: AnyEditor): void {
+  const view = editor.prosemirrorView;
+  view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.selection.$from)));
+}
+
 // 시작점을 본문(편집기) 기준 위치로 기억해 두고 지금 본문 위치로 화면 좌표를 되살림
 // 끄는 도중 휠로 스크롤해도 시작점이 처음 누른 블록에 붙어 있어 이미 고른 블록이 빠지지 않음
 export interface MarqueeAnchor {
@@ -122,6 +140,8 @@ const ACTIVE_CLASS = "block-marquee-active";
 // 사각형을 그리는 동안 html에 붙임 (블록 손잡이 숨김)
 const DRAGGING_CLASS = "block-marquee-dragging";
 const DRAG_THRESHOLD = 4;
+// 블록 손잡이(끌기 버튼)
+const HANDLE = ".bn-side-menu [draggable='true']";
 
 // 노션처럼 블록 바깥(손잡이 왼쪽 여백 등)에서 끌면 사각형으로 여러 블록을 고름
 // 고른 블록은 파랗게 표시하고 Delete·Backspace로 지움, Ctrl+C·X로 복사·잘라내기, 손잡이로 함께 끌어 옮김
@@ -132,6 +152,8 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   let pointer: { x: number; y: number } = { x: 0, y: 0 };
   let box: HTMLDivElement | undefined;
   let selected: string[] = [];
+  // 고른 블록이 있는 채로 손잡이를 누른 상태
+  let handlePressed = false;
   const editorRoot = () => area.querySelector<HTMLElement>(".bn-editor");
 
   const mark = (ids: string[]) => {
@@ -161,9 +183,15 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   };
 
   area.addEventListener("mousedown", (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    // 고른 블록이 있을 때 손잡이를 누르면 선택을 남겨 둠 (끌면 고른 블록을 함께 옮기고, 끌지 않고 떼거나 끌기가 끝나면 해제)
+    // 예전에는 누르는 순간 해제해 손잡이 블록 하나만 옮겨졌고, 직전에 Ctrl+C로 잡힌 편집기 선택이 남아 있을 때만 함께 옮겨져 되다 말다 했음
+    if (selected.length > 0 && e.button === 0 && target?.closest(HANDLE)) {
+      handlePressed = true;
+      return;
+    }
     clear();
     const root = editorRoot();
-    const target = e.target instanceof Element ? e.target : null;
     if (e.button !== 0 || !editor.isEditable || !root || !target || target.closest(NOT_START)) return;
     // 노션처럼 페이지 영역 어디서든 시작 (첫 블록 위 빈 곳·속성 줄 여백·본문 아래 등)
     start = anchorAt(root.getBoundingClientRect(), e.clientX, e.clientY);
@@ -210,7 +238,16 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
     if (start && box) update();
   }, { capture: true, passive: true, signal });
 
+  // 손잡이를 누르고 끌지 않고 뗀 경우 (끌기가 시작되면 mouseup 대신 dragend가 옴)
+  const releaseHandle = () => {
+    if (!handlePressed) return;
+    handlePressed = false;
+    clear();
+  };
+  document.addEventListener("dragend", releaseHandle, { signal });
+
   document.addEventListener("mouseup", () => {
+    releaseHandle();
     if (!start) return;
     const dragged = !!box;
     finishBox();
@@ -222,16 +259,18 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   }, { signal });
 
   window.addEventListener("keydown", (e) => {
-    if (selected.length === 0 || e.isComposing) return;
+    // 글자 조합 중에는 Delete·Esc를 건드리지 않음 (Ctrl·Cmd 조합은 조합 중이라 와도 복사·잘라내기로 처리)
+    if (selected.length === 0 || (e.isComposing && !e.ctrlKey && !e.metaKey)) return;
     const ids = selected;
-    if (e.key === "Delete" || e.key === "Backspace") {
+    const action = marqueeKeyAction(e);
+    if (action === "delete") {
       e.preventDefault();
       e.stopPropagation();
       clear();
       editor.removeBlocks(ids.filter((id) => editor.getBlock(id)));
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x") {
+    if (action === "cut") {
       e.preventDefault();
       e.stopPropagation();
       // 블록 범위를 잠깐 선택해 복사한 뒤 블록을 지움
@@ -240,16 +279,16 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
       editor.removeBlocks(ids.filter((id) => editor.getBlock(id)));
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+    if (action === "copy") {
       e.preventDefault();
       copyBlocks(editor, ids);
+      collapseSelection(editor);
       editor.prosemirrorView.dom.blur();
       document.getSelection()?.removeAllRanges();
       return;
     }
-    if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
     // Esc는 선택 해제, 그 밖의 키는 무시 (편집기 포커스가 없어 글자가 들어가지 않음)
-    if (e.key === "Escape") {
+    if (action === "escape") {
       e.preventDefault();
       clear();
     }
