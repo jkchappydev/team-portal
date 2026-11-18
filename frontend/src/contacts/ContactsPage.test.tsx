@@ -30,6 +30,7 @@ describe("ContactsPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(listContacts).mockResolvedValue([hong, kim]);
+    localStorage.clear();
   });
   afterEach(cleanup);
 
@@ -51,6 +52,40 @@ describe("ContactsPage", () => {
     // 카드마다 최종 수정일
     expect(screen.getByText("최종 수정일 : 2026-11-17")).toBeTruthy();
     expect(screen.getByText("최종 수정일 : 2026-10-02")).toBeTruthy();
+  });
+
+  it("한 줄 보기로 바꾸면 카드 내용 전부를 연락처마다 한 줄에 보이고, 고른 보기를 기억한다", async () => {
+    renderPage();
+    await screen.findByText("홍길동");
+    expect(screen.queryByRole("table", { name: "외부 연락처 목록" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "한 줄" }));
+
+    const table = screen.getByRole("table", { name: "외부 연락처 목록" });
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    // 이름 가나다순 그대로 (김철수, 홍길동)
+    expect(rows.map((row) => row.querySelectorAll("td")[0].textContent)).toEqual(["김김철수", "홍홍길동"]);
+    // 카드 내용 전부를 입력 창 순서대로 한 줄에 (이름·업체·이메일·전화번호 1·2·연관 프로젝트·메모·최종 수정일)
+    const cells = Array.from(rows[1].querySelectorAll("td")).map((cell) => cell.textContent);
+    expect(cells.slice(1, 8)).toEqual(["가나출판", "hong@example.com", "010-1234-5678", "02-555-1234", "교과서 개발, 전자책", "오전에만 통화 가능", "2026-11-17"]);
+    const links = Array.from(rows[1].querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(links).toEqual(["mailto:hong@example.com", "tel:010-1234-5678", "tel:02-555-1234"]);
+    // 빈 값은 -
+    expect(Array.from(rows[0].querySelectorAll("td")).map((cell) => cell.textContent).slice(2, 7)).toEqual(["-", "-", "-", "-", "-"]);
+    expect(localStorage.getItem("contacts-view")).toBe("list");
+
+    // 다시 열어도 한 줄 보기
+    cleanup();
+    renderPage();
+    expect(await screen.findByRole("table", { name: "외부 연락처 목록" })).toBeTruthy();
+  });
+
+  it("한 줄 보기에서도 ⋯ 메뉴로 수정 창을 연다", async () => {
+    localStorage.setItem("contacts-view", "list");
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "홍길동 메뉴" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "연락처 수정" }));
+    expect(await screen.findByDisplayValue("가나출판")).toBeTruthy();
   });
 
   it("검색하면 업체·프로젝트·전화번호 숫자로 거른다", async () => {

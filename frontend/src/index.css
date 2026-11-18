@@ -1555,6 +1555,13 @@ html.block-marquee-dragging .bn-side-menu {
 /* 외부 연락처 명함 카드: 연관 프로젝트·메모는 구분선 아래 */
 .contact-card { position: relative; }
 .contact-card-notes { border-top: 1px solid var(--mantine-color-default-border); }
+/* 외부 연락처 한 줄 보기: ⋯ 메뉴는 줄에 마우스를 올리거나 포커스·메뉴가 열렸을 때만 (터치 화면은 항상) */
+.contact-table .contact-row-menu { opacity: 0; transition: opacity 120ms; }
+.contact-table .contact-row:hover .contact-row-menu,
+.contact-table .contact-row:focus-within .contact-row-menu,
+.contact-table .contact-row-menu:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { .contact-table .contact-row-menu { opacity: 1; } }
+.contact-table thead th { color: var(--mantine-color-dimmed); font-weight: 500; border-bottom: 1px solid var(--mantine-color-default-border); }
 
 /* 열 묶음(columnList): 열을 가로로 나란히 둠, 열 사이 경계에서 너비 조절 */
 .bn-column-list {

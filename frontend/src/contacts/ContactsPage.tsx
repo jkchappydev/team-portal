@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
-  ActionIcon, Alert, Anchor, Avatar, Box, Button, Group, Menu, Modal, Paper, SimpleGrid, Stack, Text, TextInput, Title, UnstyledButton,
+  ActionIcon, Alert, Anchor, Avatar, Box, Button, Group, Menu, Modal, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput,
+  Title, UnstyledButton, VisuallyHidden,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CONTACTS_KEY, deleteContact, listContacts } from "../api/contacts";
@@ -97,6 +98,22 @@ function InfoLine({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
+// 수정·삭제 ⋯ 메뉴 (카드·한 줄 보기 공용)
+function ContactMenu({ contact, onEdit, onDelete }: { contact: ContactDto; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <Menu position="bottom-end" withinPortal>
+      <Menu.Target>
+        <ActionIcon variant="subtle" color="gray" aria-label={`${contact.name} 메뉴`}>⋯</ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item onClick={onEdit}>연락처 수정</Menu.Item>
+        <Menu.Divider />
+        <Menu.Item color="red" onClick={onDelete}>연락처 삭제</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
 // 연락처 한 장 (명함 모양, 수정·삭제는 ⋯ 메뉴)
 function ContactCard({ contact, onEdit, onDelete }: {
   contact: ContactDto;
@@ -122,16 +139,7 @@ function ContactCard({ contact, onEdit, onDelete }: {
             <Text size="sm" c="dimmed" truncate>{contact.company || "업체 없음"}</Text>
           </div>
         </Group>
-        <Menu position="bottom-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" aria-label={`${contact.name} 메뉴`}>⋯</ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item onClick={onEdit}>연락처 수정</Menu.Item>
-            <Menu.Divider />
-            <Menu.Item color="red" onClick={onDelete}>연락처 삭제</Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <ContactMenu contact={contact} onEdit={onEdit} onDelete={onDelete} />
       </Group>
       <Stack gap={6}>
         {/* 이메일·전화번호는 눌러서 바로 메일·전화 */}
@@ -169,7 +177,93 @@ function ContactCard({ contact, onEdit, onDelete }: {
   );
 }
 
-// 외부 연락처: 회사 밖 업체 담당자를 명함 카드로 (팀원 모두가 같이 보고 고침)
+// 한 줄 보기 칸 안 글: 한 줄로 자르고 마우스를 올리면 전체 글 (여러 줄 메모·프로젝트는 띄어쓰기로 이어 붙임)
+function Cell({ value }: { value: string | null }) {
+  const text = value?.replace(/\s*\n\s*/g, " ").trim();
+  if (!text) return <Text size="sm" c="dimmed">-</Text>;
+  return <Text size="sm" truncate title={text}>{text}</Text>;
+}
+
+function LinkCell({ value, href }: { value: string | null; href: string }) {
+  if (!value) return <Text size="sm" c="dimmed">-</Text>;
+  return (
+    <Text size="sm" truncate title={value}>
+      <Anchor size="sm" href={href} draggable={false} c="inherit">{value}</Anchor>
+    </Text>
+  );
+}
+
+// 한 줄 보기: 카드 내용 전부를 연락처 입력 창 순서대로 한 줄에 (칸마다 한 줄로 자르고, 좁은 화면은 가로 스크롤)
+function ContactTable({ contacts, onEdit, onDelete }: {
+  contacts: ContactDto[];
+  onEdit: (contact: ContactDto) => void;
+  onDelete: (contact: ContactDto) => void;
+}) {
+  return (
+    <Table.ScrollContainer minWidth={1150} type="native">
+      <Table highlightOnHover withRowBorders={false} verticalSpacing={6} layout="fixed" className="contact-table"
+        aria-label="외부 연락처 목록">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th w={170}>이름</Table.Th>
+            <Table.Th w={120}>업체</Table.Th>
+            <Table.Th w={200}>이메일</Table.Th>
+            <Table.Th w={130}>전화번호 1</Table.Th>
+            <Table.Th w={130}>전화번호 2</Table.Th>
+            <Table.Th>연관 프로젝트</Table.Th>
+            <Table.Th>메모</Table.Th>
+            <Table.Th w={100}>최종 수정일</Table.Th>
+            <Table.Th w={44}><VisuallyHidden>메뉴</VisuallyHidden></Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {contacts.map((contact) => (
+            <Table.Tr key={contact.id} className="contact-row">
+              <Table.Td>
+                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                  <Avatar size={32} radius="xl" variant="filled" color={contactColor(contact)}>{contact.name.slice(0, 1)}</Avatar>
+                  <Text size="sm" truncate title={contact.name}>{contact.name}</Text>
+                </Group>
+              </Table.Td>
+              <Table.Td><Cell value={contact.company} /></Table.Td>
+              <Table.Td><LinkCell value={contact.email} href={`mailto:${contact.email}`} /></Table.Td>
+              <Table.Td><LinkCell value={contact.phone} href={`tel:${contact.phone}`} /></Table.Td>
+              <Table.Td><LinkCell value={contact.phone2} href={`tel:${contact.phone2}`} /></Table.Td>
+              <Table.Td><Cell value={contact.project} /></Table.Td>
+              <Table.Td><Cell value={contact.memo} /></Table.Td>
+              <Table.Td><Text size="sm" c="dimmed">{formatDate(contact.updatedAt)}</Text></Table.Td>
+              <Table.Td className="contact-row-menu">
+                <ContactMenu contact={contact} onEdit={() => onEdit(contact)} onDelete={() => onDelete(contact)} />
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
+  );
+}
+
+// 카드 보기·한 줄 보기 (고른 보기는 이 브라우저에 기억)
+type ContactView = "card" | "list";
+const VIEW_STORAGE_KEY = "contacts-view";
+
+function readView(): ContactView {
+  try {
+    return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "card";
+  } catch {
+    return "card";
+  }
+}
+
+function saveView(view: ContactView): void {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, view);
+  } catch {
+    // 저장소를 못 쓰는 환경이면 이번 화면에서만 유지
+  }
+}
+
+// 외부 연락처: 회사 밖 업체 담당자를 명함 카드 또는 한 줄 목록으로 (팀원 모두가 같이 보고 고침)
 export function ContactsPage() {
   const queryClient = useQueryClient();
   const { data: contacts = [], error, isLoading } = useQuery({ queryKey: CONTACTS_KEY, queryFn: listContacts });
@@ -178,6 +272,11 @@ export function ContactsPage() {
   const [deleting, setDeleting] = useState<ContactDto | null>(null);
   // 처음에는 이름 가나다순
   const [sort, setSort] = useState<SortState>({ key: "name", direction: "asc" });
+  const [view, setView] = useState<ContactView>(readView);
+  const changeView = (next: ContactView) => {
+    setView(next);
+    saveView(next);
+  };
   const searching = query.trim().length > 0;
   const visible = sortContacts(contacts.filter((c) => matches(c, query)), sort);
   const sortButton = (key: SortKey, label: string) => (
@@ -201,19 +300,26 @@ export function ContactsPage() {
         </Group>
         <Button onClick={() => setDialog({ editing: null })}>+ 연락처 추가</Button>
       </Group>
-      <Group gap="lg">
-        <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
-          onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
-        <Group gap="md">
-          {sortButton("name", "이름")}
-          {sortButton("company", "업체")}
+      <Group gap="lg" justify="space-between">
+        <Group gap="lg">
+          <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
+            onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
+          <Group gap="md">
+            {sortButton("name", "이름")}
+            {sortButton("company", "업체")}
+          </Group>
         </Group>
+        {/* 명함 카드 또는 구글 주소록처럼 한 줄씩 */}
+        <SegmentedControl size="xs" value={view} onChange={(value) => changeView(value as ContactView)} aria-label="보기 방식"
+          data={[{ value: "card", label: "카드" }, { value: "list", label: "한 줄" }]} />
       </Group>
       {error && <Alert color="red">외부 연락처를 불러오지 못했습니다.</Alert>}
       {!isLoading && visible.length === 0 ? (
         <Paper withBorder radius="md" p="xl">
           <Text size="sm" c="dimmed" ta="center">{searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}</Text>
         </Paper>
+      ) : view === "list" ? (
+        <ContactTable contacts={visible} onEdit={(contact) => setDialog({ editing: contact })} onDelete={setDeleting} />
       ) : (
         // 화면 폭에 맞춰 1~4장씩, 카드 높이는 같은 줄에서 맞춤
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="md" verticalSpacing="md">
