@@ -3,6 +3,7 @@ import { AppShell, Box } from "@mantine/core";
 import { Outlet, useLocation } from "react-router-dom";
 import { useCurrentUser } from "../user/currentUser";
 import { Sidebar } from "./Sidebar";
+import { NewCsToasts } from "../home/NewCsToasts";
 import { prefersReducedMotion } from "./reorderAnimation";
 
 // 다른 화면으로 옮길 때 본문이 옅게 나타나는 시간 (길면 오히려 느려 보여 짧게)
@@ -25,6 +26,8 @@ export function AppLayout() {
     <AppShell.Main>
       {/* 메뉴 화면은 위쪽도 왼쪽과 같은 여백 */}
       {user && <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}><Outlet /></Box>}
+      {/* 새로 접수된 CS 토스트 (모든 화면) */}
+      {user && <NewCsToasts />}
     </AppShell.Main>
   </AppShell>;
 }
