@@ -1790,7 +1790,8 @@ body.bn-column-resizing {
   padding-block: 0;
 }
 
-.page-property-value .mantine-Input-input:not(.mantine-PillsInput-input) {
+/* 한 줄 입력칸만 30px 고정, 칩 입력칸(담당자 MultiSelect는 mantine-MultiSelect-input)은 칩이 늘면 높이도 늘어남 */
+.page-property-value .mantine-Input-input:not(.mantine-PillsInput-input):not(.mantine-MultiSelect-input) {
   height: 30px;
 }
 
@@ -1802,6 +1803,9 @@ body.bn-column-resizing {
 
 .page-property-more {
   flex: 0 0 auto;
+  /* 첫 줄(34px) 가운데: (34 - 22) / 2 */
+  align-self: flex-start;
+  margin-top: 6px;
   margin-inline-end: 4px;
   opacity: 0;
 }
@@ -1841,6 +1845,9 @@ body.bn-column-resizing {
 
 .page-property-handle {
   position: absolute;
+  /* 값이 여러 줄이어도 첫 줄(34px) 높이에 고정 */
+  top: 0;
+  line-height: 34px;
   left: -22px;
   width: 18px;
   text-align: center;
@@ -1858,6 +1865,45 @@ body.bn-column-resizing {
   flex: 0 0 160px;
   min-width: 0;
   padding-inline: 6px;
+  /* 담당자 칩이 여러 줄이어도 이름은 줄 가운데가 아니라 첫 줄(34px) 높이에 */
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+/* 담당자 칩이 많으면 잘리지 않고 다음 줄로
+   Mantine 칩 입력칸은 넘친 줄을 숨기므로(--input-overflow: hidden) 보이게 바꾸고,
+   칩 뒤 검색칸 최소 폭(100px) 때문에 좁은 화면에서 칩이 일찍 다음 줄로 밀리지 않게 줄임 */
+/* 클래스 이름은 MultiSelect 안에서 mantine-MultiSelect-*로 붙고, 칩 입력칸 기본 이름(mantine-PillsInput-*)도 함께 지정 */
+.page-property-people .mantine-MultiSelect-input,
+.page-property-people .mantine-PillsInput-input {
+  --input-overflow: visible;
+  --input-size: auto;
+  height: auto;
+  overflow: visible;
+}
+
+.page-property-people .mantine-MultiSelect-pillsList,
+.page-property-people .mantine-PillGroup-group {
+  flex-wrap: wrap;
+}
+
+.page-property-people .mantine-MultiSelect-inputField,
+.page-property-people .mantine-PillsInputField-field {
+  min-width: 40px;
+}
+
+/* 오른쪽 펼침 표시(⌃⌄)도 칩이 여러 줄일 때 가운데가 아니라 첫 줄(30px) 높이에 */
+.page-property-people [data-position="right"] {
+  height: 30px;
+}
+
+/* 좁은 화면: 이름 칸(160px)이 화면 절반 가까이를 차지해 값(담당자 칩) 자리가 좁으므로 줄임 */
+@media (max-width: 47.99em) {
+  .page-property-label {
+    flex-basis: 96px;
+  }
 }
 
 .page-property-name {
