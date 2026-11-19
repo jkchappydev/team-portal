@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { anchorAt, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks } from "./blockMarquee";
+import { anchorAt, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks, readMarqueeBlocks } from "./blockMarquee";
+import { editorSchema } from "./schema";
 import type { MarqueeBlock } from "./blockMarquee";
 
 const rect = (top: number, bottom: number) => ({ left: 100, right: 600, top, bottom });
@@ -168,5 +169,40 @@ describe("고른 블록을 손잡이로 끌기", () => {
     mouse("mousedown", area, 20, 300);
     expect(marqueeSelection(editor)).toEqual([]);
     cleanup();
+  });
+});
+
+describe("토글·열 묶음이 섞인 문서의 블록 읽기", () => {
+  it("토글·열 묶음과 그 뒤 블록도 모두 고를 수 있는 블록으로 읽는다", () => {
+    const original = Element.prototype.getBoundingClientRect;
+    // jsdom은 크기가 0이라 모든 요소를 높이 10으로 둠
+    Element.prototype.getBoundingClientRect = () => ({ top: 0, bottom: 10, left: 0, right: 100, width: 100, height: 10, x: 0, y: 0, toJSON: () => ({}) });
+    try {
+      const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: [
+        { id: "p1", type: "paragraph", content: "가" },
+        { id: "t1", type: "toggleListItem", content: "기존", children: [{ id: "tc", type: "paragraph", content: "안" }] },
+        { id: "b1", type: "bulletListItem", content: "유저", children: [{ id: "b2", type: "bulletListItem", content: "Repo" }] },
+        { id: "q1", type: "quote", content: "자주있는 CS" },
+        { id: "cl", type: "columnList", children: [
+          { id: "c1", type: "column", props: { width: 1 }, children: [{ id: "in1", type: "toggleListItem", content: "열 안 토글" }] },
+        ] },
+        { id: "p2", type: "paragraph", content: "나" },
+      ] });
+      const host = document.createElement("div");
+      document.body.appendChild(host);
+      editor.mount(host);
+      const root = editor.prosemirrorView.dom;
+      const blocks = readMarqueeBlocks(root);
+      // 열 묶음(.bn-block-outer로 감싸지 않음)도 고를 수 있고, 그 안의 블록은 열 묶음의 하위로 읽음
+      expect(blocks.map((b) => b.id)).toEqual(["p1", "t1", "b1", "q1", "cl", "p2"]);
+      // BlockNote가 열 끝에 빈 줄을 하나 더 붙일 수 있어 첫 블록만 확인
+      expect(blocks.find((b) => b.id === "cl")!.children[0].id).toBe("in1");
+      // 토글 안 블록(.bn-toggle-frame 안)도 하위로 읽어 토글 안에서만 고를 수 있음
+      expect(blocks.find((b) => b.id === "t1")!.children.map((b) => b.id)).toEqual(["tc"]);
+      editor.unmount();
+      host.remove();
+    } finally {
+      Element.prototype.getBoundingClientRect = original;
+    }
   });
 });

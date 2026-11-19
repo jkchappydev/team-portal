@@ -36,14 +36,26 @@ export function pickMarqueeBlocks(blocks: MarqueeBlock[], marquee: Rect): string
   return hit.map((block) => block.id);
 }
 
-const CHILD_BLOCKS = ":scope > .bn-block-group > .bn-block-outer > .bn-block[data-id]";
+// 하위 블록 묶음 위치: 보통 블록은 바로 아래, 토글은 내용과 함께 .bn-toggle-frame > .bn-toggle-slot 안에 한 겹 더 들어 있음
+const GROUP_PATHS = [":scope > .bn-block-group", ":scope > .bn-toggle-frame > .bn-toggle-slot > .bn-block-group"];
+// 묶음 안의 블록: 보통 블록은 .bn-block-outer로 감싸고, 열 묶음(.bn-column-list)은 감싸지 않고 바로 놓임
+const CHILD_BLOCKS = GROUP_PATHS
+  .flatMap((group) => [`${group} > .bn-block-outer > .bn-block[data-id]`, `${group} > .bn-column-list[data-id]`])
+  .join(", ");
+// 열 묶음 안의 블록 (열마다 위에서 아래로)
+const COLUMN_BLOCKS = ":scope > .bn-column > .bn-column-slot > .bn-block-outer > .bn-block[data-id]";
+// 화면에 선택 표시를 붙일 블록 요소 (블록 바깥 감싸개 .bn-block-outer도 같은 data-id라 제외)
+export const MARQUEE_BLOCK_SELECTOR = ".bn-block[data-id], .bn-column-list[data-id]";
 
-// 편집 영역의 블록 트리를 화면 위치와 함께 읽음
+// 편집 영역의 블록 트리를 화면 위치와 함께 읽음 (열 묶음과 토글 안 블록 포함)
 export function readMarqueeBlocks(container: Element): MarqueeBlock[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(CHILD_BLOCKS)).flatMap((element) => {
+  const columnList = container.classList.contains("bn-column-list");
+  const elements = container.querySelectorAll<HTMLElement>(columnList ? COLUMN_BLOCKS : CHILD_BLOCKS);
+  return Array.from(elements).flatMap((element) => {
     const rect = element.getBoundingClientRect();
     if (rect.height === 0) return [];
-    const group = element.querySelector(":scope > .bn-block-group");
+    // 열 묶음은 자기 글줄이 없어 전체가 하위 블록 영역
+    const group = element.classList.contains("bn-column-list") ? element : element.querySelector(GROUP_PATHS.join(", "));
     const groupRect = group?.getBoundingClientRect();
     return [{
       id: element.dataset.id!,
@@ -159,7 +171,10 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   const mark = (ids: string[]) => {
     const root = editorRoot();
     root?.querySelectorAll(`[${SELECTED_ATTR}]`).forEach((el) => el.removeAttribute(SELECTED_ATTR));
-    for (const id of ids) root?.querySelector(`.bn-block[data-id="${CSS.escape(id)}"]`)?.setAttribute(SELECTED_ATTR, "");
+    // 열 묶음도 선택 표시 (.bn-block-outer는 같은 data-id라 제외)
+    for (const id of ids) {
+      root?.querySelector(`:is(${MARQUEE_BLOCK_SELECTOR})[data-id="${CSS.escape(id)}"]`)?.setAttribute(SELECTED_ATTR, "");
+    }
     root?.classList.toggle(ACTIVE_CLASS, ids.length > 0);
   };
 

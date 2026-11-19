@@ -1567,11 +1567,14 @@ input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="dat
   pointer-events: none;
 }
 
-.bn-editor .bn-block[data-marquee-selected] {
+/* 열 묶음(.bn-column-list)은 .bn-block이 아니라서 함께 지정 */
+.bn-editor .bn-block[data-marquee-selected],
+.bn-editor .bn-column-list[data-marquee-selected] {
   position: relative;
 }
 
-.bn-editor .bn-block[data-marquee-selected]::after {
+.bn-editor .bn-block[data-marquee-selected]::after,
+.bn-editor .bn-column-list[data-marquee-selected]::after {
   content: "";
   position: absolute;
   /* 노션처럼 붙어 있는 블록끼리도 사이에 흰 틈이 보이게 위아래를 조금 줄임 */
