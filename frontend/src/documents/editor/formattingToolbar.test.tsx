@@ -12,4 +12,10 @@ describe("formattingToolbarItems", () => {
     expect(keys.indexOf("textAlignLeftButton")).toBeGreaterThan(keys.indexOf("codeStyleButton"));
     expect(keys.indexOf("unnestBlockButton")).toBeGreaterThan(keys.indexOf("textAlignRightButton"));
   });
+
+  it("이미지 펼치기 버튼은 삭제 다음, 다운로드 앞에 둔다", () => {
+    const keys = formattingToolbarItems().map((item) => item.key);
+    expect(keys.indexOf("imageExpandButton")).toBe(keys.indexOf("fileDeleteButton") + 1);
+    expect(keys.indexOf("fileDownloadButton")).toBe(keys.indexOf("imageExpandButton") + 1);
+  });
 });

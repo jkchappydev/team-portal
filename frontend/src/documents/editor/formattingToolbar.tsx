@@ -5,6 +5,7 @@ import {
   useDictionary, useEditorState, usePortalElement,
 } from "@blocknote/react";
 import { downloadFile } from "./fileDownload";
+import { openImageLightbox } from "./ImageLightbox";
 import { colorsFor } from "./blockMenu";
 import type { ColorKind } from "./blockMenu";
 import { clearFormatting, FORMAT_SHORTCUTS, shortcutLabel } from "./formatShortcuts";
@@ -91,6 +92,45 @@ export function FileDownloadButton() {
   );
 }
 
+// 펼치기 아이콘 (돋보기 안에 +)
+function ExpandIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M12.5 12.5 17 17M8.5 6v5M6 8.5h5" />
+    </svg>
+  );
+}
+
+// 이미지 블록 펼치기: 노션처럼 이미지를 화면 가운데에 크게 띄움 (창은 앱 레이아웃의 ImageLightbox)
+export function ImageExpandButton() {
+  const Components = useComponentsContext()!;
+  const editor = useBlockNoteEditor();
+  const block = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      const blocks = e.getSelection()?.blocks ?? [e.getTextCursorPosition().block];
+      if (blocks.length !== 1) return undefined;
+      const only = blocks[0] as unknown as DownloadableBlock;
+      return only.type === "image" && typeof only.props?.url === "string" && only.props.url ? only : undefined;
+    },
+  });
+  if (!block) return null;
+  return (
+    <Components.FormattingToolbar.Button
+      className="bn-button"
+      label="펼치기"
+      mainTooltip="펼치기"
+      icon={<ExpandIcon />}
+      onClick={() => openImageLightbox({
+        url: block.props.url as string,
+        name: typeof block.props.name === "string" ? block.props.name : "",
+      })}
+    />
+  );
+}
+
 // 도구 막대 색 버튼 아이콘: 지금 글자색·배경색을 칠한 "A"
 function ColorIcon({ textColor, backgroundColor }: { textColor?: string; backgroundColor?: string }) {
   return (
@@ -156,7 +196,7 @@ export function ColorStyleButton() {
 // 노션에 없는 정렬·들여쓰기·댓글은 뒤에 둠
 const TOOLBAR_ORDER = [
   "blockTypeSelect", "tableCellMergeButton", "fileCaptionButton", "replaceFileButton", "fileRenameButton",
-  "fileDeleteButton", "fileDownloadButton", "filePreviewButton",
+  "fileDeleteButton", "imageExpandButton", "fileDownloadButton", "filePreviewButton",
   "colorStyleButton", "boldStyleButton", "italicStyleButton", "underlineStyleButton", "clearFormattingButton",
   "createLinkButton", "strikeStyleButton", "codeStyleButton",
   "textAlignLeftButton", "textAlignCenterButton", "textAlignRightButton", "nestBlockButton", "unnestBlockButton",
@@ -171,6 +211,8 @@ export function formattingToolbarItems(): ReactElement[] {
     ...getFormattingToolbarItems()
       .filter((item) => !(isValidElement(item) && (item.key === "fileDownloadButton" || item.key === "colorStyleButton"))),
     <FileDownloadButton key="fileDownloadButton" />,
+    // 노션 "펼치기": 이미지를 크게 보기 (다운로드 버튼 앞)
+    <ImageExpandButton key="imageExpandButton" />,
     // 기본 색 버튼은 글자색 검은색이 있는 앱 색 목록 버튼으로 교체
     <ColorStyleButton key="colorStyleButton" />,
     <BasicTextStyleButton basicTextStyle="code" key="codeStyleButton" />,

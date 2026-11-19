@@ -3,6 +3,7 @@ import { ActionIcon, AppShell, Box, Group, Overlay, Text, Transition } from "@ma
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
 import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
+import { ImageLightbox } from "../documents/editor/ImageLightbox";
 import { useCurrentUser } from "../user/currentUser";
 import { Sidebar } from "./Sidebar";
 import { NewCsToasts } from "../home/NewCsToasts";
@@ -77,6 +78,8 @@ export function AppLayout() {
       {user && <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}><Outlet /></Box>}
       {/* 새로 접수된 CS 토스트 (모든 화면) */}
       {user && <NewCsToasts />}
+      {/* 본문 이미지 펼쳐보기 창 (편집기 도구 막대의 펼치기 버튼이 엶) */}
+      <ImageLightbox />
     </AppShell.Main>
   </AppShell>;
 }
