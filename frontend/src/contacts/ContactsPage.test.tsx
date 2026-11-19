@@ -181,4 +181,28 @@ describe("ContactsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
     await waitFor(() => expect(deleteContact).toHaveBeenCalledWith(2));
   });
+
+  // 좁은 화면(sm 미만)으로 보이게 matchMedia를 바꿈
+  function useMobileWidth() {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    return () => { window.matchMedia = original; };
+  }
+
+  it("좁은 화면은 한 줄 보기를 골라 두었어도 카드로 보이고 보기 전환을 숨긴다", async () => {
+    localStorage.setItem("contacts-view", "list");
+    const restore = useMobileWidth();
+    try {
+      renderPage();
+      await screen.findByText("홍길동");
+      await waitFor(() => expect(screen.queryByRole("table", { name: "외부 연락처 목록" })).toBeNull());
+      expect(screen.queryByLabelText("보기 방식")).toBeNull();
+      expect(screen.getByText("최종 수정일 : 2026-11-17")).toBeTruthy();
+    } finally {
+      restore();
+      localStorage.removeItem("contacts-view");
+    }
+  });
 });

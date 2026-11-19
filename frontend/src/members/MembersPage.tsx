@@ -1,8 +1,9 @@
 ﻿import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  ActionIcon, Alert, Badge, Button, Group, Menu, Modal, Paper, SegmentedControl, Select, Stack, Table, Text, TextInput, Title,
+  ActionIcon, Alert, Anchor, Badge, Button, Group, Menu, Modal, Paper, SegmentedControl, Select, Stack, Table, Text, TextInput, Title,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { approveSignup, listSignupRequests, rejectSignup, reopenSignup, setMemberAdmin, setMemberDeveloper } from "../api/admin";
@@ -158,11 +159,9 @@ function MemberEditModal({ member, onClose, refresh }: { member: MemberDto; onCl
 
 type MemberAction = "edit" | "delete" | null;
 
-// 팀원 한 줄: 정보는 읽기 전용으로 보여주고 변경은 ⋯ 메뉴에서
-// 관리자는 모든 줄을 바꾸고, 일반 팀원은 본인 줄의 정보 수정만 가능
-function MemberRow({ member, me, admin, developer, showRole, refresh, reorder }: {
+interface MemberItemProps {
   member: MemberDto;
-  // 권한 칸 표시 여부 (팀원 관리 화면에서만)
+  // 권한 표시 여부 (팀원 관리 화면에서만)
   showRole: boolean;
   // 로그인한 본인 (자기 자신은 삭제 불가)
   me: boolean;
@@ -171,10 +170,107 @@ function MemberRow({ member, me, admin, developer, showRole, refresh, reorder }:
   // 로그인한 사람이 개발자인지 (개발자 권한 변경 가능)
   developer: boolean;
   refresh: () => void;
-  reorder: ReturnType<typeof useMemberReorder>;
-}) {
+}
+
+// 팀원 변경 상태 (열린 창, 권한 변경·삭제 요청) - 표 줄·모바일 카드 공용
+function useMemberActions(refresh: () => void) {
   const [open, setOpen] = useState<MemberAction>(null);
   const action = useMutation({ mutationFn: (run: () => Promise<unknown>) => run(), onSuccess: refresh });
+  return { open, setOpen, action };
+}
+
+// 팀원 ⋯ 메뉴와 수정·삭제 창
+// 관리자는 모든 팀원을 바꾸고, 일반 팀원은 본인 정보 수정만 가능
+function MemberMenu({ member, me, admin, developer, refresh, actions }: MemberItemProps & {
+  actions: ReturnType<typeof useMemberActions>;
+}) {
+  const { open, setOpen, action } = actions;
+  return (
+    <>
+      {(admin || me) && <Menu position="bottom-end" withinPortal>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="gray" aria-label={`${member.name} 메뉴`}>⋯</ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
+          {/* 관리자 권한은 관리자·개발자가 바꾸되, 개발자 줄은 개발자 권한을 먼저 빼야 함 */}
+          {admin && !member.developer && (
+            <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
+              {member.admin ? "관리자 권한 제거" : "관리자 권한 주기"}
+            </Menu.Item>
+          )}
+          {/* 개발자 권한(루트 성격)은 개발자만 주거나 뺌 */}
+          {admin && developer && member.active && (
+            <Menu.Item onClick={() => action.mutate(() => setMemberDeveloper(member.id, !member.developer))}>
+              {member.developer ? "개발자 권한 제거" : "개발자 권한 주기"}
+            </Menu.Item>
+          )}
+          {/* 퇴사자는 삭제로 처리하고, 예전에 비활성으로 바꿔 둔 팀원만 다시 켤 수 있음 */}
+          {admin && !member.active && (
+            <Menu.Item onClick={() => action.mutate(() => updateMember(member.id, { active: true }))}>다시 활성화</Menu.Item>
+          )}
+          {admin && !me && !member.developer && (
+            <>
+              <Menu.Divider />
+              <Menu.Item color="red" onClick={() => setOpen("delete")}>팀원 삭제</Menu.Item>
+            </>
+          )}
+        </Menu.Dropdown>
+      </Menu>}
+      {open === "edit" && <MemberEditModal member={member} onClose={() => setOpen(null)} refresh={refresh} />}
+      <ConfirmModal
+        opened={open === "delete"}
+        title="팀원 삭제"
+        message={`${member.name} 님을 팀원 목록에서 삭제할까요? 작성한 문서, 근무 상황, 연차 기록은 그대로 남고 이름도 그대로 보입니다. 연차 표에는 삭제한 해까지만 나오고, 삭제한 팀원은 로그인할 수 없습니다. 삭제는 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        pending={action.isPending}
+        onClose={() => setOpen(null)}
+        onConfirm={() => {
+          setOpen(null);
+          action.mutate(() => deleteMember(member.id));
+        }}
+      />
+    </>
+  );
+}
+
+// 좁은 화면용 팀원 한 칸: 이름·직책, 이메일, 내선·전화(눌러서 바로 전화)
+// 부서는 모두 같아 빼고, 순서 변경은 넓은 화면에서만
+function MemberCard(props: MemberItemProps) {
+  const { member, showRole } = props;
+  const actions = useMemberActions(props.refresh);
+  return (
+    <Paper withBorder radius="md" px="md" py="sm" style={member.active ? undefined : { opacity: 0.55 }}>
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Stack gap={2} style={{ minWidth: 0 }}>
+          <Group gap={6}>
+            <Text fw={600}>{member.name}</Text>
+            {member.jobRank && <RankBadge rank={member.jobRank} />}
+            {showRole && <Badge variant="light" size="sm" color={roleBadge(member).color}>{roleBadge(member).label}</Badge>}
+            {!member.active && <Badge color="gray" variant="light" size="xs">비활성</Badge>}
+          </Group>
+          <Text size="xs" c="dimmed" style={{ wordBreak: "break-all" }}>{member.email ?? "구글 계정 연결 안 됨"}</Text>
+        </Stack>
+        <MemberMenu {...props} actions={actions} />
+      </Group>
+      {/* 이름표(내선번호·전화번호)를 앞에 붙여 줄마다 무슨 번호인지 바로 보이게 */}
+      <Stack gap={2} mt={6}>
+        <Text size="sm"><Text span size="sm" c="dimmed" mr={8}>내선번호</Text>{member.extension || "-"}</Text>
+        <Text size="sm">
+          <Text span size="sm" c="dimmed" mr={8}>전화번호</Text>
+          {member.phone ? <Anchor size="sm" href={`tel:${member.phone}`}>{member.phone}</Anchor> : "-"}
+        </Text>
+      </Stack>
+      {actions.action.error && <Text size="xs" c="red" mt={4}>{errorMessage(actions.action.error, "변경하지 못했습니다.")}</Text>}
+    </Paper>
+  );
+}
+
+// 팀원 한 줄: 정보는 읽기 전용으로 보여주고 변경은 ⋯ 메뉴에서
+function MemberRow({ reorder, ...props }: MemberItemProps & { reorder: ReturnType<typeof useMemberReorder> }) {
+  const { member, admin, showRole } = props;
+  const actions = useMemberActions(props.refresh);
+  const { action } = actions;
   return (
     <Table.Tr
       data-flip-id={`member-${member.id}`}
@@ -209,49 +305,7 @@ function MemberRow({ member, me, admin, developer, showRole, refresh, reorder }:
         </Table.Td>
       )}
       <Table.Td ta="right">
-        {(admin || me) && <Menu position="bottom-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" aria-label={`${member.name} 메뉴`}>⋯</ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item onClick={() => setOpen("edit")}>정보 수정</Menu.Item>
-            {/* 관리자 권한은 관리자·개발자가 바꾸되, 개발자 줄은 개발자 권한을 먼저 빼야 함 */}
-            {admin && !member.developer && (
-              <Menu.Item onClick={() => action.mutate(() => setMemberAdmin(member.id, !member.admin))}>
-                {member.admin ? "관리자 권한 제거" : "관리자 권한 주기"}
-              </Menu.Item>
-            )}
-            {/* 개발자 권한(루트 성격)은 개발자만 주거나 뺌 */}
-            {admin && developer && member.active && (
-              <Menu.Item onClick={() => action.mutate(() => setMemberDeveloper(member.id, !member.developer))}>
-                {member.developer ? "개발자 권한 제거" : "개발자 권한 주기"}
-              </Menu.Item>
-            )}
-            {/* 퇴사자는 삭제로 처리하고, 예전에 비활성으로 바꿔 둔 팀원만 다시 켤 수 있음 */}
-            {admin && !member.active && (
-              <Menu.Item onClick={() => action.mutate(() => updateMember(member.id, { active: true }))}>다시 활성화</Menu.Item>
-            )}
-            {admin && !me && !member.developer && (
-              <>
-                <Menu.Divider />
-                <Menu.Item color="red" onClick={() => setOpen("delete")}>팀원 삭제</Menu.Item>
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>}
-        {open === "edit" && <MemberEditModal member={member} onClose={() => setOpen(null)} refresh={refresh} />}
-        <ConfirmModal
-          opened={open === "delete"}
-          title="팀원 삭제"
-          message={`${member.name} 님을 팀원 목록에서 삭제할까요? 작성한 문서, 근무 상황, 연차 기록은 그대로 남고 이름도 그대로 보입니다. 연차 표에는 삭제한 해까지만 나오고, 삭제한 팀원은 로그인할 수 없습니다. 삭제는 되돌릴 수 없습니다.`}
-          confirmLabel="삭제"
-          pending={action.isPending}
-          onClose={() => setOpen(null)}
-          onConfirm={() => {
-            setOpen(null);
-            action.mutate(() => deleteMember(member.id));
-          }}
-        />
+        <MemberMenu {...props} actions={actions} />
       </Table.Td>
     </Table.Tr>
   );
@@ -275,6 +329,8 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
     void client.invalidateQueries({ queryKey: ["auth", "me"] });
   };
   const pendingCount = requests.filter((r) => r.status === "PENDING").length;
+  // 좁은 화면(sm 미만)은 표 대신 팀원마다 한 칸씩
+  const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
 
   // 관리자가 아니면 팀원 관리 대신 팀원 목록으로 보냄 (로그인 정보를 받은 뒤 판단)
   if (mode === "manage" && me && !user?.admin) return <Navigate to="/team" replace />;
@@ -302,11 +358,21 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
             <Title order={5}>팀원</Title>
             <Text size="sm" c="dimmed">{members.filter((m) => m.active).length}명</Text>
           </Group>
-          {admin && <Text size="xs" c="dimmed">드래그로 순서를 변경할 수 있습니다.</Text>}
+          {admin && !mobile && <Text size="xs" c="dimmed">드래그로 순서를 변경할 수 있습니다.</Text>}
         </Group>
         {error && <Alert color="red">팀원 목록을 불러오지 못했습니다.</Alert>}
         {reorder.error && <Alert color="red">팀원 순서를 저장하지 못했습니다.</Alert>}
+        {mobile ? (
+          <Stack gap="xs">
+            {members.map((member) => (
+              <MemberCard key={member.id} member={member} me={member.id === user?.id} admin={admin}
+                developer={admin && !!user?.developer} showRole={mode === "manage"} refresh={refresh} />
+            ))}
+          </Stack>
+        ) : (
         <Paper withBorder radius="md" px="md" py="xs">
+          {/* 표보다 좁은 창은 열을 찌그러뜨리지 않고 가로 스크롤 (최소 폭 = 열 폭 합) */}
+          <Table.ScrollContainer minWidth={mode === "manage" ? 810 : 720} type="native">
           <Table verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
@@ -328,7 +394,9 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
               ))}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         </Paper>
+        )}
       </Stack>
 
       {/* 팀원 목록에서만: 사무실 전화기 사용법 */}

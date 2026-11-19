@@ -303,4 +303,32 @@ describe("팀원 관리", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
     await waitFor(() => expect(updateMember).toHaveBeenCalledWith(1, { department: "개발팀", jobRank: "SENIOR", phone: "010-1111-2222", extension: "567" }));
   });
+
+  // 좁은 화면(sm 미만)으로 보이게 matchMedia를 바꿈
+  function useMobileWidth() {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    return () => { window.matchMedia = original; };
+  }
+
+  it("좁은 화면은 표 대신 팀원마다 한 칸씩 보이고 전화번호를 눌러 바로 전화한다", async () => {
+    const restore = useMobileWidth();
+    vi.mocked(listMembers).mockResolvedValue([
+      { id: 1, name: "가상 팀원", active: true, email: "member@example.com", department: "개발팀", jobRank: "SENIOR", extension: "331", phone: "010-0000-1111" },
+    ]);
+    try {
+      renderPage("list");
+      expect(await screen.findByText("010-0000-1111")).toBeTruthy();
+      expect(screen.getByText("010-0000-1111").closest("a")!.getAttribute("href")).toBe("tel:010-0000-1111");
+      expect(screen.getByText("331")).toBeTruthy();
+      // 팀원 표 머리글이 없음 (아래 전화기 사용법 표는 그대로)
+      expect(screen.queryByRole("columnheader", { name: "전화번호" })).toBeNull();
+      // 순서 변경 손잡이는 넓은 화면에서만
+      expect(screen.queryByLabelText("가상 팀원 순서 변경")).toBeNull();
+    } finally {
+      restore();
+    }
+  });
 });

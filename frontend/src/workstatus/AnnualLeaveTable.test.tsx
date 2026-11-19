@@ -157,4 +157,29 @@ describe("AnnualLeaveTable", () => {
     expect(screen.getByLabelText("퇴사자 확정 연차").tagName).not.toBe("INPUT");
     expect(screen.getByLabelText("퇴사자 확정 연차").textContent).toBe("15");
   });
+
+  it("좁은 화면은 이름·사용·이월·확정·잔여 요약 표로 보이고, 이름을 누르면 월별 사용 날짜를 펼친다", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderTable();
+      const toggle = await screen.findByRole("button", { name: "홍길동 연차 자세히" });
+      // 주 단위 칸 없이 요약 표만
+      expect(screen.getByRole("table", { name: "2026년 연차 요약" })).toBeTruthy();
+      expect(screen.queryByTestId("week-head-1-1")).toBeNull();
+      expect(screen.getByText("2.75")).toBeTruthy();
+      expect(screen.getByText("13.25")).toBeTruthy();
+      // 이월·확정은 칸에서 바로 수정
+      expect(screen.getByLabelText("홍길동 확정 연차")).toBeTruthy();
+      expect(screen.queryByText("11/10 (화) 오후 반차")).toBeNull();
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(screen.getByText("11/10 (화) 오후 반차")).toBeTruthy();
+      expect(screen.getByText("1.75일")).toBeTruthy();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

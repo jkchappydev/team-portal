@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ActionIcon, Alert, Anchor, Badge, Box, Group, Text, Title } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { listHolidays } from "../api/holidays";
@@ -8,6 +9,7 @@ import { listWorkStatuses } from "../api/workStatuses";
 import type { WorkStatusDto } from "../api/workStatuses";
 import { useCurrentUser } from "../user/currentUser";
 import { buildMonthGrid, expandToWeekdays, parseMonthParam } from "./calendar";
+import type { CalendarDay } from "./calendar";
 import { calculateWeekMinHeight } from "./calendarLayout";
 import { groupHolidaysByDate } from "./holidayCalendar";
 import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER, chipColors } from "./types";
@@ -34,6 +36,97 @@ function accentColor(color: string): string {
     : `var(--mantine-color-${color}-filled)`;
 }
 
+// 근무 상황 칩 (달력 칸·좁은 화면 날짜 목록 공용), 고칠 수 있는 칩만 눌러 수정
+function StatusChip({ item, editable, onEdit, mb = 1 }: { item: WorkStatusDto; editable: boolean; onEdit: () => void; mb?: number }) {
+  return (
+    <Badge
+      color={TYPE_COLORS[item.type]}
+      variant="light"
+      radius="sm"
+      fullWidth
+      mb={mb}
+      tt="none"
+      fw={400}
+      fz="xs"
+      title={item.label}
+      // 고칠 수 있는 칩만 마우스를 올리면 강조 (index.css .ws-chip)
+      className="ws-chip"
+      data-editable={editable || undefined}
+      // 긴 라벨(예: 외근 장소·시간)이 잘리지 않도록 Badge 기본 한 줄·고정 높이 해제
+      styles={{
+        root: {
+          cursor: editable ? "pointer" : "default",
+          display: "block",
+          textAlign: "left",
+          height: "auto",
+          lineHeight: 1.25,
+          paddingBlock: 2,
+          flexShrink: 0,
+          ...chipColors(TYPE_COLORS[item.type]),
+        },
+        label: { whiteSpace: "normal", overflow: "visible", overflowWrap: "anywhere" },
+      }}
+      onClick={(e) => {
+        // 다른 팀원 칩은 눌러도 수정 창을 열지 않음 (빈 칸 클릭 등록으로도 넘기지 않음)
+        e.stopPropagation();
+        if (editable) onEdit();
+      }}
+    >
+      {item.label}
+    </Badge>
+  );
+}
+
+// 좁은 화면용 날짜별 목록: 그 달의 모든 날 (주말은 옅은 배경)
+// 날짜 줄을 누르면 그 날로 등록, 칩을 누르면 수정 (달력과 같은 조작)
+function DayList({ days, byDate, holidaysByDate, today, canEdit, onCreate, onEdit }: {
+  days: CalendarDay[];
+  byDate: Map<string, WorkStatusDto[]>;
+  holidaysByDate: Map<string, { date: string; name: string }[]>;
+  today: string;
+  canEdit: (item: WorkStatusDto) => boolean;
+  onCreate: (date: string) => void;
+  onEdit: (item: WorkStatusDto) => void;
+}) {
+  const shown = days.filter((day) => day.inMonth);
+  return (
+    <Box style={{ border: `1px solid ${CALENDAR_OUTER_BORDER}`, borderRadius: 8, overflow: "hidden", background: "var(--mantine-color-body)" }}
+      aria-label="날짜별 근무 상황">
+      {shown.map((day, index) => {
+        const weekday = new Date(`${day.date}T00:00:00`).getDay();
+        const holidays = holidaysByDate.get(day.date) ?? [];
+        const isToday = day.date === today;
+        const dayColor = holidays.length > 0 || weekday === 0 ? "var(--mantine-color-red-text)" : weekday === 6 ? "var(--mantine-color-blue-text)" : DAY_NUMBER_COLOR;
+        return (
+          <Box key={day.date} className="ws-day" data-in-month data-today={isToday || undefined} data-testid={`ws-day-${day.date}`}
+            onClick={() => onCreate(day.date)}
+            style={{
+              // 날짜와 칩·기념일을 세로 가운데로 맞춤 (위로 붙어 보이지 않게, 여러 개면 묶음 가운데에 날짜)
+              display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", minHeight: 44, cursor: "pointer",
+              borderTop: index > 0 ? `1px solid ${CALENDAR_CELL_BORDER}` : undefined,
+              background: isToday ? CURRENT_HIGHLIGHT_BACKGROUND : day.weekend ? WEEKEND_BACKGROUND : undefined,
+            }}>
+            {/* 날짜(왼쪽 정렬)·요일 칸을 각각 고정 폭으로 두어 한 자리·두 자리 날짜여도 요일이 같은 세로줄에 옴 */}
+            <Box style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 4, color: dayColor, fontVariantNumeric: "tabular-nums" }}>
+              <Text span fz="sm" fw={isToday ? 700 : 500} w={20} style={{ whiteSpace: "nowrap" }}>{Number(day.date.slice(8))}</Text>
+              <Text span fz="xs" w={14}>{DAY_NAMES[weekday]}</Text>
+            </Box>
+            {/* 항목 사이만 4px 간격 (아래 여백이 남으면 묶음이 위로 쏠려 보임) */}
+            <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+              {holidays.map((holiday) => (
+                <Text key={holiday.name} c="red" fz="xs" fw={600} lh={1.2}>{holiday.name}</Text>
+              ))}
+              {byDate.get(day.date)?.map((item) => (
+                <StatusChip key={item.id} item={item} editable={canEdit(item)} onEdit={() => onEdit(item)} mb={0} />
+              ))}
+            </Box>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 function todayString(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -58,6 +151,8 @@ export function WorkStatusPage() {
   const [editing, setEditing] = useState<WorkStatusDto | null>(null);
   const [defaultDate, setDefaultDate] = useState(todayString);
   const today = todayString();
+  // 좁은 화면(sm 미만)은 7칸 달력 대신 날짜별 목록
+  const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
   // 관리자·개발자는 모든 팀원, 일반 팀원은 본인 근무 상황만 등록·수정
   const canManageOthers = !!(user?.admin || user?.developer);
   const canEdit = (item: WorkStatusDto) => canManageOthers || item.memberId === user?.id;
@@ -99,9 +194,12 @@ export function WorkStatusPage() {
     <>
       {/* 등록은 날짜 칸 클릭으로 하므로 상단에는 월 이동만 둠 */}
       {/* 가운데 월 이동, 오른쪽 위에 종류별 색 범례 */}
-      <Box mb="sm" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
-        <span />
-        <Group gap="md">
+      {/* 좁은 화면은 월 이동 아래 줄에 범례 */}
+      <Box mb="sm" style={mobile
+        ? { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }
+        : { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
+        {!mobile && <span />}
+        <Group gap="md" wrap="nowrap">
           <ActionIcon variant="subtle" color="gray" size="lg" aria-label="이전 달" onClick={() => moveMonth(-1)}>◀</ActionIcon>
           {/* 제목을 누르면 원하는 연월로 바로 이동 */}
           <MonthPicker
@@ -119,7 +217,7 @@ export function WorkStatusPage() {
           </MonthPicker>
           <ActionIcon variant="subtle" color="gray" size="lg" aria-label="다음 달" onClick={() => moveMonth(1)}>▶</ActionIcon>
         </Group>
-        <Group gap={10} justify="flex-end" aria-label="근무 상황 종류 범례">
+        <Group gap={10} justify={mobile ? "center" : "flex-end"} aria-label="근무 상황 종류 범례">
           {TYPE_ORDER.map((type) => (
             <Group key={type} gap={4} wrap="nowrap">
               <Box
@@ -134,6 +232,10 @@ export function WorkStatusPage() {
       </Box>
       {error && <Alert color="red" mb="sm">근무 상황을 불러오지 못했습니다.</Alert>}
       {holidayError && <Alert color="yellow" mb="sm">공휴일 정보를 불러오지 못했습니다.</Alert>}
+      {mobile ? (
+        <DayList days={grid.flat()} byDate={byDate} holidaysByDate={holidaysByDate} today={today}
+          canEdit={canEdit} onCreate={openCreate} onEdit={openEdit} />
+      ) : (
       <Box style={{ border: `1px solid ${CALENDAR_OUTER_BORDER}`, borderRadius: 8, overflow: "hidden", background: "var(--mantine-color-body)" }}>
         <Box style={{ display: "grid", gridTemplateColumns: GRID_COLUMNS, background: HEADER_BACKGROUND }}>
           {DAY_NAMES.map((name, i) => (
@@ -221,42 +323,7 @@ export function WorkStatusPage() {
                     </Text>
                   ))}
                   {day.inMonth && byDate.get(day.date)?.map((item) => (
-                    <Badge
-                      key={item.id}
-                      color={TYPE_COLORS[item.type]}
-                      variant="light"
-                      radius="sm"
-                      fullWidth
-                      mb={1}
-                      tt="none"
-                      fw={400}
-                      fz="xs"
-                      title={item.label}
-                      // 고칠 수 있는 칩만 마우스를 올리면 강조 (index.css .ws-chip)
-                      className="ws-chip"
-                      data-editable={canEdit(item) || undefined}
-                      // 긴 라벨(예: 외근 장소·시간)이 잘리지 않도록 Badge 기본 한 줄·고정 높이 해제
-                      styles={{
-                        root: {
-                          cursor: canEdit(item) ? "pointer" : "default",
-                          display: "block",
-                          textAlign: "left",
-                          height: "auto",
-                          lineHeight: 1.25,
-                          paddingBlock: 2,
-                          flexShrink: 0,
-                          ...chipColors(TYPE_COLORS[item.type]),
-                        },
-                        label: { whiteSpace: "normal", overflow: "visible", overflowWrap: "anywhere" },
-                      }}
-                      onClick={(e) => {
-                        // 다른 팀원 칩은 눌러도 수정 창을 열지 않음 (빈 칸 클릭 등록으로도 넘기지 않음)
-                        e.stopPropagation();
-                        if (canEdit(item)) openEdit(item);
-                      }}
-                    >
-                      {item.label}
-                    </Badge>
+                    <StatusChip key={item.id} item={item} editable={canEdit(item)} onEdit={() => openEdit(item)} />
                   ))}
                 </Box>
               );
@@ -264,6 +331,7 @@ export function WorkStatusPage() {
           </Box>
         ))}
       </Box>
+      )}
       <Text fz="xs" c="dimmed" mt={6} ta="right">
         공휴일 정보 출처:{" "}
         <Anchor

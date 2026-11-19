@@ -3,6 +3,7 @@ import {
   ActionIcon, Alert, Anchor, Avatar, Box, Button, Group, Menu, Modal, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput,
   Title, UnstyledButton, VisuallyHidden,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CONTACTS_KEY, deleteContact, listContacts } from "../api/contacts";
 import type { ContactDto } from "../api/contacts";
@@ -281,6 +282,9 @@ export function ContactsPage() {
     setView(next);
     saveView(next);
   };
+  // 좁은 화면(sm 미만)은 한 줄 보기 표가 너무 넓어 카드 보기로 고정 (고른 보기는 그대로 기억)
+  const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
+  const shownView: ContactView = mobile ? "card" : view;
   const searching = query.trim().length > 0;
   const visible = sortContacts(contacts.filter((c) => matches(c, query)), sort);
   const sortButton = (key: SortKey, label: string) => (
@@ -305,8 +309,8 @@ export function ContactsPage() {
         <Button onClick={() => setDialog({ editing: null })}>+ 연락처 추가</Button>
       </Group>
       <Group gap="lg" justify="space-between">
-        <Group gap="lg">
-          <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
+        <Group gap="lg" w={{ base: "100%", sm: "auto" }}>
+          <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={{ base: "100%", sm: 320 }}
             onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
           <Group gap="md">
             {sortButton("name", "이름")}
@@ -314,15 +318,17 @@ export function ContactsPage() {
           </Group>
         </Group>
         {/* 명함 카드 또는 구글 주소록처럼 한 줄씩 */}
-        <SegmentedControl size="xs" value={view} onChange={(value) => changeView(value as ContactView)} aria-label="보기 방식"
-          data={[{ value: "card", label: "카드" }, { value: "list", label: "한 줄" }]} />
+        {!mobile && (
+          <SegmentedControl size="xs" value={view} onChange={(value) => changeView(value as ContactView)} aria-label="보기 방식"
+            data={[{ value: "card", label: "카드" }, { value: "list", label: "한 줄" }]} />
+        )}
       </Group>
       {error && <Alert color="red">외부 연락처를 불러오지 못했습니다.</Alert>}
       {!isLoading && visible.length === 0 ? (
         <Paper withBorder radius="md" p="xl">
           <Text size="sm" c="dimmed" ta="center">{searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}</Text>
         </Paper>
-      ) : view === "list" ? (
+      ) : shownView === "list" ? (
         <ContactTable contacts={visible} onEdit={(contact) => setDialog({ editing: contact })} onDelete={setDeleting} />
       ) : (
         // 화면 폭에 맞춰 1~4장씩, 카드 높이는 같은 줄에서 맞춤
