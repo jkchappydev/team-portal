@@ -5,6 +5,8 @@ import { ApiError } from "../api/client";
 import { getTrash, purgeTrashItem, restoreDocument } from "../api/documents";
 import type { TrashItemDto } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
+import { FORMS_KEY, restoreForm } from "../api/forms";
+import { FileKindIcon } from "../forms/FileKindIcon";
 import { formatDateTime } from "./format";
 import { PageIcon } from "./PageIconView";
 import { useLastValue } from "../layout/useLastValue";
@@ -12,10 +14,17 @@ import { useLastValue } from "../layout/useLastValue";
 // 하위 페이지 한 단계당 들여쓰기 폭
 const INDENT = 20;
 
-// 복원 대상 (하위 페이지는 페이지 복원 API로 위치만 옮김)
+// 복원 대상 (하위 페이지는 페이지 복원 API로 위치만 옮김, form은 공유 보관함 파일)
 interface RestoreTarget {
-  kind: "space" | "document";
+  kind: TrashItemDto["kind"];
   id: number;
+}
+
+// 종류별 복원 API
+function restoreItem(target: RestoreTarget): Promise<void> {
+  if (target.kind === "space") return restoreSpace(target.id);
+  if (target.kind === "form") return restoreForm(target.id);
+  return restoreDocument(target.id);
 }
 
 interface TrashRowProps {
@@ -36,10 +45,15 @@ function TrashRow({ item, pending, onRestore, onPurge }: TrashRowProps) {
       <Group justify="space-between" wrap="nowrap">
         <Stack gap={0} style={{ minWidth: 0 }}>
           <Text size="sm" truncate>
-            <span style={{ marginRight: 6 }}><PageIcon icon={item.icon} project={item.spaceKind === "PROJECT"} /></span>
+            {/* 공유 보관함 파일은 보관함 목록과 같은 파일 종류 아이콘 */}
+            <span style={{ marginRight: 6, verticalAlign: "middle", display: "inline-flex", color: item.kind === "form" ? "var(--mantine-color-dimmed)" : undefined }}>
+              {item.kind === "form" ? <FileKindIcon fileName={item.name} /> : <PageIcon icon={item.icon} project={item.spaceKind === "PROJECT"} />}
+            </span>
             <span>{item.name}</span>
           </Text>
-          <Text size="xs" c="dimmed">삭제 {formatDateTime(item.deletedAt)}</Text>
+          <Text size="xs" c="dimmed">
+            {item.kind === "form" && "공유 보관함 · "}삭제 {formatDateTime(item.deletedAt)}
+          </Text>
         </Stack>
         <Group gap={6} wrap="nowrap">
           <Button
@@ -116,7 +130,9 @@ function PurgeModal({ item, pending, error, onClose, onConfirm }: PurgeModalProp
     <Modal opened={item !== null} onClose={onClose} title="영구 삭제" centered>
       <Stack>
         <Text size="sm">
-          {`"${shown?.name ?? ""}" 페이지를 영구 삭제할까요? 하위 페이지, 수정 이력, 첨부 파일과 이미지까지 모두 지워지며 되돌릴 수 없습니다.`}
+          {shown?.kind === "form"
+            ? `"${shown.name}" 파일을 영구 삭제할까요? 파일이 완전히 지워지며 되돌릴 수 없습니다.`
+            : `"${shown?.name ?? ""}" 페이지를 영구 삭제할까요? 하위 페이지, 수정 이력, 첨부 파일과 이미지까지 모두 지워지며 되돌릴 수 없습니다.`}
         </Text>
         {error && <Alert color="red">{error}</Alert>}
         <Group justify="flex-end">
@@ -140,10 +156,11 @@ export function TrashPage() {
     queryClient.invalidateQueries({ queryKey: ["spaces"] });
     queryClient.invalidateQueries({ queryKey: ["documents"] });
     queryClient.invalidateQueries({ queryKey: ["search"] });
+    queryClient.invalidateQueries({ queryKey: FORMS_KEY });
   };
 
   const restore = useMutation({
-    mutationFn: (target: RestoreTarget) => (target.kind === "space" ? restoreSpace(target.id) : restoreDocument(target.id)),
+    mutationFn: restoreItem,
     onSuccess: refresh,
   });
   const purge = useMutation({

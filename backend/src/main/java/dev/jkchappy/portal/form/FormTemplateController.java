@@ -64,9 +64,17 @@ public class FormTemplateController {
       .body(file.resource());
   }
 
+  // 휴지통으로 이동 (영구 삭제는 휴지통 화면에서 /api/trash/forms/{id})
   @DeleteMapping("/{id}")
   public ApiResponse<Void> delete(@PathVariable Long id, @CurrentUser Long userId) {
     formService.delete(id);
+    return ApiResponse.ok(null);
+  }
+
+  // 휴지통에서 되살리기
+  @PostMapping("/{id}/restore")
+  public ApiResponse<Void> restore(@PathVariable Long id, @CurrentUser Long userId) {
+    formService.restore(id);
     return ApiResponse.ok(null);
   }
 }

@@ -50,10 +50,11 @@ describe("FormsPage", () => {
   it("처음에는 맨 위 양식을 미리보고, 다른 줄을 누르면 그 양식으로 바뀐다", async () => {
     renderPage();
     expect(await screen.findByTestId("preview")).toHaveProperty("textContent", "휴가 신청서.hwp");
-    // 미리보기 위에는 다운로드 버튼이 없음 (⋯ 메뉴에서 내려받음)
-    expect(screen.queryByRole("link", { name: "다운로드" })).toBeNull();
-    // 미리보기 위 정보는 크기와 올린 날짜만 (올린 사람은 보이지 않음)
-    expect(screen.getAllByText("20KB · 2026-11-17").length).toBe(2);
+    // 미리보기 제목 줄 오른쪽 끝 다운로드는 한글 파일명을 유지해 내려받음
+    const download = screen.getByRole("link", { name: "휴가 신청서.hwp 다운로드" });
+    expect(download.getAttribute("download")).toBe("휴가 신청서.hwp");
+    // 크기와 올린 날짜는 왼쪽 목록 줄에만 (미리보기 제목 줄에는 없음, 올린 사람은 보이지 않음)
+    expect(screen.getAllByText("20KB · 2026-11-17").length).toBe(1);
     expect(screen.queryByText(/가나다/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf" }));
@@ -117,19 +118,26 @@ describe("FormsPage", () => {
     expect(uploadForm).not.toHaveBeenCalled();
   });
 
-  it("⋯ 메뉴의 삭제는 확인 창을 거친다", async () => {
+  it("고른 파일을 바꾸면 다운로드도 그 파일을 내려받는다", async () => {
+    renderPage();
+    await screen.findByTestId("preview");
+    fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf" }));
+    const download = screen.getByRole("link", { name: "지출 결의서.pdf 다운로드" });
+    expect(download.getAttribute("href")).toBe("/api/forms/2/download");
+    expect(download.getAttribute("download")).toBe("지출 결의서.pdf");
+  });
+
+  it("줄의 휴지통 버튼으로 삭제하면 확인 창을 거친다", async () => {
     vi.mocked(deleteForm).mockResolvedValue();
     renderPage();
     await screen.findByTestId("preview");
-    fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf 메뉴" }));
-    const removeItem = await screen.findByRole("menuitem", { name: "파일 삭제" });
-    // ⋯ 메뉴의 다운로드는 한글 파일명을 유지해 내려받음
-    const download = screen.getByText("다운로드").closest("a")!;
-    expect(download.getAttribute("href")).toBe("/api/forms/2/download");
-    expect(download.getAttribute("download")).toBe("지출 결의서.pdf");
-    fireEvent.click(removeItem);
+    // ⋯ 메뉴는 없음
+    expect(screen.queryByRole("button", { name: "지출 결의서.pdf 메뉴" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "지출 결의서.pdf 삭제" }));
     const dialog = await screen.findByRole("dialog", { name: "파일 삭제" });
-    expect(within(dialog).getByText(/"지출 결의서.pdf" 파일을 삭제할까요?/)).toBeTruthy();
+    // 삭제한 파일은 휴지통으로 가므로 "되돌릴 수 없습니다" 안내는 없음
+    expect(within(dialog).getByText('"지출 결의서.pdf" 파일을 삭제할까요?')).toBeTruthy();
+    expect(within(dialog).queryByText(/되돌릴 수 없습니다/)).toBeNull();
     expect(deleteForm).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
     await waitFor(() => expect(deleteForm).toHaveBeenCalledWith(2));

@@ -32,6 +32,12 @@ export function moveForm(id: number, index: number): Promise<void> {
   return apiFetch<void>(`/api/forms/${id}/position`, { method: "PATCH", body: JSON.stringify({ index }) });
 }
 
+// 휴지통으로 이동 (휴지통 화면에서 되살리거나 영구 삭제)
 export function deleteForm(id: number): Promise<void> {
   return apiFetch<void>(`/api/forms/${id}`, { method: "DELETE" });
+}
+
+// 휴지통에서 되살리기 (보관함 목록 맨 아래로)
+export function restoreForm(id: number): Promise<void> {
+  return apiFetch<void>(`/api/forms/${id}/restore`, { method: "POST" });
 }

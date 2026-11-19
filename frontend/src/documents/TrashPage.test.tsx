@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { purgeTrashItem, restoreDocument } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
+import { restoreForm } from "../api/forms";
 import { TrashPage } from "./TrashPage";
 
 vi.mock("../api/documents", () => ({
@@ -20,12 +21,14 @@ vi.mock("../api/documents", () => ({
         kind: "space", id: 9, name: "스쿨북스", icon: null, deletedAt: "2026-11-04T02:28:00Z",
         children: [{ id: 20, title: "최상위 안 페이지", icon: null, depth: 1 }],
       },
+      { kind: "form", id: 7, name: "품의서.xlsx", icon: null, spaceKind: null, deletedAt: "2026-11-04T01:00:00Z", children: [] },
     ],
   })),
   restoreDocument: vi.fn(() => Promise.resolve()),
   purgeTrashItem: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../api/spaces", () => ({ restoreSpace: vi.fn(() => Promise.resolve()) }));
+vi.mock("../api/forms", () => ({ FORMS_KEY: ["forms"], restoreForm: vi.fn(() => Promise.resolve()) }));
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -87,7 +90,8 @@ describe("TrashPage", () => {
     const [pageRestore] = screen.getAllByRole("button", { name: "복원" });
     fireEvent.click(pageRestore);
     await waitFor(() => expect(restoreDocument).toHaveBeenCalledWith(1));
-    const spaceRestore = screen.getAllByRole("button", { name: "복원" }).at(-1)!;
+    // 항목 복원 버튼 순서: 페이지, 최상위 페이지, 공유 보관함 파일
+    const spaceRestore = screen.getAllByRole("button", { name: "복원" })[1];
     fireEvent.click(spaceRestore);
     await waitFor(() => expect(restoreSpace).toHaveBeenCalledWith(9));
   });
@@ -107,5 +111,22 @@ describe("TrashPage", () => {
     fireEvent.click(await screen.findByLabelText("상위 페이지 영구 삭제"));
     fireEvent.click(await screen.findByRole("button", { name: "취소" }));
     expect(purgeTrashItem).not.toHaveBeenCalled();
+  });
+
+  it("공유 보관함에서 지운 파일도 보이고, 복원하면 보관함 복원 API를 호출한다", async () => {
+    renderPage();
+    expect(await screen.findByText("품의서.xlsx")).toBeTruthy();
+    expect(screen.getByText(/공유 보관함 · 삭제/)).toBeTruthy();
+    const buttons = screen.getAllByRole("button", { name: "복원" });
+    fireEvent.click(buttons[buttons.length - 1]);
+    await waitFor(() => expect(restoreForm).toHaveBeenCalledWith(7));
+  });
+
+  it("공유 보관함 파일 영구 삭제는 파일 문구로 확인한 뒤 form 종류로 지운다", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("품의서.xlsx 영구 삭제"));
+    expect(await screen.findByText(/"품의서.xlsx" 파일을 영구 삭제할까요?/)).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "영구 삭제" }).at(-1)!);
+    await waitFor(() => expect(purgeTrashItem).toHaveBeenCalledWith("form", 7));
   });
 });

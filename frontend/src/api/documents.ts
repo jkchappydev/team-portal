@@ -55,19 +55,19 @@ export interface TrashChildDto {
 }
 
 export interface TrashItemDto {
-  // space: 프로젝트(최상위 페이지), document: 페이지
-  kind: "space" | "document";
+  // space: 프로젝트(최상위 페이지), document: 페이지, form: 공유 보관함 파일
+  kind: "space" | "document" | "form";
   id: number;
   name: string;
   icon: string | null;
-  // space일 때 PROJECT 또는 PAGE (document는 null)
+  // space일 때 PROJECT 또는 PAGE (그 밖은 null)
   spaceKind: "PROJECT" | "PAGE" | null;
   deletedAt: string;
   // 깊이 우선 순서
   children: TrashChildDto[];
 }
 
-// 삭제된 프로젝트와 페이지를 최근 삭제순으로 함께 담은 목록
+// 삭제된 프로젝트·페이지와 공유 보관함 파일을 최근 삭제순으로 함께 담은 목록
 export interface TrashDto {
   items: TrashItemDto[];
 }
@@ -130,8 +130,10 @@ export function getTrash(): Promise<TrashDto> {
 }
 
 // 휴지통 항목 영구 삭제 (하위 페이지와 첨부 파일까지 지우며 되돌릴 수 없음)
+const PURGE_PATHS: Record<TrashItemDto["kind"], string> = { space: "spaces", document: "documents", form: "forms" };
+
 export function purgeTrashItem(kind: TrashItemDto["kind"], id: number): Promise<void> {
-  const path = kind === "space" ? "spaces" : "documents";
+  const path = PURGE_PATHS[kind];
   return apiFetch<void>(`/api/trash/${path}/${id}`, { method: "DELETE" });
 }
 

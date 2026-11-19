@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -100,5 +101,15 @@ class FormTemplateControllerTest {
           org.hamcrest.Matchers.containsString("filename*=UTF-8''"))))
       .andExpect(header().string("X-Content-Type-Options", "nosniff"))
       .andExpect(content().bytes("abc".getBytes(StandardCharsets.UTF_8)));
+  }
+
+  // 휴지통에서 되살리기
+  @Test
+  void restore_callsService() throws Exception {
+    mockMvc.perform(post("/api/forms/4/restore").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.success").value(true));
+
+    verify(formService).restore(4L);
   }
 }

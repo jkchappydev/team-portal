@@ -1675,7 +1675,9 @@ html.block-marquee-dragging .bn-side-menu {
 .form-row[data-selected] { background: rgba(55, 53, 47, 0.08); }
 [data-mantine-color-scheme="dark"] .form-row:hover { background: rgba(255, 255, 255, 0.06); }
 [data-mantine-color-scheme="dark"] .form-row[data-selected] { background: rgba(255, 255, 255, 0.08); }
-.form-row-select { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 8px 6px 8px 10px; }
+/* 줄 위아래 여백 10px, 줄 사이 2px로 목록이 빽빽해 보이지 않게 */
+.form-row-select { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 10px 6px 10px 10px; }
+.form-row + .form-row { margin-top: 2px; }
 /* 파일 종류 아이콘 (흐린 회색 선, 이름 시작 위치가 같도록 칸 폭 고정) */
 .form-row-icon { display: flex; width: 20px; flex-shrink: 0; color: var(--mantine-color-dimmed); }
 /* 미리보기 글 상자 위 기본 여백 제거 (제목 줄과의 간격은 Stack 간격만) */

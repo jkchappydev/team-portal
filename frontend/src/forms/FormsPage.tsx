@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
-import { ActionIcon, Alert, Box, Button, Group, Menu, Modal, Paper, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Box, Button, Group, Modal, Paper, Stack, Text, Title, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
@@ -17,6 +17,26 @@ import { FileKindIcon } from "./FileKindIcon";
 
 // 목록 줄을 끌 때 싣는 데이터 종류 (바깥에서 끌어온 파일과 구분)
 const DRAG_TYPE = "application/x-portal-form";
+
+// 휴지통 아이콘 (얇은 선, 글자색을 따라감)
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.3"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v4.5M9.5 6.5v4.5" />
+    </svg>
+  );
+}
+
+// 다운로드 아이콘 (아래 화살표와 받침선)
+function DownloadIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.4"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2.5v9M5 7.5l4 4 4-4M3 15h12" />
+    </svg>
+  );
+}
 
 // 바깥에서 파일을 끌어오는 중인지 (목록 줄 끌기는 제외)
 function isFileDrag(e: DragEvent): boolean {
@@ -84,8 +104,10 @@ export function FormsPage() {
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteForm(id),
+    // 삭제한 파일은 휴지통으로 가므로 휴지통 목록도 갱신
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: FORMS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["trash"] });
       setDeleting(null);
     },
   });
@@ -184,15 +206,16 @@ export function FormsPage() {
         <Paper withBorder radius="md" p="md" className="forms-preview">
           {selected ? (
             <Stack gap="md">
-              {/* 다운로드는 목록 줄의 ⋯ 메뉴에서 */}
-              <Box style={{ minWidth: 0 }}>
-                <Title order={4} style={{ wordBreak: "break-all" }}>
+              {/* 제목 줄 오른쪽 끝에 다운로드 (한글 파일명 그대로 내려받음), 크기·날짜는 왼쪽 목록에만 */}
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Title order={4} style={{ minWidth: 0, wordBreak: "break-all" }}>
                   {selected.name}
                 </Title>
-                <Text size="xs" c="dimmed" mt={4}>
-                  {formatFileSize(selected.size)} · {formatDate(selected.createdAt)}
-                </Text>
-              </Box>
+                <ActionIcon component="a" href={selected.url} download={selected.name} variant="subtle" color="gray" size="lg"
+                  aria-label={`${selected.name} 다운로드`} title="다운로드" style={{ flexShrink: 0 }}>
+                  <DownloadIcon />
+                </ActionIcon>
+              </Group>
               <FilePreview url={selected.url} fileName={selected.name} />
             </Stack>
           ) : (
@@ -206,7 +229,7 @@ export function FormsPage() {
       {/* 삭제 확인 (연락처·링크 삭제 확인 창과 같은 모양) */}
       <Modal opened={deleting !== null} onClose={closeDelete} title="파일 삭제" centered>
         <Stack>
-          <Text size="sm">"{shownDeleting?.name}" 파일을 삭제할까요? 팀원 모두의 목록에서 사라지며 되돌릴 수 없습니다.</Text>
+          <Text size="sm">"{shownDeleting?.name}" 파일을 삭제할까요?</Text>
           {remove.error && <Alert color="red">파일을 삭제하지 못했습니다.</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={closeDelete}>취소</Button>
@@ -244,20 +267,15 @@ function FormRow({ form, selected, dropLine, onSelect, onDelete, onDragStart, on
         <span className="form-row-icon"><FileKindIcon fileName={form.name} /></span>
         <Box style={{ minWidth: 0, flex: 1 }}>
           <Text size="sm" truncate title={form.name} fw={selected ? 600 : 400}>{form.name}</Text>
-          <Text size="xs" c="dimmed" truncate>{formatFileSize(form.size)} · {formatDate(form.createdAt)}</Text>
+          {/* 파일 이름과 크기·날짜 줄 사이 2px */}
+          <Text size="xs" c="dimmed" truncate mt={2}>{formatFileSize(form.size)} · {formatDate(form.createdAt)}</Text>
         </Box>
       </UnstyledButton>
+      {/* 삭제는 휴지통 버튼(확인 창), 다운로드는 오른쪽 미리보기 제목 줄 */}
       <Box className="form-row-menu">
-        <Menu position="bottom-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" aria-label={`${form.name} 메뉴`}>⋯</ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item component="a" href={form.url} download={form.name}>다운로드</Menu.Item>
-            <Menu.Divider />
-            <Menu.Item color="red" onClick={onDelete}>파일 삭제</Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <ActionIcon variant="subtle" color="gray" aria-label={`${form.name} 삭제`} onClick={onDelete}>
+          <TrashIcon />
+        </ActionIcon>
       </Box>
     </Box>
   );

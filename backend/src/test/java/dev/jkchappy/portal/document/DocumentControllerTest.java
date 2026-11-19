@@ -57,6 +57,9 @@ class DocumentControllerTest {
   private TrashService trashService;
 
   @MockitoBean
+  private dev.jkchappy.portal.form.FormTemplateService formService;
+
+  @MockitoBean
   private dev.jkchappy.portal.document.property.DocumentPropertyService propertyService;
 
   @Test
@@ -197,5 +200,31 @@ class DocumentControllerTest {
   void purgeDocument_withoutUser_returns401() throws Exception {
     mockMvc.perform(delete("/api/trash/documents/3"))
       .andExpect(status().isUnauthorized());
+  }
+
+  // 휴지통 목록은 페이지·프로젝트와 공유 보관함 파일을 최근 삭제순으로 합침
+  @Test
+  void trash_mergesFormsByDeletedAt() throws Exception {
+    when(documentService.findTrash()).thenReturn(new dev.jkchappy.portal.document.dto.TrashResponse(List.of(
+      new dev.jkchappy.portal.document.dto.TrashItem("document", 3L, "회의록", null, null,
+        java.time.OffsetDateTime.parse("2026-11-18T00:00:00Z"), List.of()))));
+    when(formService.findTrash()).thenReturn(List.of(
+      new dev.jkchappy.portal.document.dto.TrashItem("form", 7L, "품의서.xlsx", null, null,
+        java.time.OffsetDateTime.parse("2026-11-19T00:00:00Z"), List.of())));
+
+    mockMvc.perform(get("/api/trash").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.items[0].kind").value("form"))
+      .andExpect(jsonPath("$.data.items[0].name").value("품의서.xlsx"))
+      .andExpect(jsonPath("$.data.items[1].kind").value("document"));
+  }
+
+  @Test
+  void purgeForm_callsFormService() throws Exception {
+    mockMvc.perform(delete("/api/trash/forms/7").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.success").value(true));
+
+    verify(formService).purge(7L);
   }
 }

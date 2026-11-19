@@ -11,7 +11,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 팀 공용 문서 양식 파일 메타데이터 (파일 본체는 FileStorage에 저장, 하드 삭제)
+// 팀 공용 문서 양식 파일 메타데이터 (파일 본체는 FileStorage에 저장, 삭제는 휴지통으로 이동)
 @Entity
 @Table(name = "form_template")
 @Getter
@@ -43,6 +43,10 @@ public class FormTemplate {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  // 휴지통으로 옮긴 시각 (null이면 보관함 목록에 보임)
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
+
   public static FormTemplate create(String originalName, String storedName, String contentType, long size,
     int sortOrder, Long uploadedBy) {
     FormTemplate form = new FormTemplate();
@@ -57,6 +61,20 @@ public class FormTemplate {
   }
 
   public void changeSortOrder(int sortOrder) {
+    this.sortOrder = sortOrder;
+  }
+
+  public boolean isDeleted() {
+    return deletedAt != null;
+  }
+
+  public void softDelete() {
+    this.deletedAt = Instant.now();
+  }
+
+  // 휴지통에서 되살리면 보관함 목록 맨 아래로
+  public void restore(int sortOrder) {
+    this.deletedAt = null;
     this.sortOrder = sortOrder;
   }
 }
