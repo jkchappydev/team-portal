@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ActionIcon, Button, Group, Indicator, Popover, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ActionIcon, Group, Indicator, Popover, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead } from "../api/notifications";
+import { listDocumentUpdates, listWorkStatusNotices } from "../api/notifications";
 import { WorkStatusNotices } from "./WorkStatusNotices";
 import { listSpaces } from "../api/spaces";
 import { PageIcon } from "../documents/PageIconView";
@@ -13,6 +13,28 @@ import { useCurrentUser } from "../user/currentUser";
 
 // 다른 팀원의 수정을 주기적으로 다시 조회하는 간격
 const POLL_MS = 30_000;
+
+// 종을 열어 본 알림 목록 (브라우저에 사용자별로 기억, 저장소를 못 쓰면 이번 화면에서만)
+function seenStorageKey(userId: number | undefined): string {
+  return `notification-seen-${userId ?? "anonymous"}`;
+}
+
+function readSeen(userId: number | undefined): Set<string> {
+  try {
+    const raw = localStorage.getItem(seenStorageKey(userId));
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeen(userId: number | undefined, keys: string[]): void {
+  try {
+    localStorage.setItem(seenStorageKey(userId), JSON.stringify(keys));
+  } catch {
+    // 저장소를 못 쓰는 환경이면 이번 화면에서만 유지
+  }
+}
 
 // 노션처럼 얇은 선으로 그린 종 아이콘 (글자색을 따라감)
 // ring: 새 알림이 왔을 때 한 번 흔들리는 효과
@@ -29,9 +51,9 @@ function BellIcon({ ring, onRingEnd }: { ring: boolean; onRingEnd: () => void })
 
 export function DocumentUpdatesBell() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [opened, setOpened] = useState(false);
   const { user } = useCurrentUser();
+  const [seen, setSeen] = useState<Set<string>>(() => readSeen(user?.id));
   const { data: pending = 0, isSuccess: pendingLoaded } = useQuery({ queryKey: ["admin", "signup-count"], queryFn: countPendingSignups,
     enabled: !!user?.admin, refetchInterval: POLL_MS });
   const { data: updates = [], isSuccess } = useQuery({
@@ -56,17 +78,30 @@ export function DocumentUpdatesBell() {
     if (lastCount !== null && count > lastCount) setRing(true);
   }
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
-  const readAll = useMutation({
-    mutationFn: markAllDocumentUpdatesRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENT_UPDATES_KEY }),
-  });
+  // 지금 보이는 알림마다 키 (같은 페이지라도 다시 수정되면 새 알림, 가입 요청은 건수가 늘면 새 알림)
+  const keys = [
+    ...updates.map((doc) => `doc:${doc.id}:${doc.updatedAt}`),
+    ...workStatusItems.map((notice) => `work:${notice.id}`),
+    ...(pending > 0 ? [`signup:${pending}`] : []),
+  ];
+  // 아직 종을 열어 보지 않은 알림이 있으면 빨간 점
+  const unseen = keys.some((key) => !seen.has(key));
+  const toggle = () => {
+    // 종을 열면 지금 알림을 모두 본 것으로 기억 (목록 항목은 페이지를 열어야 읽음 처리되어 빠짐)
+    if (!opened) {
+      const next = new Set(keys);
+      setSeen(next);
+      saveSeen(user?.id, keys);
+    }
+    setOpened((v) => !v);
+  };
 
   return (
     <Popover opened={opened} onChange={setOpened} position="bottom-start" width={300} shadow="md" withinPortal>
       <Popover.Target>
-        <Indicator label={count > 9 ? "9+" : count} disabled={count === 0}
-          size={16} offset={4} color="red">
-          <ActionIcon variant="subtle" color="gray" aria-label="수정 알림" onClick={() => setOpened((v) => !v)}>
+        {/* 숫자 없이 빨간 점만, 종을 열면 사라짐 */}
+        <Indicator disabled={!unseen} size={6} offset={4} color="red" data-testid="bell-dot">
+          <ActionIcon variant="subtle" color="gray" aria-label="수정 알림" onClick={toggle}>
             <BellIcon ring={ring} onRingEnd={() => setRing(false)} />
           </ActionIcon>
         </Indicator>
@@ -77,17 +112,13 @@ export function DocumentUpdatesBell() {
         </UnstyledButton>}
         {workStatus?.enabled && <WorkStatusNotices items={workStatusItems} onNavigate={() => setOpened(false)} />}
         {/* 근무 상황 변경 칸이 위에 있으면 위쪽에도 구분선 */}
-        <Group justify="space-between" px="sm" py={8}
+        <Group px="sm" py={8}
           style={{ borderBottom: "1px solid var(--mantine-color-default-border)",
             borderTop: workStatus?.enabled ? "1px solid var(--mantine-color-default-border)" : undefined }}>
-          <Text size="sm" fw={600}>수정된 페이지</Text>
-          <Button size="compact-xs" variant="subtle" disabled={updates.length === 0}
-            loading={readAll.isPending} onClick={() => readAll.mutate()}>
-            모두 읽음
-          </Button>
+          <Text size="sm" fw={600}>최근 수정된 게시글</Text>
         </Group>
         {updates.length === 0 ? (
-          <Text size="sm" c="dimmed" ta="center" py="md">새로 수정된 페이지가 없습니다.</Text>
+          <Text size="sm" c="dimmed" ta="center" py="md">최근 수정된 게시글이 없습니다.</Text>
         ) : (
           <ScrollArea.Autosize mah={360}>
             <Stack gap={0} p={4}>

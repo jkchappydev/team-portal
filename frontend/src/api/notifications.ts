@@ -15,10 +15,6 @@ export function markDocumentRead(id: number): Promise<void> {
   return apiFetch<void>(`/api/documents/${id}/read`, { method: "POST" });
 }
 
-export function markAllDocumentUpdatesRead(): Promise<void> {
-  return apiFetch<void>("/api/notifications/document-updates/read-all", { method: "POST" });
-}
-
 export type WorkStatusNoticeAction = "CREATED" | "UPDATED" | "DELETED";
 
 // 근무 상황 변경 알림 한 건 (label: 바뀐 뒤 표기, 삭제면 지운 항목 표기)
@@ -45,8 +41,4 @@ export function listWorkStatusNotices(): Promise<WorkStatusNoticeListDto> {
 
 export function markWorkStatusNoticeRead(id: number): Promise<void> {
   return apiFetch<void>(`/api/notifications/work-status/${id}/read`, { method: "POST" });
-}
-
-export function markAllWorkStatusNoticesRead(): Promise<void> {
-  return apiFetch<void>("/api/notifications/work-status/read-all", { method: "POST" });
 }

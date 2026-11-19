@@ -1,7 +1,7 @@
-import { Badge, Button, Group, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Badge, Group, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { markAllWorkStatusNoticesRead, markWorkStatusNoticeRead } from "../api/notifications";
+import { markWorkStatusNoticeRead } from "../api/notifications";
 import type { WorkStatusNoticeAction, WorkStatusNoticeDto } from "../api/notifications";
 import { formatDateRange } from "../workstatus/calendar";
 import { formatRelative } from "./updateFormat";
@@ -20,17 +20,12 @@ export function WorkStatusNotices({ items, onNavigate }: { items: WorkStatusNoti
   const queryClient = useQueryClient();
   const refresh = () => queryClient.invalidateQueries({ queryKey: WORK_STATUS_NOTICES_KEY });
   const readOne = useMutation({ mutationFn: markWorkStatusNoticeRead, onSettled: refresh });
-  const readAll = useMutation({ mutationFn: markAllWorkStatusNoticesRead, onSuccess: refresh });
 
   return (
     <>
-      <Group justify="space-between" px="sm" py={8}
+      <Group px="sm" py={8}
         style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Text size="sm" fw={600}>근무 상황 변경</Text>
-        <Button size="compact-xs" variant="subtle" disabled={items.length === 0}
-          loading={readAll.isPending} onClick={() => readAll.mutate()}>
-          모두 읽음
-        </Button>
       </Group>
       {items.length === 0 ? (
         <Text size="sm" c="dimmed" ta="center" py="md">새 근무 상황 변경이 없습니다.</Text>

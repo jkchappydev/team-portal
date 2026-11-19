@@ -4,9 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentUpdatesBell } from "./DocumentUpdatesBell";
-import {
-  listDocumentUpdates, listWorkStatusNotices, markAllDocumentUpdatesRead, markAllWorkStatusNoticesRead, markWorkStatusNoticeRead,
-} from "../api/notifications";
+import { listDocumentUpdates, listWorkStatusNotices, markWorkStatusNoticeRead } from "../api/notifications";
 import { formatRelative, isProjectHome, updatePath } from "./updateFormat";
 import type { SpaceDto } from "../api/spaces";
 import { useCurrentUser } from "../user/currentUser";
@@ -19,10 +17,8 @@ const update = (id: number, title: string, kind: "PAGE" | "FILE" = "PAGE", menti
 
 vi.mock("../api/notifications", () => ({
   listDocumentUpdates: vi.fn(),
-  markAllDocumentUpdatesRead: vi.fn(() => Promise.resolve()),
   listWorkStatusNotices: vi.fn(),
   markWorkStatusNoticeRead: vi.fn(() => Promise.resolve()),
-  markAllWorkStatusNoticesRead: vi.fn(() => Promise.resolve()),
 }));
 
 const notice = (id: number, label: string, action: "CREATED" | "UPDATED" | "DELETED" = "CREATED") => ({
@@ -59,6 +55,7 @@ describe("DocumentUpdatesBell", () => {
   afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.mocked(useCurrentUser).mockReturnValue({ user: { id: 1, name: "팀원", active: true, admin: false }, me: null });
     vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: false, items: [] });
   });
@@ -82,13 +79,20 @@ describe("DocumentUpdatesBell", () => {
     return queryClient;
   }
 
-  it("수정된 페이지 수를 종 아이콘에 표시하고, 누르면 목록에서 해당 페이지로 이동한다", async () => {
+  // 종 위 빨간 점 (숫자 없음)
+  const dot = () => document.querySelector(".mantine-Indicator-indicator");
+
+  it("새 알림은 숫자 없이 빨간 점으로 보이고, 종을 열면 점이 사라지며 목록에서 해당 페이지로 이동한다", async () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차"), update(14, "회의록")]);
     renderBell();
 
-    expect(await screen.findByText("2")).toBeTruthy();
+    await waitFor(() => expect(dot()).not.toBeNull());
+    expect(dot()!.textContent).toBe("");
     fireEvent.click(screen.getByLabelText("수정 알림"));
-    expect(await screen.findByText("수정된 페이지")).toBeTruthy();
+    expect(await screen.findByText("최근 수정된 게시글")).toBeTruthy();
+    expect(dot()).toBeNull();
+    // 모두 읽음 버튼은 없음
+    expect(screen.queryByText("모두 읽음")).toBeNull();
     expect(screen.getAllByText("스쿨북스 · 김동료 · 5분 전")).toHaveLength(2);
 
     fireEvent.click(screen.getByText(/배포 절차/));
@@ -104,19 +108,34 @@ describe("DocumentUpdatesBell", () => {
     expect(screen.getAllByText(/@나를 언급/)).toHaveLength(1);
   });
 
-  it("모두 읽음을 누르면 전체 확인 처리를 요청한다", async () => {
+  it("종을 열어 본 뒤 새 알림이 오면 점이 다시 보인다 (본 기록은 다시 그려도 유지)", async () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
-    renderBell();
-    fireEvent.click(await screen.findByLabelText("수정 알림"));
-    fireEvent.click(await screen.findByText("모두 읽음"));
-    await waitFor(() => expect(markAllDocumentUpdatesRead).toHaveBeenCalled());
+    const queryClient = renderBell();
+    await waitFor(() => expect(dot()).not.toBeNull());
+    fireEvent.click(screen.getByLabelText("수정 알림"));
+    await waitFor(() => expect(dot()).toBeNull());
+
+    vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차"), update(14, "회의록")]);
+    await queryClient.refetchQueries();
+    await waitFor(() => expect(dot()).not.toBeNull());
   });
 
-  it("수정된 페이지가 없으면 숫자 없이 안내 문구를 보여준다", async () => {
+  it("이미 본 알림만 있으면 처음 그릴 때도 점이 없다", async () => {
+    const doc = update(11, "배포 절차");
+    localStorage.setItem("notification-seen-1", JSON.stringify([`doc:11:${doc.updatedAt}`]));
+    vi.mocked(listDocumentUpdates).mockResolvedValue([doc]);
+    renderBell();
+    await waitFor(() => expect(listDocumentUpdates).toHaveBeenCalled());
+    await screen.findByLabelText("수정 알림");
+    expect(dot()).toBeNull();
+  });
+
+  it("최근 수정된 게시글이 없으면 점 없이 안내 문구를 보여준다", async () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([]);
     renderBell();
     fireEvent.click(screen.getByLabelText("수정 알림"));
-    expect(await screen.findByText("새로 수정된 페이지가 없습니다.")).toBeTruthy();
+    expect(await screen.findByText("최근 수정된 게시글이 없습니다.")).toBeTruthy();
+    expect(dot()).toBeNull();
   });
 
   it("관리자는 가입 요청 건수를 함께 보고 팀원 화면으로 이동한다", async () => {
@@ -124,7 +143,7 @@ describe("DocumentUpdatesBell", () => {
     vi.mocked(countPendingSignups).mockResolvedValue(2);
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
     renderBell();
-    expect(await screen.findByText("3")).toBeTruthy();
+    await waitFor(() => expect(dot()).not.toBeNull());
     fireEvent.click(screen.getByLabelText("수정 알림"));
     fireEvent.click(await screen.findByText("가입 요청 2건"));
     expect(await screen.findByText("팀원 화면")).toBeTruthy();
@@ -133,7 +152,7 @@ describe("DocumentUpdatesBell", () => {
   it("처음 열 때는 종을 흔들지 않고, 이후 새 알림이 늘어나면 한 번 흔든다", async () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
     const queryClient = renderBell();
-    expect(await screen.findByText("1")).toBeTruthy();
+    await waitFor(() => expect(dot()).not.toBeNull());
     const bell = () => screen.getByLabelText("수정 알림").querySelector("svg")!;
     expect(bell().hasAttribute("data-ring")).toBe(false);
 
@@ -142,16 +161,16 @@ describe("DocumentUpdatesBell", () => {
     await waitFor(() => expect(bell().hasAttribute("data-ring")).toBe(true));
   });
 
-  it("팀장 이상·개발자는 수정된 페이지 위에 근무 상황 변경을 보고, 누르면 확인 처리 후 그 달 근무 상황표로 이동한다", async () => {
+  it("팀장 이상·개발자는 최근 수정된 게시글 위에 근무 상황 변경을 보고, 누르면 확인 처리 후 그 달 근무 상황표로 이동한다", async () => {
     vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: true, items: [notice(5, "홍길동 연차"), notice(6, "이순신 출장", "DELETED")] });
     vi.mocked(listDocumentUpdates).mockResolvedValue([update(11, "배포 절차")]);
     renderBell();
 
-    expect(await screen.findByText("3")).toBeTruthy();
+    await waitFor(() => expect(dot()).not.toBeNull());
     fireEvent.click(screen.getByLabelText("수정 알림"));
     const sectionTitle = await screen.findByText("근무 상황 변경");
-    // 근무 상황 변경 칸이 수정된 페이지보다 위
-    expect(sectionTitle.compareDocumentPosition(screen.getByText("수정된 페이지")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 근무 상황 변경 칸이 최근 수정된 게시글보다 위
+    expect(sectionTitle.compareDocumentPosition(screen.getByText("최근 수정된 게시글")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("삭제")).toBeTruthy();
     expect(screen.getAllByText("12/3(목) ~ 12/4(금) · 김동료 · 2분 전")).toHaveLength(2);
 
@@ -160,22 +179,20 @@ describe("DocumentUpdatesBell", () => {
     await waitFor(() => expect(markWorkStatusNoticeRead).toHaveBeenCalledWith(5, expect.anything()));
   });
 
-  it("근무 상황 변경 모두 읽음은 근무 상황 알림만 확인 처리한다", async () => {
+  it("근무 상황 변경 칸에도 모두 읽음 버튼이 없다", async () => {
     vi.mocked(listWorkStatusNotices).mockResolvedValue({ enabled: true, items: [notice(5, "홍길동 연차")] });
     vi.mocked(listDocumentUpdates).mockResolvedValue([]);
     renderBell();
     fireEvent.click(await screen.findByLabelText("수정 알림"));
     await screen.findByText("홍길동 연차");
-    fireEvent.click(screen.getAllByText("모두 읽음")[0]);
-    await waitFor(() => expect(markAllWorkStatusNoticesRead).toHaveBeenCalled());
-    expect(markAllDocumentUpdatesRead).not.toHaveBeenCalled();
+    expect(screen.queryByText("모두 읽음")).toBeNull();
   });
 
   it("알림 대상이 아니면 근무 상황 변경 칸을 보이지 않는다", async () => {
     vi.mocked(listDocumentUpdates).mockResolvedValue([]);
     renderBell();
     fireEvent.click(screen.getByLabelText("수정 알림"));
-    expect(await screen.findByText("수정된 페이지")).toBeTruthy();
+    expect(await screen.findByText("최근 수정된 게시글")).toBeTruthy();
     expect(screen.queryByText("근무 상황 변경")).toBeNull();
   });
 
