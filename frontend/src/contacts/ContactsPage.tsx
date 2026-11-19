@@ -245,6 +245,57 @@ function ContactTable({ contacts, onEdit, onDelete }: {
   );
 }
 
+// 좁은 화면의 한 줄 보기: 연락처마다 촘촘한 세 줄 (넓은 한 줄 표의 내용을 좁은 폭에 맞춰 줄바꿈)
+// 1) 이름 · 업체  2) 전화번호 1·2, 이메일 (눌러서 전화·메일)  3) 연관 프로젝트  4) 메모 (흐리게, 각각 한 줄)
+function ContactCompactList({ contacts, onEdit, onDelete }: {
+  contacts: ContactDto[];
+  onEdit: (contact: ContactDto) => void;
+  onDelete: (contact: ContactDto) => void;
+}) {
+  const oneLine = (value: string | null) => value?.replace(/\s*\n\s*/g, " ").trim() || null;
+  return (
+    <Paper withBorder radius="md" style={{ overflow: "hidden" }} aria-label="외부 연락처 목록" role="list">
+      {contacts.map((contact, index) => {
+        const phones = [contact.phone, contact.phone2].filter((phone): phone is string => !!phone);
+        const project = oneLine(contact.project);
+        const memo = oneLine(contact.memo);
+        return (
+          <Group key={contact.id} role="listitem" gap="sm" wrap="nowrap" align="flex-start" px="sm" py={10}
+            style={{ borderTop: index > 0 ? "1px solid var(--mantine-color-default-border)" : undefined }}>
+            <Avatar size={32} radius="xl" variant="filled" color={contactColor(contact)} mt={2}>{contact.name.slice(0, 1)}</Avatar>
+            <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+              <Text size="sm" truncate>
+                <Text span size="sm" fw={600}>{contact.name}</Text>
+                <Text span size="sm" c="dimmed"> · {contact.company || "업체 없음"}</Text>
+              </Text>
+              {(phones.length > 0 || contact.email) && (
+                <Group gap={4} style={{ minWidth: 0, columnGap: 12 }}>
+                  {phones.map((phone) => (
+                    <Group key={phone} gap={4} wrap="nowrap" c="dimmed">
+                      <PhoneIcon />
+                      <Anchor size="sm" href={`tel:${phone}`} draggable={false} c="inherit" style={{ color: "var(--mantine-color-text)" }}>{phone}</Anchor>
+                    </Group>
+                  ))}
+                  {contact.email && (
+                    <Group gap={4} wrap="nowrap" c="dimmed" style={{ minWidth: 0 }}>
+                      <MailIcon />
+                      <Anchor size="sm" href={`mailto:${contact.email}`} draggable={false} truncate>{contact.email}</Anchor>
+                    </Group>
+                  )}
+                </Group>
+              )}
+              {/* 연관 프로젝트와 메모는 각각 한 줄 (카드처럼 프로젝트는 보통 글자색, 메모는 흐리게) */}
+              {project && <Text size="xs" truncate title={project}>{project}</Text>}
+              {memo && <Text size="xs" c="dimmed" truncate title={memo}>{memo}</Text>}
+            </Stack>
+            <ContactMenu contact={contact} onEdit={() => onEdit(contact)} onDelete={() => onDelete(contact)} />
+          </Group>
+        );
+      })}
+    </Paper>
+  );
+}
+
 // 카드 보기·한 줄 보기 (고른 보기는 이 브라우저에 기억)
 type ContactView = "card" | "list";
 const VIEW_STORAGE_KEY = "contacts-view";
@@ -282,9 +333,8 @@ export function ContactsPage() {
     setView(next);
     saveView(next);
   };
-  // 좁은 화면(sm 미만)은 한 줄 보기 표가 너무 넓어 카드 보기로 고정 (고른 보기는 그대로 기억)
+  // 좁은 화면(sm 미만)의 한 줄 보기는 넓은 표 대신 짧은 목록 (ContactCompactList)
   const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
-  const shownView: ContactView = mobile ? "card" : view;
   const searching = query.trim().length > 0;
   const visible = sortContacts(contacts.filter((c) => matches(c, query)), sort);
   const sortButton = (key: SortKey, label: string) => (
@@ -308,28 +358,35 @@ export function ContactsPage() {
         </Group>
         <Button onClick={() => setDialog({ editing: null })}>+ 연락처 추가</Button>
       </Group>
+      {/* 넓은 화면: 검색·정렬 | 보기 전환, 좁은 화면: 검색 아래 줄에 정렬 | 보기 전환 */}
       <Group gap="lg" justify="space-between">
-        <Group gap="lg" w={{ base: "100%", sm: "auto" }}>
-          <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={{ base: "100%", sm: 320 }}
+        {mobile && (
+          <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w="100%"
             onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
+        )}
+        <Group gap="lg">
+          {!mobile && (
+            <TextInput placeholder="이름, 업체, 이메일, 전화번호, 프로젝트, 메모 검색" value={query} w={320}
+              onChange={(e) => setQuery(e.currentTarget.value)} aria-label="연락처 검색" />
+          )}
           <Group gap="md">
             {sortButton("name", "이름")}
             {sortButton("company", "업체")}
           </Group>
         </Group>
         {/* 명함 카드 또는 구글 주소록처럼 한 줄씩 */}
-        {!mobile && (
-          <SegmentedControl size="xs" value={view} onChange={(value) => changeView(value as ContactView)} aria-label="보기 방식"
-            data={[{ value: "card", label: "카드" }, { value: "list", label: "한 줄" }]} />
-        )}
+        <SegmentedControl size="xs" value={view} onChange={(value) => changeView(value as ContactView)} aria-label="보기 방식"
+          data={[{ value: "card", label: "카드" }, { value: "list", label: "한 줄" }]} />
       </Group>
       {error && <Alert color="red">외부 연락처를 불러오지 못했습니다.</Alert>}
       {!isLoading && visible.length === 0 ? (
         <Paper withBorder radius="md" p="xl">
           <Text size="sm" c="dimmed" ta="center">{searching ? "검색 결과가 없습니다." : "외부 연락처가 없습니다."}</Text>
         </Paper>
-      ) : shownView === "list" ? (
-        <ContactTable contacts={visible} onEdit={(contact) => setDialog({ editing: contact })} onDelete={setDeleting} />
+      ) : view === "list" ? (
+        mobile
+          ? <ContactCompactList contacts={visible} onEdit={(contact) => setDialog({ editing: contact })} onDelete={setDeleting} />
+          : <ContactTable contacts={visible} onEdit={(contact) => setDialog({ editing: contact })} onDelete={setDeleting} />
       ) : (
         // 화면 폭에 맞춰 1~4장씩, 카드 높이는 같은 줄에서 맞춤
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="md" verticalSpacing="md">

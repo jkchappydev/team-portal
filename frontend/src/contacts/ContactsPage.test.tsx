@@ -191,15 +191,25 @@ describe("ContactsPage", () => {
     return () => { window.matchMedia = original; };
   }
 
-  it("좁은 화면은 한 줄 보기를 골라 두었어도 카드로 보이고 보기 전환을 숨긴다", async () => {
-    localStorage.setItem("contacts-view", "list");
+  it("좁은 화면도 카드·한 줄을 바꿀 수 있고, 한 줄 보기는 넓은 표 대신 이름·업체, 전화·메일, 프로젝트·메모 촘촘한 목록이다", async () => {
+    localStorage.setItem("contacts-view", "card");
     const restore = useMobileWidth();
     try {
       renderPage();
       await screen.findByText("홍길동");
-      await waitFor(() => expect(screen.queryByRole("table", { name: "외부 연락처 목록" })).toBeNull());
-      expect(screen.queryByLabelText("보기 방식")).toBeNull();
       expect(screen.getByText("최종 수정일 : 2026-11-17")).toBeTruthy();
+      fireEvent.click(screen.getByText("한 줄"));
+      // 넓은 표는 없고 짧은 목록만
+      await waitFor(() => expect(screen.getByRole("list", { name: "외부 연락처 목록" })).toBeTruthy());
+      expect(screen.queryByRole("table", { name: "외부 연락처 목록" })).toBeNull();
+      expect(screen.getByText("010-1234-5678").closest("a")!.getAttribute("href")).toBe("tel:010-1234-5678");
+      expect(screen.getByText("02-555-1234").closest("a")!.getAttribute("href")).toBe("tel:02-555-1234");
+      expect(screen.getByText("hong@example.com").closest("a")!.getAttribute("href")).toBe("mailto:hong@example.com");
+      expect(screen.getByText("· 가나출판", { exact: false })).toBeTruthy();
+      // 연관 프로젝트와 메모는 각각 한 줄
+      expect(screen.getByText("교과서 개발, 전자책")).toBeTruthy();
+      expect(screen.getByText("오전에만 통화 가능")).toBeTruthy();
+      expect(localStorage.getItem("contacts-view")).toBe("list");
     } finally {
       restore();
       localStorage.removeItem("contacts-view");
