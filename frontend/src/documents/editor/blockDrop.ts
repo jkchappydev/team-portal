@@ -18,6 +18,8 @@ export interface DropRow {
   hasChildren: boolean;
   // 콜아웃처럼 하위 블록을 상자 안에 담는 블록 (자기 줄 대신 상자 전체 기준)
   container: boolean;
+  // 펼쳐져 있지만 비어 있는 토글 (제목 아래쪽 절반과 "비어 있는 토글" 안내 줄에 놓으면 하위로 넣음)
+  emptyToggle?: boolean;
   // 가로 범위: 열 안의 줄은 그 열의 좌우, 그 밖은 블록 줄의 좌우 (없으면 가로 위치를 따지지 않음)
   left?: number;
   right?: number;
@@ -50,6 +52,7 @@ export function pickDropTarget(rows: DropRow[], y: number): DropTarget | null {
   }
   if (y < (row.top + row.bottom) / 2) return { blockId: row.id, placement: "before" };
   if (row.hasChildren) return { blockId: row.id, placement: "firstChild" };
+  if (row.emptyToggle && y <= row.blockBottom) return { blockId: row.id, placement: "firstChild" };
   // 부모 상자(콜아웃 등) 아래 바깥이면 부모 뒤로 올라감
   const byId = new Map(rows.map((r) => [r.id, r]));
   let target = row;
@@ -88,8 +91,10 @@ export function pickDropTargetAt(rows: DropRow[], x: number, y: number, allowSid
 const BLOCK_SELECTOR = ".bn-block[data-id]";
 const COLUMN_SELECTOR = ".bn-column[data-id]";
 
-function ownContent(block: Element): Element | null {
-  return block.querySelector(":scope > .bn-block-content, :scope > .react-renderer > .bn-block-content");
+// 블록 바로 안의 요소 (토글은 내용과 하위 블록이 .bn-toggle-frame > .bn-toggle-slot 안에 한 겹 더 들어 있음)
+const OWN_PATHS = [":scope > ", ":scope > .react-renderer > ", ":scope > .bn-toggle-frame > .bn-toggle-slot > "];
+function ownChild(block: Element, selector: string): Element | null {
+  return block.querySelector(OWN_PATHS.map((path) => path + selector).join(", "));
 }
 
 // 편집 영역에서 보이는 블록 줄을 모음 (끄는 블록과 그 하위는 제외)
@@ -100,11 +105,11 @@ export function collectDropRows(root: Element, excludedIds: ReadonlySet<string>)
     if (excludedIds.has(id) || [...excludedIds].some((ex) => block.parentElement?.closest(`${BLOCK_SELECTOR}[data-id="${CSS.escape(ex)}"]`))) {
       continue;
     }
-    const own = ownContent(block);
+    const own = ownChild(block, ".bn-block-content");
     const blockRect = block.getBoundingClientRect();
     if (!own || blockRect.height === 0) continue;
     const ownRect = own.getBoundingClientRect();
-    const group = block.querySelector(":scope > .bn-block-group");
+    const group = ownChild(block, ".bn-block-group");
     const parent = block.parentElement?.closest<HTMLElement>(BLOCK_SELECTOR);
     const container = own.getAttribute("data-content-type") === "callout";
     // 이 블록을 바로 담은 열 (부모 블록보다 가까운 열만)
@@ -119,6 +124,8 @@ export function collectDropRows(root: Element, excludedIds: ReadonlySet<string>)
       blockBottom: blockRect.bottom,
       hasChildren: !!group && group.getBoundingClientRect().height > 0,
       container,
+      // BlockNote는 펼쳐진 빈 토글에만 "비어 있는 토글" 안내 버튼을 붙임
+      emptyToggle: !!block.querySelector(":scope > .bn-toggle-frame > .bn-toggle-add-block-button"),
       left: span.left,
       right: span.right,
       columnId: inColumn ? column!.dataset.id! : null,
@@ -145,7 +152,10 @@ function blockPositions(doc: PMNode, id: string): Record<DropPlacement, number> 
     if (found) return false;
     if (node.type.isInGroup("bnBlock") && node.attrs.id === id) {
       const content = node.firstChild;
-      found = { before: pos, after: pos + node.nodeSize, firstChild: pos + 1 + (content?.nodeSize ?? 0) + 1, left: pos, right: pos };
+      // 첫 하위 블록 앞: 하위 묶음이 있으면 그 안 맨 앞, 없으면 블록 내용 바로 뒤 (BlockNote 하위 넣기 표시와 같은 자리)
+      const contentEnd = pos + 1 + (content?.nodeSize ?? 0);
+      const firstChild = node.childCount > 1 ? contentEnd + 1 : contentEnd;
+      found = { before: pos, after: pos + node.nodeSize, firstChild, left: pos, right: pos };
       return false;
     }
     return true;

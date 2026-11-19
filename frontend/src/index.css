@@ -1507,6 +1507,11 @@ input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="dat
   margin-left: calc(-1 * var(--bn-table-handle-size));
 }
 
+/* 이미지·영상 좌우 크기 조절 손잡이: BlockNote 기본은 세로 가운데 → 표·콜아웃 손잡이처럼 위쪽에 둠 */
+.bn-visual-media-wrapper > .bn-resize-handle {
+  top: 8px;
+}
+
 /* 블록 바깥에서 끌어 여러 블록 고르기 (editor/blockMarquee): 끄는 사각형과 고른 블록 표시 */
 .block-marquee {
   position: fixed;

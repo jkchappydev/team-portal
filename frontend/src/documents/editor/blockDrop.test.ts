@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { afterEach } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { moveBlocks, pickDropTarget, pickDropTargetAt } from "./blockDrop";
+import { collectDropRows, moveBlocks, pickDropTarget, pickDropTargetAt } from "./blockDrop";
 import { editorSchema } from "./schema";
 import type { DropRow } from "./blockDrop";
 
@@ -47,6 +47,15 @@ describe("pickDropTarget", () => {
     expect(pickDropTarget(rows, 90)).toEqual({ blockId: "body", placement: "after" });
     // 상자와 다음 블록 사이는 콜아웃 뒤
     expect(pickDropTarget(rows, 105)).toEqual({ blockId: "callout", placement: "after" });
+  });
+
+  it("펼친 빈 토글은 제목 아래쪽 절반과 안내 줄에 놓으면 하위로 넣는다", () => {
+    // 제목 0~30, 안내 줄 30~60, 다음 블록 60~90
+    const rows = [row("t", 0, 30, { blockBottom: 60, emptyToggle: true }), row("n", 60, 90)];
+    expect(pickDropTarget(rows, 10)).toEqual({ blockId: "t", placement: "before" });
+    expect(pickDropTarget(rows, 20)).toEqual({ blockId: "t", placement: "firstChild" });
+    expect(pickDropTarget(rows, 50)).toEqual({ blockId: "t", placement: "firstChild" });
+    expect(pickDropTarget(rows, 70)).toEqual({ blockId: "n", placement: "before" });
   });
 
   it("놓을 블록이 없으면 null", () => {
@@ -158,6 +167,38 @@ describe("moveBlocks 옆에 놓기", () => {
       { type: "paragraph", text: "다" },
       { type: "paragraph", text: "나" },
     ]);
+    editor.unmount();
+  });
+});
+
+describe("collectDropRows 토글", () => {
+  const originalRect = Element.prototype.getBoundingClientRect;
+  afterEach(() => {
+    Element.prototype.getBoundingClientRect = originalRect;
+    document.body.innerHTML = "";
+    localStorage.clear();
+  });
+
+  it("토글 줄을 놓을 대상에 넣고, 펼친 빈 토글이면 하위로 넣을 수 있다고 표시한다", () => {
+    // jsdom은 크기가 0이라 모든 요소를 높이 10으로 둠
+    Element.prototype.getBoundingClientRect = () => ({ top: 0, bottom: 10, left: 0, right: 100, width: 100, height: 10, x: 0, y: 0, toJSON: () => ({}) });
+    localStorage.setItem("toggle-open", "true");
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: [
+      { id: "open", type: "toggleListItem", content: "빈 토글" },
+      { id: "full", type: "toggleListItem", content: "토글", children: [{ id: "child", type: "paragraph", content: "안" }] },
+      { id: "a", type: "paragraph", content: "가" },
+    ] });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    editor.mount(host);
+    const rows = collectDropRows(host, new Set(["a"]));
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    expect(byId.get("open")?.emptyToggle).toBe(true);
+    expect(byId.get("full")?.emptyToggle).toBe(false);
+    expect(byId.get("child")?.parentId).toBe("full");
+
+    moveBlocks(editor, ["a"], { blockId: "open", placement: "firstChild" });
+    expect(editor.getBlock("open")?.children.map((b) => b.id)).toEqual(["a"]);
     editor.unmount();
   });
 });
