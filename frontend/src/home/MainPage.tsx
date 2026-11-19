@@ -1,4 +1,4 @@
-import { Anchor, Badge, Box, Group, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { Anchor, Badge, Box, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { listNewCs } from "../api/cs";
@@ -193,7 +193,6 @@ function NewCsList() {
 export function MainPage() {
   return (
     <Stack maw={1300} gap="md">
-      <Title order={3}>메인</Title>
       <WeekStatuses />
       <ProjectGallery />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
