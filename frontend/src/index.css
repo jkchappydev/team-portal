@@ -1624,8 +1624,8 @@ html.block-marquee-dragging .bn-side-menu {
 [data-mantine-color-scheme="dark"] .form-row:hover { background: rgba(255, 255, 255, 0.06); }
 [data-mantine-color-scheme="dark"] .form-row[data-selected] { background: rgba(255, 255, 255, 0.08); }
 .form-row-select { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 8px 6px 8px 10px; }
-/* 이모지마다 폭이 달라도 파일 이름 시작 위치가 같도록 아이콘 칸 폭 고정 */
-.form-row-icon { width: 24px; text-align: center; font-size: 20px; line-height: 1; flex-shrink: 0; }
+/* 파일 종류 아이콘 (흐린 회색 선, 이름 시작 위치가 같도록 칸 폭 고정) */
+.form-row-icon { display: flex; width: 20px; flex-shrink: 0; color: var(--mantine-color-dimmed); }
 /* 미리보기 글 상자 위 기본 여백 제거 (제목 줄과의 간격은 Stack 간격만) */
 .forms-preview .text-preview { margin-top: 0; }
 /* ⋯ 메뉴는 줄에 마우스를 올리거나 포커스·메뉴가 열렸을 때만 (터치 화면은 항상) */

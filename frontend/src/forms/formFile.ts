@@ -1,14 +1,13 @@
-// 확장자별 목록 아이콘 (한글·워드·엑셀·파워포인트·PDF·이미지·압축, 그 외는 일반 문서)
-export function fileIconOf(fileName: string): string {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (["hwp", "hwpx"].includes(ext)) return "📝";
-  if (["doc", "docx"].includes(ext)) return "📘";
-  if (["xls", "xlsx", "csv"].includes(ext)) return "📗";
-  if (["ppt", "pptx"].includes(ext)) return "📙";
-  if (ext === "pdf") return "📕";
-  if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].includes(ext)) return "🖼️";
-  if (["zip", "7z", "rar"].includes(ext)) return "🗜️";
-  return "📄";
+export type FileKind = "document" | "image" | "archive" | "app" | "media";
+
+// 확장자별 아이콘 종류 (문서는 모두 같은 아이콘, 압축·실행 파일·이미지·영상/음악만 따로 구분)
+export function fileKindOf(fileName: string): FileKind {
+  const ext = fileName.includes(".") ? fileName.split(".").pop()!.toLowerCase() : "";
+  if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "heic"].includes(ext)) return "image";
+  if (["zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "alz", "egg"].includes(ext)) return "archive";
+  if (["exe", "msi", "bat", "cmd", "apk", "dmg", "pkg", "app", "jar", "sh", "appx", "msix"].includes(ext)) return "app";
+  if (["mp4", "mov", "avi", "mkv", "webm", "wmv", "mp3", "wav", "m4a", "flac", "aac", "ogg"].includes(ext)) return "media";
+  return "document";
 }
 
 // 파일 크기를 B·KB·MB로 (KB 이상은 소수 첫째 자리까지, .0은 생략)

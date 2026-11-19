@@ -12,7 +12,8 @@ import { FilePreview } from "../documents/preview/FilePreview";
 import { useReorderAnimation } from "../layout/reorderAnimation";
 import { useLastValue } from "../layout/useLastValue";
 import { showToast } from "../toast/toastStore";
-import { fileIconOf, formatFileSize } from "./formFile";
+import { formatFileSize } from "./formFile";
+import { FileKindIcon } from "./FileKindIcon";
 
 // 목록 줄을 끌 때 싣는 데이터 종류 (바깥에서 끌어온 파일과 구분)
 const DRAG_TYPE = "application/x-portal-form";
@@ -186,7 +187,7 @@ export function FormsPage() {
               {/* 다운로드는 목록 줄의 ⋯ 메뉴에서 */}
               <Box style={{ minWidth: 0 }}>
                 <Title order={4} style={{ wordBreak: "break-all" }}>
-                  <span aria-hidden style={{ marginRight: 8 }}>{fileIconOf(selected.name)}</span>{selected.name}
+                  {selected.name}
                 </Title>
                 <Text size="xs" c="dimmed" mt={4}>
                   {formatFileSize(selected.size)} · {formatDate(selected.createdAt)}
@@ -240,7 +241,7 @@ function FormRow({ form, selected, dropLine, onSelect, onDelete, onDragStart, on
       onDragEnd={onDragEnd}>
       <UnstyledButton className="form-row-select" onClick={onSelect} aria-current={selected || undefined}
         aria-label={form.name}>
-        <span aria-hidden className="form-row-icon">{fileIconOf(form.name)}</span>
+        <span className="form-row-icon"><FileKindIcon fileName={form.name} /></span>
         <Box style={{ minWidth: 0, flex: 1 }}>
           <Text size="sm" truncate title={form.name} fw={selected ? 600 : 400}>{form.name}</Text>
           <Text size="xs" c="dimmed" truncate>{formatFileSize(form.size)} · {formatDate(form.createdAt)}</Text>
