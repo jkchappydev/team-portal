@@ -1,7 +1,8 @@
 ﻿import { useEffect, useLayoutEffect, useRef } from "react";
 import { ActionIcon, AppShell, Box, Group, Text } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import { Outlet, useLocation } from "react-router-dom";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
+import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
 import { useCurrentUser } from "../user/currentUser";
 import { Sidebar } from "./Sidebar";
 import { NewCsToasts } from "../home/NewCsToasts";
@@ -19,6 +20,8 @@ export function AppLayout() {
   const mainRef = useRef<HTMLDivElement>(null);
   // 좁은 화면(sm 미만)은 사이드바를 닫아 두고 위쪽 메뉴 버튼으로 열고 닫음
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
+  // 알림 종은 좁은 화면이면 위쪽 줄, 넓은 화면이면 사이드바 머리글에 하나만 그림 (주기 조회가 겹치지 않게)
+  const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
   // 다른 화면으로 옮기면 열린 사이드바를 닫아 본문이 보이게 함
   useEffect(() => {
     closeNav();
@@ -42,7 +45,11 @@ export function AppLayout() {
             <path d={navOpened ? "M10 5 5 10l5 5 M15 5l-5 5 5 5" : "M3.5 5.5h13 M3.5 10h13 M3.5 14.5h13"} />
           </svg>
         </ActionIcon>
-        <Text fw={700} truncate>개발팀</Text>
+        {/* 사이드바 머리글과 같이 포털 이름을 누르면 메인으로, 오른쪽 끝에 수정 알림 */}
+        <Text fw={700} truncate component={RouterLink} to="/" style={{ flex: 1, color: "inherit", textDecoration: "none" }}>
+          개발팀
+        </Text>
+        {user && mobile && <DocumentUpdatesBell />}
       </Group>
     </AppShell.Header>
     <AppShell.Navbar><Sidebar user={user} /></AppShell.Navbar>

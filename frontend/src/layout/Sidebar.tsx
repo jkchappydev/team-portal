@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { Box, Button, Group, Kbd, ScrollArea, Stack, Text } from "@mantine/core";
-import { useHotkeys } from "@mantine/hooks";
+import { useHotkeys, useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink as RouterLink, useNavigate } from "react-router-dom";
 import { createSpace, listSpaces, moveSpace } from "../api/spaces";
@@ -31,6 +31,8 @@ export function Sidebar({ user }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 노션처럼 어디서든 Ctrl/Cmd+K로 검색 창 열기
   useHotkeys([["mod+K", () => setSearching(true)]], []);
+  // 좁은 화면(sm 미만)은 포털 이름·알림을 위쪽 줄에 두므로 사이드바 머리글을 그리지 않음
+  const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces, enabled: user !== null });
   // 프로젝트·페이지 중 고르는 창을 연 칸 (내부/외부 프로젝트, 이름은 만든 뒤 열린 화면의 제목 칸에서 입력)
   const [creatingIn, setCreatingIn] = useState<SpaceSection | null>(null);
@@ -59,14 +61,18 @@ export function Sidebar({ user }: Props) {
 
   return (
     <Stack h="100%" gap="xs" p="sm">
-      {/* 포털 이름을 누르면 첫 화면(메인)으로 이동 */}
-      <Group justify="space-between" wrap="nowrap">
-        <Text fw={700} size="lg" component={RouterLink} to="/" style={{ color: "inherit", textDecoration: "none" }}>
-          개발팀
-        </Text>
-        {/* 다른 팀원이 수정한 페이지 알림 */}
-        {user && <DocumentUpdatesBell />}
-      </Group>
+      {/* 포털 이름을 누르면 첫 화면(메인)으로 이동 (좁은 화면은 위쪽 줄 AppLayout 머리글이 대신함) */}
+      {/* 모바일 위쪽 줄처럼 아래 경계선 (사이드바 안쪽 여백을 넘어 좌우 끝까지) */}
+      {!mobile && (
+        <Group justify="space-between" wrap="nowrap" mx="calc(var(--mantine-spacing-sm) * -1)" px="sm" pb="xs"
+          style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+          <Text fw={700} size="lg" component={RouterLink} to="/" style={{ color: "inherit", textDecoration: "none" }}>
+            개발팀
+          </Text>
+          {/* 다른 팀원이 수정한 페이지 알림 */}
+          {user && <DocumentUpdatesBell />}
+        </Group>
+      )}
       {/* 노션처럼 검색부터 휴지통까지 메뉴 전체를 한 스크롤로 (포털 이름과 아래 내 정보 줄은 고정)
           스크롤바 자리를 따로 비워 오른쪽 버튼·글자와 겹치지 않게 함 */}
       {/* 마우스가 사이드바를 벗어나면 스크롤바를 바로 숨김 (기본 1초 지연 제거)

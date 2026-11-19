@@ -90,7 +90,8 @@ export function PageView({ doc, user, breadcrumb, menuItems, onRename, renameErr
 
   return (
     // 넓은 화면에서는 본문 왼쪽 바깥에 줄 드래그 핸들이 들어갈 여백 확보
-    <Box maw={1100} mx="auto" px={{ base: "md", sm: 56 }}>
+    <Box maw={1100} mx="auto" pl={{ base: 40, sm: 56 }} pr={{ base: "md", sm: 56 }}>
+      {/* 좁은 화면은 왼쪽 여백을 40px로 넓혀 블록 손잡이(+ ⠿)가 본문을 덮지 않고 여백 안에 들어가게 함 */}
       {/* 노션처럼 위 경로 줄과 페이지 아이콘·제목 사이에 여백을 둠 */}
       <Group className="print-hide" justify="space-between" mb={28} wrap="nowrap" mih={28}>
         <Box style={{ minWidth: 0 }}>{breadcrumb}</Box>

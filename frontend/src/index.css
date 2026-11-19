@@ -187,10 +187,32 @@ body {
   }
 }
 
-/* 좁은 화면은 바깥 여백이 없어 핸들 자리를 본문 안쪽에 유지 */
+/* 좁은 화면: 본문도 제목과 같은 선에서 시작 (안쪽 여백 없음)
+   손잡이(+ ⠿)는 작게 줄여 가로로 두고 화면 안으로 당김 */
 @media (max-width: 47.99em) {
   .page-editor .bn-editor {
-    padding-inline-start: 40px;
+    padding-inline-start: 0;
+  }
+
+  /* 손잡이 묶음은 Mantine Group이라 그 스타일보다 구체적인 선택자로 지정 */
+  /* 가로 두 버튼(36px)은 블록 왼쪽 바깥, 페이지 왼쪽 여백(좁은 화면 40px, PageView) 안에 들어감 */
+  .bn-mantine .bn-side-menu.mantine-Group-root {
+    flex-wrap: nowrap;
+  }
+
+  /* 버튼·아이콘 크기는 BlockNote 기본 규칙(.bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg)보다 구체적으로 */
+  .bn-mantine .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) {
+    /* 손잡이가 한 줄 블록 높이를 넘지 않게 작게 */
+    width: 18px;
+    min-width: 18px;
+    height: 15px;
+    min-height: 15px;
+    padding: 0;
+  }
+
+  .bn-mantine .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg {
+    width: 16px;
+    height: 16px;
   }
 }
 
