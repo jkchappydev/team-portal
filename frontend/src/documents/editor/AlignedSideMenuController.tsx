@@ -8,8 +8,10 @@ import { marqueeSelection, selectBlockRange } from "./blockMarquee";
 type Options = NonNullable<ComponentProps<typeof SideMenuController>["floatingUIOptions"]>;
 type Middleware = NonNullable<NonNullable<Options["useFloatingOptions"]>["middleware"]>[number];
 
-// 콜아웃 바깥 손잡이 버튼 위 끝을 상자 위 끝에 맞춤 (손잡이 틀 안쪽 여백 3px만큼 올림)
-const CALLOUT_HANDLE_TOP = -3;
+// 콜아웃·이미지 등 상자형 블록은 손잡이 버튼 위 끝을 상자 위 끝에 맞춤 (손잡이 틀 안쪽 여백 3px만큼 올림)
+const BOX_HANDLE_TOP = -3;
+// 글줄이 캡션뿐인 블록 (첫 글줄 가운데에 맞추면 손잡이가 그림 아래 캡션으로 내려감)
+const MEDIA_TYPES = new Set(["image", "video", "audio", "file"]);
 // 손잡이와 블록 사이를 기본보다 더 띄움 (콜아웃 안 본문 줄은 상자 안이 좁아 조금만)
 const HANDLE_GAP = 12;
 const CALLOUT_INNER_GAP = 6;
@@ -30,7 +32,9 @@ export function alignSideMenu(currentBlockId: () => string | undefined): Middlew
       const center = !own ? null
         : type === "table" ? firstRowCenter(own, block)
         // 콜아웃은 표처럼 상자 위쪽에 붙임 (첫 줄 가운데는 상자 위 여백만큼 내려가 애매하게 뜸)
-        : type === "callout" ? CALLOUT_HANDLE_TOP + state.rects.floating.height / 2
+        : type === "callout" ? BOX_HANDLE_TOP + state.rects.floating.height / 2
+        // 이미지·영상·오디오·파일은 노션처럼 내용 위 끝에 붙임
+        : type && MEDIA_TYPES.has(type) ? contentTop(own, block) + BOX_HANDLE_TOP + state.rects.floating.height / 2
         : firstLineCenter(own, block, true) ?? iconCenter(own, block);
       const blockTopGap = block.getBoundingClientRect().top - reference.top;
       const y = center === null ? state.y : state.y + blockTopGap + center - state.rects.floating.height / 2;
@@ -44,6 +48,11 @@ export function alignSideMenu(currentBlockId: () => string | undefined): Middlew
 function firstRowCenter(own: Element, block: Element): number | null {
   const row = own.querySelector("tr");
   return row ? iconCenter(row, block) : iconCenter(own, block);
+}
+
+// 블록 위 끝에서 내용 칸 위 끝까지 거리
+function contentTop(own: Element, block: Element): number {
+  return own.getBoundingClientRect().top - block.getBoundingClientRect().top;
 }
 
 // 글줄이 없는 블록(콜아웃 아이콘 등)은 내용 칸의 세로 가운데
