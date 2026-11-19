@@ -74,8 +74,13 @@ export function AppLayout() {
       )}
     </Transition>
     <AppShell.Main>
-      {/* 메뉴 화면은 위쪽도 왼쪽과 같은 여백 */}
-      {user && <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}><Outlet /></Box>}
+      {/* 메뉴 화면은 위쪽도 왼쪽과 같은 여백, 아래쪽도 위쪽과 같은 여백 (모든 화면 공통, 사이드바 제외) */}
+      {user && (
+        <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}
+          pb={ownPadding ? 0 : { base: 0, sm: 24 }}>
+          <Outlet />
+        </Box>
+      )}
       {/* 새로 접수된 CS 토스트 (모든 화면) */}
       {user && <NewCsToasts />}
       {/* 본문 이미지 펼쳐보기 창 (편집기 도구 막대의 펼치기 버튼이 엶) */}
