@@ -72,4 +72,33 @@ describe("AppLayout 좁은 화면 메뉴", () => {
       window.matchMedia = original;
     }
   });
+
+  it("좁은 화면에서 사이드바를 열면 본문을 어둡게 덮고 스크롤을 잠그며, 덮개를 누르면 닫고 풀린다", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(
+        <MantineProvider>
+          <MemoryRouter initialEntries={["/"]}>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<p>메인 본문</p>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </MantineProvider>,
+      );
+      expect(screen.queryByTestId("nav-overlay")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+      // 열려 있는 동안 덮인 본문(페이지) 스크롤 잠금
+      expect(document.documentElement.style.overflow).toBe("hidden");
+      fireEvent.click(await screen.findByTestId("nav-overlay"));
+      expect(screen.getByRole("button", { name: "메뉴 열기" })).toBeTruthy();
+      expect(document.documentElement.style.overflow).toBe("");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

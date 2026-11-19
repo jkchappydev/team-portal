@@ -1,5 +1,5 @@
 ﻿import { useEffect, useLayoutEffect, useRef } from "react";
-import { ActionIcon, AppShell, Box, Group, Text } from "@mantine/core";
+import { ActionIcon, AppShell, Box, Group, Overlay, Text, Transition } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
 import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
@@ -26,6 +26,17 @@ export function AppLayout() {
   useEffect(() => {
     closeNav();
   }, [pathname, closeNav]);
+  // 좁은 화면에서 사이드바가 열려 있는 동안은 덮인 본문이 스크롤되지 않게 페이지 스크롤을 잠금
+  // (사이드바 메뉴 목록은 자체 스크롤 영역이라 그대로 스크롤됨)
+  useEffect(() => {
+    if (!mobile || !navOpened) return;
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = previous;
+    };
+  }, [mobile, navOpened]);
   useLayoutEffect(() => {
     const main = mainRef.current;
     if (!main || prefersReducedMotion() || typeof main.animate !== "function") return;
@@ -53,6 +64,14 @@ export function AppLayout() {
       </Group>
     </AppShell.Header>
     <AppShell.Navbar><Sidebar user={user} /></AppShell.Navbar>
+    {/* 좁은 화면: 사이드바(80%, index.css)가 열리면 남은 본문을 어둡게 덮고, 누르면 닫음 (사이드바 z-index 101 바로 아래) */}
+    <Transition mounted={mobile && navOpened} transition="fade" duration={200}>
+      {(styles) => (
+        <Overlay fixed zIndex={100} color="#000" backgroundOpacity={0.35} onClick={closeNav} data-testid="nav-overlay"
+          // 덮개 위에서 손가락으로 끌어도 뒤 본문이 움직이지 않게 (iOS Safari는 overflow 잠금만으로 부족)
+          style={{ ...styles, top: "var(--app-shell-header-height, 0px)", touchAction: "none" }} />
+      )}
+    </Transition>
     <AppShell.Main>
       {/* 메뉴 화면은 위쪽도 왼쪽과 같은 여백 */}
       {user && <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}><Outlet /></Box>}
