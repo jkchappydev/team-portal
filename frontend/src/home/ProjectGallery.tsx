@@ -40,7 +40,8 @@ export function ProjectGallery() {
 function ProjectCards({ title, projects }: { title: string; projects: SpaceDto[] }) {
   return (
     <Panel title={title}>
-      <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="sm">
+      {/* 좁은 화면은 한 줄 3개, 카드 윗부분도 낮게 (index.css .project-card-preview) */}
+      <SimpleGrid cols={{ base: 3, md: 5 }} spacing="sm">
         {projects.slice(0, GALLERY_LIMIT).map((space) => (
           <Link key={space.id} to={`/spaces/${space.id}`} className="project-card" draggable={false}>
             <CardPreview space={space} />

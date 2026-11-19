@@ -12,6 +12,11 @@ import { Panel } from "./Panel";
 import { ProjectGallery } from "./ProjectGallery";
 import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
+import { CURRENT_HIGHLIGHT_BACKGROUND } from "../workstatus/highlight";
+import { DayLabel } from "../workstatus/DayLabel";
+import { useMediaQuery } from "@mantine/hooks";
+
+const MOBILE_QUERY = "(max-width: 47.99em)";
 
 // 아직 기능이 없는 칸 (영역만 잡아 둠)
 function Upcoming({ message }: { message: string }) {
@@ -49,12 +54,42 @@ function WeekStatuses() {
   const byDay = statusesByDay(days, statusQueries.flatMap((q) => q.data ?? []));
   const holidays = new Map(holidayQueries.flatMap((q) => q.data ?? []).map((h) => [h.date, h.name]));
   const failed = statusQueries.some((q) => q.isError);
+  const mobile = useMediaQuery(MOBILE_QUERY) ?? false;
 
   return (
     <Panel title="이번 주 근무 현황" action={<Anchor component={Link} to="/work-status" size="sm">근무 상황표</Anchor>}>
       {failed && <Text size="sm" c="red" mb="xs">근무 현황을 불러오지 못했습니다.</Text>}
-      {/* 좁은 화면에서는 요일이 아래로 내려감 */}
-      <SimpleGrid cols={{ base: 1, sm: 5 }} spacing="xs">
+      {mobile ? (
+        // 좁은 화면: 근무 상황표 날짜 목록처럼 요일마다 한 줄 (요일 | 칩), 오늘은 배경 강조
+        <Box style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8, overflow: "hidden" }}>
+          {days.map((day, index) => {
+            const items = byDay.get(day.date) ?? [];
+            const holiday = holidays.get(day.date);
+            const isToday = day.date === today;
+            return (
+              // 근무 상황표 좁은 화면 목록과 같은 줄 모양 (날짜 숫자 | 요일, 세로 가운데 정렬)
+              <Group key={day.date} gap={12} wrap="nowrap" px={12} py={8} mih={44} data-today={isToday || undefined}
+                aria-label={weekDayLabel(day)}
+                style={{
+                  borderTop: index > 0 ? "1px solid var(--mantine-color-default-border)" : undefined,
+                  background: isToday ? CURRENT_HIGHLIGHT_BACKGROUND : undefined,
+                }}>
+                <DayLabel date={day.date} holiday={!!holiday} today={isToday} />
+                <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                  {holiday && <Text size="xs" c="red" fw={600} lh={1.2}>{holiday}</Text>}
+                  {items.map((item) => (
+                    <Text key={item.id} size="xs" px={6} py={2} title={item.label}
+                      style={{ borderRadius: 4, overflowWrap: "anywhere", ...chipColors(TYPE_COLORS[item.type]) }}>
+                      {item.label}
+                    </Text>
+                  ))}
+                </Stack>
+              </Group>
+            );
+          })}
+        </Box>
+      ) : (
+      <SimpleGrid cols={5} spacing="xs">
         {days.map((day) => {
           const items = byDay.get(day.date) ?? [];
           const holiday = holidays.get(day.date);
@@ -84,6 +119,7 @@ function WeekStatuses() {
           );
         })}
       </SimpleGrid>
+      )}
     </Panel>
   );
 }

@@ -132,4 +132,27 @@ describe("MainPage", () => {
     expect(within(screen.getByRole("region", { name: "이번 주 주간보고" })).getByText("준비 중입니다.")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "모니터링" })).getByText("준비 중입니다.")).toBeTruthy();
   });
+
+  it("좁은 화면은 근무 현황을 요일별 한 줄로 보이고 준비 중 칸도 그대로 보인다", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("max-width"), media: query, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderPage();
+      const days = thisWeekDays();
+      const tuesday = await screen.findByLabelText(`${days[1].month}/${days[1].day} (화)`);
+      expect(await within(tuesday).findByText("홍길동 연차")).toBeTruthy();
+      // 근무 상황표 목록처럼 날짜 숫자와 요일을 따로 보이고, 빈 날은 비워 둠
+      const monday = screen.getByLabelText(`${days[0].month}/${days[0].day} (월)`);
+      expect(within(monday).getByText(String(days[0].day))).toBeTruthy();
+      expect(within(monday).getByText("월")).toBeTruthy();
+      expect(within(monday).queryByText("없음")).toBeNull();
+      // 준비 중 칸도 넓은 화면과 같이 보임
+      expect(screen.getByRole("region", { name: "이번 주 주간보고" })).toBeTruthy();
+      expect(screen.getByRole("region", { name: "모니터링" })).toBeTruthy();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

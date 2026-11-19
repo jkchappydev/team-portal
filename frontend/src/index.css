@@ -133,6 +133,15 @@ body {
   min-height: 44px;
 }
 
+/* 좁은 화면: 한 줄 3개 카드에 맞춰 윗부분·아이콘·이름 여백을 줄임 */
+@media (max-width: 47.99em) {
+  .project-card-preview { height: 64px; }
+  .project-card-preview.project-card-icon-preview img { width: 36px; height: 36px; }
+  .project-card-emoji { font-size: 32px; }
+  .project-card-name { padding: 6px 8px; min-height: 0; }
+  .project-card-name .mantine-Text-root { font-size: var(--mantine-font-size-xs); }
+}
+
 /* 사이드바 트리: 평소엔 페이지 아이콘, 마우스를 올리면 같은 자리에 펼치기 화살표 */
 .tree-slot {
   position: relative;

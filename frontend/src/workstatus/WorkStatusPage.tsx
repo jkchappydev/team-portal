@@ -10,6 +10,7 @@ import type { WorkStatusDto } from "../api/workStatuses";
 import { useCurrentUser } from "../user/currentUser";
 import { buildMonthGrid, expandToWeekdays, parseMonthParam } from "./calendar";
 import type { CalendarDay } from "./calendar";
+import { DayLabel } from "./DayLabel";
 import { calculateWeekMinHeight } from "./calendarLayout";
 import { groupHolidaysByDate } from "./holidayCalendar";
 import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER, chipColors } from "./types";
@@ -93,10 +94,8 @@ function DayList({ days, byDate, holidaysByDate, today, canEdit, onCreate, onEdi
     <Box style={{ border: `1px solid ${CALENDAR_OUTER_BORDER}`, borderRadius: 8, overflow: "hidden", background: "var(--mantine-color-body)" }}
       aria-label="날짜별 근무 상황">
       {shown.map((day, index) => {
-        const weekday = new Date(`${day.date}T00:00:00`).getDay();
         const holidays = holidaysByDate.get(day.date) ?? [];
         const isToday = day.date === today;
-        const dayColor = holidays.length > 0 || weekday === 0 ? "var(--mantine-color-red-text)" : weekday === 6 ? "var(--mantine-color-blue-text)" : DAY_NUMBER_COLOR;
         return (
           <Box key={day.date} className="ws-day" data-in-month data-today={isToday || undefined} data-testid={`ws-day-${day.date}`}
             onClick={() => onCreate(day.date)}
@@ -106,11 +105,7 @@ function DayList({ days, byDate, holidaysByDate, today, canEdit, onCreate, onEdi
               borderTop: index > 0 ? `1px solid ${CALENDAR_CELL_BORDER}` : undefined,
               background: isToday ? CURRENT_HIGHLIGHT_BACKGROUND : day.weekend ? WEEKEND_BACKGROUND : undefined,
             }}>
-            {/* 날짜(왼쪽 정렬)·요일 칸을 각각 고정 폭으로 두어 한 자리·두 자리 날짜여도 요일이 같은 세로줄에 옴 */}
-            <Box style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: 4, color: dayColor, fontVariantNumeric: "tabular-nums" }}>
-              <Text span fz="sm" fw={isToday ? 700 : 500} w={20} style={{ whiteSpace: "nowrap" }}>{Number(day.date.slice(8))}</Text>
-              <Text span fz="xs" w={14}>{DAY_NAMES[weekday]}</Text>
-            </Box>
+            <DayLabel date={day.date} holiday={holidays.length > 0} today={isToday} />
             {/* 항목 사이만 4px 간격 (아래 여백이 남으면 묶음이 위로 쏠려 보임) */}
             <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               {holidays.map((holiday) => (
