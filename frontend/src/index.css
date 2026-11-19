@@ -1507,9 +1507,17 @@ input:is([type="date"], [type="month"], [type="week"], [type="time"], [type="dat
   margin-left: calc(-1 * var(--bn-table-handle-size));
 }
 
-/* 이미지·영상 좌우 크기 조절 손잡이: BlockNote 기본은 세로 가운데 → 표·콜아웃 손잡이처럼 위쪽에 둠 */
-.bn-visual-media-wrapper > .bn-resize-handle {
-  top: 8px;
+/* 이미지·영상 좌우 크기 조절 손잡이: 세로 가운데, BlockNote 기본 검은색 대신 연한 회색 */
+/* BlockNote 규칙([data-file-block] .bn-resize-handle)이 나중에 불러와지므로 [data-file-block]을 붙여 우선함 */
+[data-file-block] .bn-visual-media-wrapper > .bn-resize-handle {
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--mantine-color-gray-4);
+  /* 기본(폭 8px·높이 30px)보다 얇고 길게 */
+  width: 4px;
+  height: 48px;
+  border-radius: 3px;
+  border: none;
 }
 
 /* 블록 바깥에서 끌어 여러 블록 고르기 (editor/blockMarquee): 끄는 사각형과 고른 블록 표시 */
