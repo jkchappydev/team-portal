@@ -123,10 +123,20 @@ describe("LinkList", () => {
     await waitFor(() => expect(screen.queryByLabelText("계정 정보 내용")).toBeNull());
   });
 
-  it("계정 정보가 없는 링크는 팝업 없이 바로 새 탭으로 연다", async () => {
+  it("계정 정보가 없는 링크도 팝업을 띄우고, 계정 정보 칸은 없다고 안내하며 복사 버튼은 숨긴다", async () => {
     renderList();
     const row = (await screen.findByText("사내 위키")).closest("a")!;
-    expect(fireEvent.click(row)).toBe(true);
+    // 바로 새 탭으로 열지 않음 (기본 동작 막음)
+    expect(fireEvent.click(row)).toBe(false);
+    expect(await screen.findByRole("link", { name: "링크 이동" })).toBeTruthy();
+    expect(screen.getByText("등록된 계정 정보가 없습니다.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "복사" })).toBeNull();
+  });
+
+  it("Ctrl을 누르고 클릭하면 팝업 없이 바로 새 탭으로 연다", async () => {
+    renderList();
+    const row = (await screen.findByText("사내 위키")).closest("a")!;
+    expect(fireEvent.click(row, { ctrlKey: true })).toBe(true);
     expect(screen.queryByRole("link", { name: "링크 이동" })).toBeNull();
   });
 

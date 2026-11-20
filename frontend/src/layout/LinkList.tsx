@@ -150,8 +150,8 @@ function LinkRow({ link, dropLine, onEdit, onShowInfo, onDragStart, onDragEnd }:
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onClick={(e: MouseEvent) => {
-            // 계정 정보가 있으면 바로 열지 않고 팝업(링크 이동·계정 정보), 없으면 그대로 새 탭 (Ctrl·가운데 클릭도 그대로)
-            if (!link.accountInfo || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+            // 계정 정보가 없어도 항상 팝업(링크 이동·계정 정보)을 띄움 (Ctrl·Shift·가운데 클릭은 그대로 새 탭)
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
             e.preventDefault();
             onShowInfo();
           }}

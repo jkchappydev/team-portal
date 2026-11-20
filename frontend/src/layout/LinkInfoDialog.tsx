@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void;
 }
 
-// 계정 정보가 있는 사이드바 링크를 눌렀을 때 뜨는 팝업 (링크 이동 + 계정 정보)
+// 사이드바 링크를 눌렀을 때 뜨는 팝업 (링크 이동 + 계정 정보, 계정 정보가 없으면 없다고 안내)
 export function LinkInfoDialog({ link, onClose }: Props) {
   // 닫히는 동안에도 내용을 유지 (바로 지우면 창이 빈 채로 줄어들며 사라짐)
   const shown = useLastValue(link);
@@ -66,8 +66,11 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
         <Stack gap={6}>
           <Group justify="space-between" gap="xs">
             <Text size="sm" fw={500}>계정 정보</Text>
-            <Button size="compact-xs" variant="subtle" onClick={copyAccount}>복사</Button>
+            {link.accountInfo && <Button size="compact-xs" variant="subtle" onClick={copyAccount}>복사</Button>}
           </Group>
+          {!link.accountInfo ? (
+            <Text size="sm" c="dimmed">등록된 계정 정보가 없습니다.</Text>
+          ) : (
           <Text
             size="sm"
             px="sm"
@@ -83,6 +86,7 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
           >
             {link.accountInfo}
           </Text>
+          )}
         </Stack>
       </Stack>
       <Group
