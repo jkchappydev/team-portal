@@ -1,5 +1,7 @@
+import { createExtension } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
-import { TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
 type AnyEditor = BlockNoteEditor<any, any, any>;
@@ -44,8 +46,6 @@ const CHILD_BLOCKS = GROUP_PATHS
   .join(", ");
 // 열 묶음 안의 블록 (열마다 위에서 아래로)
 const COLUMN_BLOCKS = ":scope > .bn-column > .bn-column-slot > .bn-block-outer > .bn-block[data-id]";
-// 화면에 선택 표시를 붙일 블록 요소 (블록 바깥 감싸개 .bn-block-outer도 같은 data-id라 제외)
-export const MARQUEE_BLOCK_SELECTOR = ".bn-block[data-id], .bn-column-list[data-id]";
 
 // 편집 영역의 블록 트리를 화면 위치와 함께 읽음 (열 묶음과 토글 안 블록 포함)
 export function readMarqueeBlocks(container: Element): MarqueeBlock[] {
@@ -149,6 +149,39 @@ export function marqueeRect(anchor: MarqueeAnchor, root: Pick<Rect, "left" | "to
 
 const SELECTED_ATTR = "data-marquee-selected";
 const ACTIVE_CLASS = "block-marquee-active";
+const MARQUEE_KEY = new PluginKey<string[]>("blockMarquee");
+
+// 고른 블록 표시: 블록 노드(.bn-block-outer, 열 묶음은 .bn-column-list)에 속성을, 편집기 루트에 클래스를 붙임
+// 편집기가 관리하는 표시라 블록을 다시 그려도 사라지지 않음
+export const blockMarqueeExtension = createExtension(() => ({
+  key: "blockMarquee",
+  prosemirrorPlugins: [
+    new Plugin<string[]>({
+      key: MARQUEE_KEY,
+      state: {
+        init: () => [],
+        apply: (tr, ids) => tr.getMeta(MARQUEE_KEY) ?? ids,
+      },
+      props: {
+        decorations(state) {
+          const ids = new Set(MARQUEE_KEY.getState(state));
+          if (ids.size === 0) return DecorationSet.empty;
+          const decorations: Decoration[] = [];
+          state.doc.descendants((node, pos) => {
+            if (node.type.isInGroup("bnBlock") && ids.has(node.attrs.id)) {
+              decorations.push(Decoration.node(pos, pos + node.nodeSize, { [SELECTED_ATTR]: "" }));
+              // 고른 블록의 하위는 함께 표시되므로 더 내려가지 않음
+              return false;
+            }
+            return true;
+          });
+          return DecorationSet.create(state.doc, decorations);
+        },
+        attributes: (state): Record<string, string> => ((MARQUEE_KEY.getState(state)?.length ?? 0) > 0 ? { class: ACTIVE_CLASS } : {}),
+      },
+    }),
+  ],
+}));
 // 사각형을 그리는 동안 html에 붙임 (블록 손잡이 숨김)
 const DRAGGING_CLASS = "block-marquee-dragging";
 const DRAG_THRESHOLD = 4;
@@ -168,14 +201,15 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   let handlePressed = false;
   const editorRoot = () => area.querySelector<HTMLElement>(".bn-editor");
 
+  // 선택 표시는 편집기 decoration으로 (blockMarqueeExtension)
+  // DOM에 속성을 직접 붙이면 ProseMirror가 그 구간을 다시 읽어 새로 그리면서(토글이 있으면 특히) 표시가 지워졌음
+  let marked: string[] = [];
   const mark = (ids: string[]) => {
-    const root = editorRoot();
-    root?.querySelectorAll(`[${SELECTED_ATTR}]`).forEach((el) => el.removeAttribute(SELECTED_ATTR));
-    // 열 묶음도 선택 표시 (.bn-block-outer는 같은 data-id라 제외)
-    for (const id of ids) {
-      root?.querySelector(`:is(${MARQUEE_BLOCK_SELECTOR})[data-id="${CSS.escape(id)}"]`)?.setAttribute(SELECTED_ATTR, "");
-    }
-    root?.classList.toggle(ACTIVE_CLASS, ids.length > 0);
+    const view = editor.prosemirrorView;
+    // 같은 선택이면 다시 그리지 않음, 편집기를 닫는 중(정리)에는 건드리지 않음
+    if ((view as { isDestroyed?: boolean }).isDestroyed || (ids.length === marked.length && ids.every((id, i) => id === marked[i]))) return;
+    marked = ids;
+    view.dispatch(view.state.tr.setMeta(MARQUEE_KEY, ids).setMeta("addToHistory", false));
   };
 
   const setSelected = (ids: string[]) => {

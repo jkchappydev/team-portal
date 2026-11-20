@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { anchorAt, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks, readMarqueeBlocks } from "./blockMarquee";
+import { anchorAt, blockMarqueeExtension, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks, readMarqueeBlocks } from "./blockMarquee";
 import { editorSchema } from "./schema";
 import type { MarqueeBlock } from "./blockMarquee";
 
@@ -204,5 +204,54 @@ describe("토글·열 묶음이 섞인 문서의 블록 읽기", () => {
     } finally {
       Element.prototype.getBoundingClientRect = original;
     }
+  });
+});
+
+describe("고른 블록 표시", () => {
+  // 예전에는 DOM에 속성을 직접 붙여, 편집기가 토글 구간을 다시 그리면 그 사이 블록 표시가 사라졌음
+  it("편집기 decoration으로 표시해 토글이 섞인 문서를 다시 그려도 고른 블록 표시가 남는다", () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, extensions: [blockMarqueeExtension()], initialContent: [
+      { id: "p1", type: "paragraph", content: "가" },
+      { id: "t1", type: "toggleListItem", content: "기존", children: [{ id: "tc", type: "paragraph", content: "안" }] },
+      { id: "b1", type: "bulletListItem", content: "유저" },
+      { id: "p2", type: "paragraph", content: "나" },
+    ] });
+    const area = document.createElement("main");
+    const host = document.createElement("div");
+    area.append(host);
+    document.body.appendChild(area);
+    editor.mount(host);
+    const order = ["p1", "t1", "b1", "p2"];
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      const index = order.indexOf(this.getAttribute("data-id") ?? "");
+      if (index < 0 || !this.classList.contains("bn-block")) return new DOMRect(0, 0, 700, 0);
+      return new DOMRect(100, index * 30, 500, 30);
+    });
+    const controller = new AbortController();
+    installBlockMarquee(editor, area, controller.signal);
+    const mouse = (type: string, target: EventTarget, x: number, y: number) =>
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y }));
+    mouse("mousedown", area, 20, 5);
+    mouse("mousemove", document, 400, 115);
+    mouse("mouseup", document, 400, 115);
+    const root = editor.prosemirrorView.dom;
+    const shown = () => Array.from(root.querySelectorAll(".bn-block-outer[data-marquee-selected]")).map((el) => el.getAttribute("data-id"));
+    expect(marqueeSelection(editor)).toEqual(order);
+    expect(shown()).toEqual(order);
+    expect(root.classList.contains("block-marquee-active")).toBe(true);
+
+    // 편집기가 문서 전체를 다시 그려도 표시가 그대로
+    editor.prosemirrorView.updateState(editor.prosemirrorView.state);
+    editor.prosemirrorView.dispatch(editor.prosemirrorView.state.tr.setMeta("forceRedraw", true));
+    expect(shown()).toEqual(order);
+
+    // Esc로 풀면 표시도 사라짐
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    expect(shown()).toEqual([]);
+    expect(root.classList.contains("block-marquee-active")).toBe(false);
+    controller.abort();
+    editor.unmount();
+    area.remove();
+    vi.restoreAllMocks();
   });
 });
