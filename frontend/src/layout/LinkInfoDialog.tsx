@@ -68,13 +68,12 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
             <Text size="sm" fw={500}>계정 정보</Text>
             {link.accountInfo && <Button size="compact-xs" variant="subtle" onClick={copyAccount}>복사</Button>}
           </Group>
-          {!link.accountInfo ? (
-            <Text size="sm" c="dimmed">등록된 계정 정보가 없습니다.</Text>
-          ) : (
+          {/* 계정 정보가 없어도 같은 회색 상자 안에 흐린 글자로 안내 */}
           <Text
             size="sm"
             px="sm"
             py="xs"
+            c={link.accountInfo ? undefined : "dimmed"}
             aria-label="계정 정보 내용"
             style={{
               whiteSpace: "pre-wrap",
@@ -84,9 +83,8 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
               background: "var(--mantine-color-default-hover)",
             }}
           >
-            {link.accountInfo}
+            {link.accountInfo || "등록된 계정 정보가 없습니다."}
           </Text>
-          )}
         </Stack>
       </Stack>
       <Group
