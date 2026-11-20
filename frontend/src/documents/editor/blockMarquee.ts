@@ -205,9 +205,11 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
   // DOM에 속성을 직접 붙이면 ProseMirror가 그 구간을 다시 읽어 새로 그리면서(토글이 있으면 특히) 표시가 지워졌음
   let marked: string[] = [];
   const mark = (ids: string[]) => {
-    const view = editor.prosemirrorView;
-    // 같은 선택이면 다시 그리지 않음, 편집기를 닫는 중(정리)에는 건드리지 않음
-    if ((view as { isDestroyed?: boolean }).isDestroyed || (ids.length === marked.length && ids.every((id, i) => id === marked[i]))) return;
+    // 편집기를 닫는 중(정리)이면 화면 객체가 없거나 이미 닫혀 있으므로 건드리지 않음
+    const view = editor.prosemirrorView as (typeof editor.prosemirrorView & { isDestroyed?: boolean }) | undefined;
+    if (!view || view.isDestroyed) return;
+    // 같은 선택이면 다시 그리지 않음
+    if (ids.length === marked.length && ids.every((id, i) => id === marked[i])) return;
     marked = ids;
     view.dispatch(view.state.tr.setMeta(MARQUEE_KEY, ids).setMeta("addToHistory", false));
   };
