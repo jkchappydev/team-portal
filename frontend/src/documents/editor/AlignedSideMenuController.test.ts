@@ -42,9 +42,20 @@ describe("alignSideMenu", () => {
     document.body.innerHTML = "";
   });
 
-  it.each(["image", "video", "audio", "file"])("%s 블록은 캡션이 아니라 블록 위 끝에 손잡이를 붙인다", (type) => {
+  it.each(["image", "video", "audio", "callout"])("%s 블록은 캡션·상자 가운데가 아니라 위 끝에서 한 줄 블록과 같은 높이에 손잡이를 둔다", (type) => {
     const result = run(mountMediaBlock(type));
-    // 손잡이 위 끝이 블록 위 끝(100)보다 손잡이 틀 안쪽 여백 3px만큼 위
-    expect(result.y).toBe(97);
+    // 손잡이 가운데가 블록 위 끝(100)에서 15px (페이지 블록 한 줄 가운데와 같음): 115 - 손잡이 높이 절반 12
+    expect(result.y).toBe(103);
+  });
+
+  it("파일 블록은 페이지 블록처럼 파일 이름 줄 가운데에 손잡이를 둔다", () => {
+    const block = mountMediaBlock("file");
+    const row = document.createElement("div");
+    row.className = "bn-file-name-with-icon";
+    block.querySelector(".bn-block-content")!.prepend(row);
+    placeAt(row, 104, 32);
+    const result = run(block);
+    // 파일 이름 줄 가운데 120 - 손잡이 높이 절반 12
+    expect(result.y).toBe(108);
   });
 });
