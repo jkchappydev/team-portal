@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
+import { SideMenuExtension } from "@blocknote/core/extensions";
 import { anchorAt, blockMarqueeExtension, copyBlocks, installBlockMarquee, marqueeKeyAction, marqueeRect, marqueeSelection, pickMarqueeBlocks, readMarqueeBlocks } from "./blockMarquee";
 import { editorSchema } from "./schema";
 import type { MarqueeBlock } from "./blockMarquee";
@@ -162,6 +163,25 @@ describe("고른 블록을 손잡이로 끌기", () => {
     mouse("mouseup", document, 130, 45);
     expect(marqueeSelection(editor)).toEqual([]);
     cleanup();
+  });
+
+  // 예전에는 손잡이를 누르면 메뉴로 포커스가 넘어가 Ctrl+C가 브라우저 기본 복사가 되어 페이지 블록이 이미지로 붙여넣어졌음
+  it("손잡이를 끌지 않고 누르면 그 블록을 고른 블록으로 잡아 Delete 등이 블록 단위로 동작한다", () => {
+    // 손잡이 상태가 보이면 BlockNote가 마우스 위치의 요소를 찾는데 jsdom에는 없어 빈 목록으로 대신함
+    const original = document.elementsFromPoint;
+    document.elementsFromPoint = () => [];
+    const { editor, ids, handle, mouse, cleanup } = setup();
+    const target = editor.getBlock(ids[4])!;
+    editor.getExtension(SideMenuExtension)!.store.setState({ show: true, block: target, referencePos: new DOMRect() } as never);
+    mouse("mousedown", handle, 130, 135);
+    mouse("mouseup", document, 130, 135);
+    mouse("click", handle, 130, 135);
+    expect(marqueeSelection(editor)).toEqual([ids[4]]);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true }));
+    expect(editor.getBlock(ids[4])).toBeUndefined();
+    cleanup();
+    document.elementsFromPoint = original;
   });
 
   it("손잡이가 아닌 곳을 누르면 바로 선택을 푼다", () => {

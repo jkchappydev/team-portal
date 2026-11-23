@@ -3,6 +3,7 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { BLOCKS_CUT_EVENT } from "./pagePaste";
+import { SideMenuExtension } from "@blocknote/core/extensions";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
 type AnyEditor = BlockNoteEditor<any, any, any>;
@@ -253,6 +254,17 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
       e.preventDefault();
       e.stopPropagation();
     }
+  }, { capture: true, signal });
+
+  // 노션처럼 손잡이를 (끌지 않고) 누르면 그 블록을 고른 블록으로 잡음 (메뉴가 열려도 Ctrl+C·X·Delete가 블록 단위로 동작)
+  // 예전에는 손잡이 메뉴로 포커스가 넘어가 Ctrl+C가 브라우저 기본 복사가 되어, 페이지 블록이 아이콘 그림(이미지)으로 붙여넣어졌음
+  area.addEventListener("click", (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (e.button !== 0 || !editor.isEditable || !target?.closest(HANDLE)) return;
+    const id = editor.getExtension(SideMenuExtension)?.store.state?.block?.id;
+    if (!id || !editor.getBlock(id)) return;
+    setSelected([id]);
+    mark(selected);
   }, { capture: true, signal });
 
   // 지금 마우스 위치까지 사각형을 그리고 걸린 블록을 고름 (본문이 스크롤돼도 시작점은 처음 누른 자리)
