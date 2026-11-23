@@ -2003,3 +2003,8 @@ body.bn-column-resizing {
   text-align: center;
   word-break: keep-all;
 }
+
+/* 모니터링 상세 (monitoring/MonitoringPage): 줄 사이 구분선 */
+.monitor-row + .monitor-row {
+  border-top: 1px solid var(--mantine-color-default-border);
+}

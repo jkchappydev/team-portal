@@ -1,4 +1,5 @@
-import { Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Anchor, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getServerStatus } from "../api/monitor";
 import { Panel } from "./Panel";
@@ -17,7 +18,8 @@ export function formatUptime(seconds: number): string {
 }
 
 // 포털 서버의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에 (2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)
-export function ServerMonitor() {
+// 메인 화면 칸과 모니터링 상세 화면이 같이 씀
+export function ServerOverview() {
   const { data, isError, isLoading } = useQuery({
     queryKey: ["monitor", "server"],
     queryFn: getServerStatus,
@@ -47,7 +49,7 @@ export function ServerMonitor() {
   }
 
   return (
-    <Panel title="모니터링">
+    <>
       {isError && <Text size="sm" c="red">서버 정보를 불러오지 못했습니다.</Text>}
       {!isLoading && data && !data.available && <Text size="sm" c="dimmed">서버 정보를 읽을 수 없습니다.</Text>}
       {data?.available && (
@@ -57,16 +59,23 @@ export function ServerMonitor() {
               <Text size="sm" fw={600}>{data.serverName}</Text>
               {data.uptimeSeconds !== null && <Text size="xs" c="dimmed">가동 {formatUptime(data.uptimeSeconds)}</Text>}
             </Group>
-            {/* 운영체제 이름과 커널 버전 */}
-            {data.osName && (
-              <Text size="xs" c="dimmed" truncate>{data.osName}{data.kernel && ` · 커널 ${data.kernel}`}</Text>
-            )}
+            {/* 운영체제 이름 (커널 버전은 사용자 요청으로 표시하지 않음) */}
+            {data.osName && <Text size="xs" c="dimmed" truncate>{data.osName}</Text>}
           </div>
           <SimpleGrid cols={gauges.length} spacing="xs">
             {gauges.map(({ key, ...gauge }) => <ServerGauge key={key} {...gauge} />)}
           </SimpleGrid>
         </Stack>
       )}
+    </>
+  );
+}
+
+// 메인 화면 모니터링 칸 (자세히 누르면 애플리케이션·DB 상태가 있는 상세 화면)
+export function ServerMonitor() {
+  return (
+    <Panel title="모니터링" action={<Anchor component={Link} to="/monitoring" size="sm">자세히</Anchor>}>
+      <ServerOverview />
     </Panel>
   );
 }

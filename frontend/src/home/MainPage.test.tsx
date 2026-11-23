@@ -142,7 +142,7 @@ describe("MainPage", () => {
     const panel = screen.getByRole("region", { name: "모니터링" });
     expect(await within(panel).findByText("포털 서버")).toBeTruthy();
     expect(within(panel).getByText("가동 3일 2시간")).toBeTruthy();
-    expect(within(panel).getByText("Rocky Linux 8.10 (Green Obsidian) · 커널 4.18.0-553.el8_10.x86_64")).toBeTruthy();
+    expect(within(panel).getByText("Rocky Linux 8.10 (Green Obsidian)")).toBeTruthy();
     // CPU·메모리·디스크 계기판이 한 줄로, 바늘 값은 사용률
     const gauges = within(panel).getAllByRole("meter");
     expect(gauges.map((g) => g.getAttribute("aria-label"))).toEqual(["CPU 사용률", "MEMORY 사용률", "DISK 사용률"]);

@@ -12,6 +12,7 @@ import { WorkStatusPage } from "./workstatus/WorkStatusPage";
 import { ContactsPage } from "./contacts/ContactsPage";
 import { FormsPage } from "./forms/FormsPage";
 import { MainPage } from "./home/MainPage";
+import { MonitoringPage } from "./monitoring/MonitoringPage";
 import { colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/team" element={<MembersPage mode="list" />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/forms" element={<FormsPage />} />
+              <Route path="/monitoring" element={<MonitoringPage />} />
               <Route path="/members" element={<MembersPage />} />
             </Route>
           </Routes>

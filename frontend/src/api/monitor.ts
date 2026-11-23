@@ -27,3 +27,37 @@ export interface ServerStatusDto {
 export function getServerStatus(): Promise<ServerStatusDto> {
   return apiFetch<ServerStatusDto>("/api/monitor/server");
 }
+
+// 주소 호출(HTTP) 또는 포트 연결(TCP) 결과
+export interface ServiceCheckDto {
+  name: string;
+  target: string;
+  kind: "HTTP" | "TCP";
+  up: boolean;
+  // HTTP일 때만
+  statusCode: number | null;
+  responseMs: number | null;
+  message: string | null;
+}
+
+// 포털 DB에 직접 쿼리한 결과
+export interface PortalDatabaseDto {
+  up: boolean;
+  version: string | null;
+  responseMs: number | null;
+  connections: number | null;
+  sizeBytes: number | null;
+  message: string | null;
+}
+
+// 애플리케이션·DB 동작 상태 (백엔드가 30초마다 확인한 마지막 결과, 확인 전이면 checkedAt null)
+export interface ServiceStatusDto {
+  checkedAt: string | null;
+  portalDatabase: PortalDatabaseDto | null;
+  apps: ServiceCheckDto[];
+  databases: ServiceCheckDto[];
+}
+
+export function getServiceStatus(): Promise<ServiceStatusDto> {
+  return apiFetch<ServiceStatusDto>("/api/monitor/services");
+}
