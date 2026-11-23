@@ -209,9 +209,10 @@ function FormBody({ onClose, editing, defaultDate, currentUserId, canManageOther
           </Group>
         </Alert>
       )}
+      {/* 삭제는 취소·저장처럼 테두리가 있는 버튼 (주 동작이 아니라 빨간 테두리·글자만) */}
       <Group justify="space-between">
         {editing ? (
-          <Button color="red" variant="subtle" disabled={confirmDelete} onClick={() => setConfirmDelete(true)}>삭제</Button>
+          <Button color="red" variant="outline" disabled={confirmDelete} onClick={() => setConfirmDelete(true)}>삭제</Button>
         ) : <span />}
         <Group>
           <Button variant="default" onClick={onClose}>취소</Button>
