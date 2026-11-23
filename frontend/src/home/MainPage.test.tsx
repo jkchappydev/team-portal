@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { listNewCs } from "../api/cs";
 import { listRecentDocuments } from "../api/documents";
 import { listHolidays } from "../api/holidays";
+import { getServerStatus } from "../api/monitor";
 import { listSpaces } from "../api/spaces";
 import { listWorkStatuses } from "../api/workStatuses";
 import { MainPage } from "./MainPage";
@@ -14,6 +15,7 @@ import { thisWeekDays } from "./thisWeek";
 vi.mock("../api/cs", () => ({ listNewCs: vi.fn() }));
 vi.mock("../api/documents", () => ({ listRecentDocuments: vi.fn() }));
 vi.mock("../api/holidays", () => ({ listHolidays: vi.fn() }));
+vi.mock("../api/monitor", () => ({ getServerStatus: vi.fn() }));
 vi.mock("../api/spaces", () => ({ listSpaces: vi.fn() }));
 vi.mock("../api/workStatuses", () => ({ listWorkStatuses: vi.fn() }));
 
@@ -39,6 +41,9 @@ describe("MainPage", () => {
       { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", updatedByName: "이영희", updatedAt: new Date().toISOString() },
     ]);
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [] });
+    vi.mocked(getServerStatus).mockResolvedValue({ available: true, serverName: "포털 서버", cpuPercent: 12, cpuCores: 4,
+      memoryUsedBytes: 8 * 1024 ** 3, memoryTotalBytes: 16 * 1024 ** 3, uptimeSeconds: 3 * 86_400 + 7_200,
+      disks: [{ name: "시스템", usedBytes: 95 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 }], checkedAt: new Date().toISOString() });
   });
   afterEach(cleanup);
 
@@ -127,10 +132,30 @@ describe("MainPage", () => {
     expect(await within(screen.getByRole("region", { name: "신규 CS" })).findByText("신규 CS를 불러오지 못했습니다.")).toBeTruthy();
   });
 
-  it("주간보고·모니터링은 영역만 잡아 둔다", async () => {
+  it("주간보고는 영역만 잡아 둔다", async () => {
     renderPage();
     expect(within(screen.getByRole("region", { name: "이번 주 주간보고" })).getByText("준비 중입니다.")).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "모니터링" })).getByText("준비 중입니다.")).toBeTruthy();
+  });
+
+  it("모니터링에 서버 CPU·메모리·디스크 사용률을 계기판으로, 가동 시간과 함께 보여준다", async () => {
+    renderPage();
+    const panel = screen.getByRole("region", { name: "모니터링" });
+    expect(await within(panel).findByText("포털 서버")).toBeTruthy();
+    expect(within(panel).getByText("가동 3일 2시간")).toBeTruthy();
+    // CPU·메모리·디스크 계기판이 한 줄로, 바늘 값은 사용률
+    const gauges = within(panel).getAllByRole("meter");
+    expect(gauges.map((g) => g.getAttribute("aria-label"))).toEqual(["CPU 사용률", "MEMORY 사용률", "DISK 사용률"]);
+    expect(gauges.map((g) => g.getAttribute("aria-valuenow"))).toEqual(["12", "50", "95"]);
+    expect(within(panel).getByText("4코어")).toBeTruthy();
+    expect(within(panel).getByText("8.0GB / 16.0GB")).toBeTruthy();
+    expect(within(panel).getByText("95.0GB / 100GB")).toBeTruthy();
+  });
+
+  it("서버 정보를 읽을 수 없으면 안내한다", async () => {
+    vi.mocked(getServerStatus).mockResolvedValue({ available: false, serverName: "포털 서버", cpuPercent: null, cpuCores: 4,
+      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() });
+    renderPage();
+    expect(await within(screen.getByRole("region", { name: "모니터링" })).findByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
   });
 
   it("좁은 화면은 근무 현황을 요일별 한 줄로 보이고 준비 중 칸도 그대로 보인다", async () => {

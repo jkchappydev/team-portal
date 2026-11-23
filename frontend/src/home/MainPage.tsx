@@ -10,6 +10,7 @@ import { PageIcon } from "../documents/PageIconView";
 import { formatRelative, isProjectHome, updatePath } from "../notifications/updateFormat";
 import { Panel } from "./Panel";
 import { ProjectGallery } from "./ProjectGallery";
+import { ServerMonitor } from "./ServerMonitor";
 import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "../workstatus/highlight";
@@ -189,7 +190,7 @@ function NewCsList() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS, 이번 주 주간보고·모니터링(추후 구현)
+// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS, 이번 주 주간보고(추후 구현), 서버 모니터링
 export function MainPage() {
   return (
     <Stack maw={1300} gap="md">
@@ -199,7 +200,7 @@ export function MainPage() {
         <RecentPosts />
         <NewCsList />
         <Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel>
-        <Panel title="모니터링"><Upcoming message="준비 중입니다." /></Panel>
+        <ServerMonitor />
       </SimpleGrid>
     </Stack>
   );

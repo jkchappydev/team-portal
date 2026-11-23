@@ -52,3 +52,8 @@ app:
     api-url: ${CS_API_URL:}
     api-key: ${CS_API_KEY:}
     web-url: ${CS_WEB_URL:}
+  # 메인 모니터링 칸의 서버 자원. disks는 "이름=경로,이름=경로" (비면 루트 하나)
+  monitor:
+    proc-path: ${MONITOR_PROC_PATH:/proc}
+    server-name: ${MONITOR_SERVER_NAME:포털 서버}
+    disks: ${MONITOR_DISKS:}

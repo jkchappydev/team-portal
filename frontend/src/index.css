@@ -1967,3 +1967,39 @@ body.bn-column-resizing {
 .page-property-toggle:hover {
   background: var(--mantine-color-default-hover);
 }
+
+/* 메인 모니터링 계기판 (home/ServerGauge): 칸 폭에 맞춰 줄되 너무 커지지 않게 */
+.server-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.server-gauge svg {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  display: block;
+}
+.server-gauge-needle {
+  transition: transform 0.6s ease-out;
+}
+.server-gauge-value {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.server-gauge-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.server-gauge-detail {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--mantine-color-dimmed);
+  text-align: center;
+  word-break: keep-all;
+}
