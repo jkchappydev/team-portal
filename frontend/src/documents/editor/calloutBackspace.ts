@@ -9,9 +9,9 @@ type AnyBlock = Block<any, any, any>;
 // 제목 글을 이어 붙일 수 있는 글 블록 (표·코드·이미지·구분선·콜아웃 등은 제외)
 const TEXT_TYPES = new Set(["paragraph", "heading", "quote", "bulletListItem", "numberedListItem", "checkListItem", "toggleListItem"]);
 
-// 화면상 콜아웃 바로 위 줄: 앞 블록의 마지막 하위 블록까지 내려감 (하위 줄이 펼쳐져 있으면 그 마지막 줄이 바로 위)
-function lineAbove(editor: AnyEditor, callout: AnyBlock): AnyBlock | undefined {
-  let line = editor.getPrevBlock(callout.id);
+// 화면상 블록 바로 위 줄: 앞 블록의 마지막 하위 블록까지 내려감 (하위 줄이 펼쳐져 있으면 그 마지막 줄이 바로 위)
+function lineAbove(editor: AnyEditor, target: AnyBlock): AnyBlock | undefined {
+  let line = editor.getPrevBlock(target.id);
   while (line && line.children.length > 0) line = line.children[line.children.length - 1];
   return line;
 }
@@ -56,10 +56,40 @@ export function liftCalloutTitle(editor: AnyEditor): boolean {
   return true;
 }
 
+// 노션처럼 제목(제목1~3) 맨 앞에서 Backspace를 누르면 바로 위 글 줄 끝에 이어 붙임 (위 줄 형식을 따름)
+// BlockNote 기본은 제목을 일반 문단으로 바꾸기만 해서 한 번 더 눌러야 합쳐졌음
+// 위 줄이 없거나 글 블록이 아니면(이미지·표 등) 기본 동작
+export function mergeHeadingUp(editor: AnyEditor): boolean {
+  const selection = editor.prosemirrorState.selection;
+  if (!selection.empty || selection.$from.parentOffset !== 0) return false;
+  const block = editor.getTextCursorPosition().block;
+  if (block.type !== "heading") return false;
+  const above = lineAbove(editor, block);
+  if (!above || !TEXT_TYPES.has(above.type) || !Array.isArray(above.content)) return false;
+  // 위 줄이 비어 있으면 그 빈 줄만 지우고 제목 형식은 그대로 (노션과 같음)
+  if (above.content.length === 0 && above.children.length === 0) {
+    editor.removeBlocks([above.id]);
+    editor.setTextCursorPosition(block.id, "start");
+    return true;
+  }
+  editor.setTextCursorPosition(above.id, "end");
+  const joinPos = editor.prosemirrorState.selection.from;
+  editor.transact(() => {
+    editor.removeBlocks([block.id]);
+    editor.updateBlock(above.id, {
+      content: [...(above.content as unknown[]), ...(block.content as unknown[])] as never,
+      // 제목의 하위 블록은 위 줄 하위로 이어 붙임
+      children: [...above.children, ...block.children] as never,
+    });
+  });
+  editor.transact((tr) => tr.setSelection(TextSelection.create(tr.doc, joinPos)));
+  return true;
+}
+
 export const calloutBackspaceExtension = createExtension({
   key: "calloutBackspace",
   keyboardShortcuts: {
     // 한글 조합 중에는 글자 지우기로 둠
-    Backspace: ({ editor, event }) => !event.isComposing && liftCalloutTitle(editor),
+    Backspace: ({ editor, event }) => !event.isComposing && (liftCalloutTitle(editor) || mergeHeadingUp(editor)),
   },
 });

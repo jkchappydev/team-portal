@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
 import { editorSchema } from "./schema";
-import { liftCalloutTitle } from "./calloutBackspace";
+import { liftCalloutTitle, mergeHeadingUp } from "./calloutBackspace";
 
 const p = (text: string) => ({ type: "paragraph" as const, content: text });
 const text = (block: { content?: unknown }) =>
@@ -75,5 +75,52 @@ describe("콜아웃 제목 맨 앞 Backspace", () => {
     expect(liftCalloutTitle(editor)).toBe(false);
     editor.setTextCursorPosition(body.id, "start");
     expect(liftCalloutTitle(editor)).toBe(false);
+  });
+});
+
+describe("제목 맨 앞 Backspace", () => {
+  function editorOf(content: unknown[]) {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: content as never });
+    editor.mount(document.createElement("div"));
+    mounted.push(editor);
+    return editor;
+  }
+
+  // 예전에는 제목 스타일만 지워지고 한 번 더 눌러야 위 줄과 합쳐졌음
+  it("바로 위 줄 끝에 이어 붙이고 위 줄 형식을 따르며, 커서는 이어 붙인 자리", () => {
+    const editor = editorOf([p("테스트"), { type: "heading", props: { level: 2 }, content: "테스트2" }, p("아래")]);
+    editor.setTextCursorPosition(editor.document[1].id, "start");
+    expect(mergeHeadingUp(editor)).toBe(true);
+    expect(editor.document.map((b) => [b.type, text(b)])).toEqual([["paragraph", "테스트테스트2"], ["paragraph", "아래"]]);
+    expect(editor.getTextCursorPosition().block.id).toBe(editor.document[0].id);
+    expect(caretOffset(editor)).toBe(3);
+  });
+
+  it("위 줄이 빈 줄이면 빈 줄만 지우고 제목 형식은 그대로 둔다", () => {
+    const editor = editorOf([p("위"), { type: "paragraph" }, { type: "heading", props: { level: 3 }, content: "테스트3" }]);
+    editor.setTextCursorPosition(editor.document[2].id, "start");
+    expect(mergeHeadingUp(editor)).toBe(true);
+    expect(editor.document.map((b) => [b.type, text(b)])).toEqual([["paragraph", "위"], ["heading", "테스트3"]]);
+    expect(editor.document[1].props).toMatchObject({ level: 3 });
+    expect(editor.getTextCursorPosition().block.id).toBe(editor.document[1].id);
+    expect(caretOffset(editor)).toBe(0);
+  });
+
+  it("위 줄이 펼쳐진 하위 블록을 가지면 그 마지막 하위 줄에 이어 붙인다", () => {
+    const editor = editorOf([{ type: "bulletListItem", content: "목록", children: [p("하위")] }, { type: "heading", props: { level: 2 }, content: "제목" }]);
+    editor.setTextCursorPosition(editor.document[1].id, "start");
+    expect(mergeHeadingUp(editor)).toBe(true);
+    expect(editor.document).toHaveLength(1);
+    expect(editor.document[0].children.map(text)).toEqual(["하위제목"]);
+  });
+
+  it("맨 앞이 아니거나, 위 줄이 없거나, 제목이 아니면 기본 동작에 맡긴다", () => {
+    const editor = editorOf([{ type: "heading", props: { level: 2 }, content: "첫 제목" }, p("문단")]);
+    editor.setTextCursorPosition(editor.document[0].id, "start");
+    expect(mergeHeadingUp(editor)).toBe(false);
+    editor.setTextCursorPosition(editor.document[1].id, "start");
+    expect(mergeHeadingUp(editor)).toBe(false);
+    editor.setTextCursorPosition(editor.document[0].id, "end");
+    expect(mergeHeadingUp(editor)).toBe(false);
   });
 });
