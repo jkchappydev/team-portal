@@ -31,6 +31,8 @@ export function getServerStatuses(): Promise<ServerStatusDto[]> {
 
 // 주소 호출(HTTP) 또는 포트 연결(TCP) 결과
 export interface ServiceCheckDto {
+  // 어느 운영 서버 것인지 (서버 이름 또는 IP, null이면 포털 서버)
+  server: string | null;
   name: string;
   target: string;
   kind: "HTTP" | "TCP";

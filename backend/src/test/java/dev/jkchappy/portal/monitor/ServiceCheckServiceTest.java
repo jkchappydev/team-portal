@@ -25,11 +25,13 @@ class ServiceCheckServiceTest {
   @Test
   void parse_readsGroupNameAndTargetAndSkipsMalformedItems() {
     var targets = MonitorTarget.parse("app|팀 포털|https://team.example.com; db|MySQL|host.docker.internal:3306\n"
-      + "app|잘못된 포트|host:abc;cache|구분 오류|host:1;app||host:1;app|이름|");
+      + "app|잘못된 포트|host:abc;cache|구분 오류|host:1;app||host:1;app|이름|;10.0.0.2|app|다른 서버 사이트|https://b.example.com;"
+      + "a|b|c|d|e");
 
     assertThat(targets).containsExactly(
-      new MonitorTarget(MonitorTarget.Group.APP, "팀 포털", "https://team.example.com"),
-      new MonitorTarget(MonitorTarget.Group.DB, "MySQL", "host.docker.internal:3306"));
+      new MonitorTarget(null, MonitorTarget.Group.APP, "팀 포털", "https://team.example.com"),
+      new MonitorTarget(null, MonitorTarget.Group.DB, "MySQL", "host.docker.internal:3306"),
+      new MonitorTarget("10.0.0.2", MonitorTarget.Group.APP, "다른 서버 사이트", "https://b.example.com"));
     assertThat(MonitorTarget.parse("")).isEmpty();
   }
 
@@ -43,8 +45,8 @@ class ServiceCheckServiceTest {
       String base = "http://127.0.0.1:" + server.getAddress().getPort();
       TargetProber prober = new TargetProber();
 
-      ServiceStatusResponse.Check login = prober.probe(new MonitorTarget(MonitorTarget.Group.APP, "로그인", base + "/login"));
-      ServiceStatusResponse.Check broken = prober.probe(new MonitorTarget(MonitorTarget.Group.APP, "고장", base + "/broken"));
+      ServiceStatusResponse.Check login = prober.probe(new MonitorTarget(null, MonitorTarget.Group.APP, "로그인", base + "/login"));
+      ServiceStatusResponse.Check broken = prober.probe(new MonitorTarget(null, MonitorTarget.Group.APP, "고장", base + "/broken"));
 
       assertThat(login.up()).isTrue();
       assertThat(login.statusCode()).isEqualTo(401);
@@ -62,14 +64,14 @@ class ServiceCheckServiceTest {
     int closedPort;
     try (ServerSocket open = new ServerSocket(0)) {
       ServiceStatusResponse.Check up = prober.probe(
-        new MonitorTarget(MonitorTarget.Group.DB, "열린 포트", "127.0.0.1:" + open.getLocalPort()));
+        new MonitorTarget(null, MonitorTarget.Group.DB, "열린 포트", "127.0.0.1:" + open.getLocalPort()));
       assertThat(up.up()).isTrue();
       assertThat(up.kind()).isEqualTo("TCP");
       closedPort = open.getLocalPort();
     }
 
     ServiceStatusResponse.Check down = prober.probe(
-      new MonitorTarget(MonitorTarget.Group.DB, "닫힌 포트", "127.0.0.1:" + closedPort));
+      new MonitorTarget(null, MonitorTarget.Group.DB, "닫힌 포트", "127.0.0.1:" + closedPort));
 
     assertThat(down.up()).isFalse();
     assertThat(down.message()).isEqualTo("연결 안 됨");
@@ -80,7 +82,7 @@ class ServiceCheckServiceTest {
     TargetProber prober = mock(TargetProber.class);
     when(prober.probe(any())).thenAnswer(invocation -> {
       MonitorTarget target = invocation.getArgument(0);
-      return new ServiceStatusResponse.Check(target.name(), target.target(), "TCP", true, null, 1L, null);
+      return new ServiceStatusResponse.Check(target.server(), target.name(), target.target(), "TCP", true, null, 1L, null);
     });
     JdbcTemplate jdbc = mock(JdbcTemplate.class);
     when(jdbc.queryForObject("show server_version", String.class)).thenReturn("17.6 (Debian 17.6-1.pgdg13+1)");
@@ -88,7 +90,7 @@ class ServiceCheckServiceTest {
       eq(Integer.class))).thenReturn(5);
     when(jdbc.queryForObject("select pg_database_size(current_database())", Long.class)).thenReturn(48_000_000L);
     ServiceCheckService service = new ServiceCheckService(
-      "app|가|h:1;db|디비|h:2;app|나|h:3", prober, jdbc, CLOCK);
+      "app|가|h:1;db|디비|h:2;10.0.0.2|app|나|h:3", prober, jdbc, CLOCK);
 
     assertThat(service.status().checkedAt()).isNull();
     service.refresh();
@@ -97,6 +99,8 @@ class ServiceCheckServiceTest {
     assertThat(status.checkedAt()).isNotNull();
     assertThat(status.apps()).extracting(ServiceStatusResponse.Check::name).containsExactly("가", "나");
     assertThat(status.databases()).extracting(ServiceStatusResponse.Check::name).containsExactly("디비");
+    // 서버를 적은 대상은 그 서버 것으로 표시
+    assertThat(status.apps()).extracting(ServiceStatusResponse.Check::server).containsExactly(null, "10.0.0.2");
     assertThat(status.portalDatabase().up()).isTrue();
     assertThat(status.portalDatabase().version()).isEqualTo("PostgreSQL 17.6");
     assertThat(status.portalDatabase().connections()).isEqualTo(5);

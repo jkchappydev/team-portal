@@ -38,9 +38,19 @@ function writeSelected(name: string): void {
   }
 }
 
-// 운영 서버들의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에 (2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)
-// 서버가 여럿이면 위의 서버 버튼으로 하나씩 봄, 메인 화면 칸과 모니터링 상세 화면이 같이 씀
-export function ServerOverview() {
+export interface ServerSelection {
+  list: ServerStatusDto[];
+  // 고른 서버 (목록이 아직 없으면 undefined, 기억한 서버가 없어졌으면 첫 서버)
+  current: ServerStatusDto | undefined;
+  // 포털 서버(목록 맨 앞)인지
+  isPortalServer: boolean;
+  select: (serverName: string) => void;
+  isError: boolean;
+}
+
+// 서버 목록(2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)과 고른 서버
+// 상세 화면은 계기판과 애플리케이션·DB 목록이 같은 선택을 쓰도록 이 값을 함께 넘김
+export function useServerSelection(): ServerSelection {
   const { data: servers, isError } = useQuery({
     queryKey: ["monitor", "servers"],
     queryFn: getServerStatuses,
@@ -49,6 +59,20 @@ export function ServerOverview() {
   const [selected, setSelected] = useState<string | null>(readSelected);
   const list = servers ?? [];
   const current = list.find((s) => s.serverName === selected) ?? list[0];
+  return {
+    list,
+    current,
+    isPortalServer: current !== undefined && current === list[0],
+    select: (name) => { setSelected(name); writeSelected(name); },
+    isError,
+  };
+}
+
+// 운영 서버들의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에
+// 서버가 여럿이면 위의 서버 버튼으로 하나씩 봄, 메인 화면 칸과 모니터링 상세 화면이 같이 씀
+export function ServerOverview({ selection }: { selection?: ServerSelection }) {
+  const own = useServerSelection();
+  const { list, current, select, isError } = selection ?? own;
 
   return (
     <Stack gap="sm">
@@ -62,7 +86,7 @@ export function ServerOverview() {
               size="compact-xs"
               variant={s.serverName === current.serverName ? "filled" : "default"}
               aria-pressed={s.serverName === current.serverName}
-              onClick={() => { setSelected(s.serverName); writeSelected(s.serverName); }}
+              onClick={() => select(s.serverName)}
             >
               {s.serverName}
             </Button>

@@ -1,6 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getServerStatuses, getServiceStatus } from "../api/monitor";
@@ -17,6 +17,7 @@ describe("MonitoringPage", () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10",
       kernel: null, cpuPercent: 10, cpuCores: 4, memoryUsedBytes: 1, memoryTotalBytes: 2, uptimeSeconds: 100,
       disks: [], checkedAt: new Date().toISOString() }]);
@@ -39,11 +40,11 @@ describe("MonitoringPage", () => {
       checkedAt: new Date().toISOString(),
       portalDatabase: { up: true, version: "PostgreSQL 17.6", responseMs: 3, connections: 5, sizeBytes: 48 * 1024 ** 3, message: null },
       apps: [
-        { name: "팀 포털", target: "https://team.example.com", kind: "HTTP", up: true, statusCode: 200, responseMs: 85, message: null },
-        { name: "API", target: "host.docker.internal:7001", kind: "TCP", up: false, statusCode: null, responseMs: null, message: "연결 안 됨" },
+        { server: null, name: "팀 포털", target: "https://team.example.com", kind: "HTTP", up: true, statusCode: 200, responseMs: 85, message: null },
+        { server: null, name: "API", target: "host.docker.internal:7001", kind: "TCP", up: false, statusCode: null, responseMs: null, message: "연결 안 됨" },
       ],
       databases: [
-        { name: "MySQL", target: "host.docker.internal:3306", kind: "TCP", up: true, statusCode: null, responseMs: 1, message: null },
+        { server: null, name: "MySQL", target: "host.docker.internal:3306", kind: "TCP", up: true, statusCode: null, responseMs: 1, message: null },
       ],
     });
     renderPage();
@@ -70,6 +71,38 @@ describe("MonitoringPage", () => {
     cleanup();
     vi.mocked(getServiceStatus).mockResolvedValue({ checkedAt: new Date().toISOString(), portalDatabase: null, apps: [], databases: [] });
     renderPage();
-    expect(await screen.findByText("확인할 애플리케이션이 설정되지 않았습니다.")).toBeTruthy();
+    expect(await screen.findByText("이 서버에 확인할 애플리케이션이 설정되지 않았습니다.")).toBeTruthy();
+  });
+
+  it("고른 서버의 애플리케이션·DB만 보여주고 포털 DB는 포털 서버에서만 보여준다", async () => {
+    const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null,
+      uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() };
+    vi.mocked(getServerStatuses).mockResolvedValue([
+      { ...base, available: true, serverName: "10.0.0.1 (개발서버)" },
+      { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)" },
+    ]);
+    const check = { kind: "HTTP" as const, up: true, statusCode: 200, responseMs: 5, message: null };
+    vi.mocked(getServiceStatus).mockResolvedValue({
+      checkedAt: new Date().toISOString(),
+      portalDatabase: { up: true, version: "PostgreSQL 17.6", responseMs: 3, connections: 5, sizeBytes: 1, message: null },
+      apps: [
+        { ...check, server: null, name: "팀 포털", target: "https://team.example.com" },
+        { ...check, server: "10.0.0.2", name: "스쿨북스", target: "https://school.example.com" },
+      ],
+      databases: [],
+    });
+    renderPage();
+
+    const apps = await screen.findByRole("region", { name: "애플리케이션" });
+    expect(within(apps).getByText("팀 포털")).toBeTruthy();
+    expect(within(apps).queryByText("스쿨북스")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "DB" })).getByText("포털 DB")).toBeTruthy();
+
+    fireEvent.click(await screen.findByText("10.0.0.2 (스쿨북스)"));
+    expect(within(apps).getByText("스쿨북스")).toBeTruthy();
+    expect(within(apps).queryByText("팀 포털")).toBeNull();
+    const db = screen.getByRole("region", { name: "DB" });
+    expect(within(db).queryByText("포털 DB")).toBeNull();
+    expect(within(db).getByText("이 서버에 확인할 DB가 설정되지 않았습니다.")).toBeTruthy();
   });
 });

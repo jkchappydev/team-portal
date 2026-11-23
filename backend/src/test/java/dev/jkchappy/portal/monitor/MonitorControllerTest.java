@@ -85,8 +85,8 @@ class MonitorControllerTest {
     when(serviceCheckService.status()).thenReturn(new ServiceStatusResponse(
       OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)),
       new ServiceStatusResponse.PortalDatabase(true, "PostgreSQL 17.6", 3L, 5, 48_000_000L, null),
-      List.of(new ServiceStatusResponse.Check("팀 포털", "https://team.example.com", "HTTP", true, 200, 85L, null)),
-      List.of(new ServiceStatusResponse.Check("MySQL", "host.docker.internal:3306", "TCP", false, null, null, "연결 안 됨"))));
+      List.of(new ServiceStatusResponse.Check(null, "팀 포털", "https://team.example.com", "HTTP", true, 200, 85L, null)),
+      List.of(new ServiceStatusResponse.Check("10.0.0.2", "MySQL", "host.docker.internal:3306", "TCP", false, null, null, "연결 안 됨"))));
 
     mockMvc.perform(get("/api/monitor/services"))
       .andExpect(status().isOk())
@@ -94,6 +94,7 @@ class MonitorControllerTest {
       .andExpect(jsonPath("$.data.portalDatabase.connections").value(5))
       .andExpect(jsonPath("$.data.apps[0].name").value("팀 포털"))
       .andExpect(jsonPath("$.data.apps[0].statusCode").value(200))
+      .andExpect(jsonPath("$.data.databases[0].server").value("10.0.0.2"))
       .andExpect(jsonPath("$.data.databases[0].up").value(false))
       .andExpect(jsonPath("$.data.databases[0].message").value("연결 안 됨"));
   }

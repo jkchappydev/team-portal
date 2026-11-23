@@ -34,7 +34,7 @@ public class TargetProber {
       long elapsed = elapsedMs(started);
       // 로그인 필요(401·403)나 없는 경로(404)도 서버는 살아 있는 것으로 봄
       boolean up = status < 500;
-      return new ServiceStatusResponse.Check(target.name(), target.target(), "HTTP", up, status, elapsed,
+      return new ServiceStatusResponse.Check(target.server(), target.name(), target.target(), "HTTP", up, status, elapsed,
         up ? null : "서버 오류 " + status);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -54,14 +54,16 @@ public class TargetProber {
     long started = System.nanoTime();
     try (Socket socket = new Socket()) {
       socket.connect(new InetSocketAddress(host, port), (int) TIMEOUT.toMillis());
-      return new ServiceStatusResponse.Check(target.name(), target.target(), "TCP", true, null, elapsedMs(started), null);
+      return new ServiceStatusResponse.Check(target.server(), target.name(), target.target(), "TCP", true, null,
+        elapsedMs(started), null);
     } catch (IOException | RuntimeException e) {
       return down(target, "TCP", "연결 안 됨");
     }
   }
 
   private static ServiceStatusResponse.Check down(MonitorTarget target, String kind, String message) {
-    return new ServiceStatusResponse.Check(target.name(), target.target(), kind, false, null, null, message);
+    return new ServiceStatusResponse.Check(target.server(), target.name(), target.target(), kind, false, null, null,
+      message);
   }
 
   private static long elapsedMs(long started) {

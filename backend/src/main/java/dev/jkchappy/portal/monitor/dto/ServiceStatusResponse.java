@@ -7,9 +7,9 @@ import java.util.List;
 public record ServiceStatusResponse(OffsetDateTime checkedAt, PortalDatabase portalDatabase, List<Check> apps,
   List<Check> databases) {
 
-  // 주소 호출(HTTP) 또는 포트 연결(TCP) 결과, statusCode는 HTTP일 때만
-  public record Check(String name, String target, String kind, boolean up, Integer statusCode, Long responseMs,
-    String message) {
+  // 주소 호출(HTTP) 또는 포트 연결(TCP) 결과, statusCode는 HTTP일 때만, server는 어느 운영 서버 것인지(없으면 포털 서버)
+  public record Check(String server, String name, String target, String kind, boolean up, Integer statusCode,
+    Long responseMs, String message) {
   }
 
   // 포털이 쓰는 DB에 직접 쿼리한 결과 (실패하면 up=false와 message만)

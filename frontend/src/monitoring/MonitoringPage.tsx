@@ -3,7 +3,7 @@ import { Box, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { getServiceStatus } from "../api/monitor";
 import type { PortalDatabaseDto, ServiceCheckDto } from "../api/monitor";
-import { ServerOverview, formatBytes } from "../home/ServerMonitor";
+import { ServerOverview, formatBytes, useServerSelection } from "../home/ServerMonitor";
 import { formatRelative } from "../notifications/updateFormat";
 
 // 정상은 초록, 장애는 빨강 점과 글자
@@ -69,11 +69,23 @@ function portalDatabaseInfo(db: PortalDatabaseDto): string {
   ].filter(Boolean).join(" · ");
 }
 
+// 확인 대상의 서버 표시(이름 전체 또는 IP 등 앞부분)가 고른 서버와 같은지, 서버를 적지 않은 대상은 포털 서버 것
+export function belongsTo(check: ServiceCheckDto, serverName: string, isPortalServer: boolean): boolean {
+  if (!check.server) return isPortalServer;
+  return serverName === check.server || serverName.startsWith(`${check.server} `);
+}
+
 // 모니터링 상세: 서버 기본 정보(계기판), 서버에서 도는 애플리케이션과 DB가 정상인지
 // 애플리케이션·DB는 백엔드가 30초마다 확인한 결과를 10초마다 다시 읽음
 export function MonitoringPage() {
   const { data, isError } = useQuery({ queryKey: ["monitor", "services"], queryFn: getServiceStatus, refetchInterval: 10_000 });
   const pending = data !== undefined && data.checkedAt === null;
+  // 기본 정보에서 고른 서버의 애플리케이션·DB만 보여 줌
+  const selection = useServerSelection();
+  const current = selection.current;
+  const mine = (check: ServiceCheckDto) => current !== undefined && belongsTo(check, current.serverName, selection.isPortalServer);
+  const apps = data?.apps.filter(mine) ?? [];
+  const databases = data?.databases.filter(mine) ?? [];
 
   return (
     <Stack maw={1000} gap="md">
@@ -82,25 +94,29 @@ export function MonitoringPage() {
         {data?.checkedAt && <Text size="xs" c="dimmed">마지막 확인 {formatRelative(data.checkedAt)}</Text>}
       </Group>
       <Section title="기본 정보">
-        <ServerOverview />
+        <ServerOverview selection={selection} />
       </Section>
       {isError && <Text size="sm" c="red">애플리케이션·DB 상태를 불러오지 못했습니다.</Text>}
       {pending && <Text size="sm" c="dimmed">확인 중입니다. 잠시 뒤 다시 보입니다.</Text>}
       {data?.checkedAt && (
         <>
           <Section title="애플리케이션">
-            <CheckList checks={data.apps} empty="확인할 애플리케이션이 설정되지 않았습니다." />
+            <CheckList checks={apps} empty="이 서버에 확인할 애플리케이션이 설정되지 않았습니다." />
           </Section>
           <Section title="DB">
             <Stack gap={0}>
-              {data.portalDatabase && (
+              {/* 포털 DB는 포털이 도는 서버(목록 맨 앞)에서만 */}
+              {selection.isPortalServer && data.portalDatabase && (
                 <Row name="포털 DB" sub={data.portalDatabase.version ?? "PostgreSQL"}
                   status={<StatusMark up={data.portalDatabase.up} />} info={portalDatabaseInfo(data.portalDatabase)} />
               )}
-              {data.databases.map((check) => (
+              {databases.map((check) => (
                 <Row key={`${check.name}-${check.target}`} name={check.name} sub={check.target}
                   status={<StatusMark up={check.up} />} info={checkInfo(check)} />
               ))}
+              {databases.length === 0 && !(selection.isPortalServer && data.portalDatabase) && (
+                <Text size="sm" c="dimmed">이 서버에 확인할 DB가 설정되지 않았습니다.</Text>
+              )}
             </Stack>
           </Section>
         </>
