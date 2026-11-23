@@ -24,6 +24,13 @@ class ServerMonitorServiceTest {
     Files.writeString(proc.resolve("stat"), stat);
     Files.writeString(proc.resolve("meminfo"), "MemTotal:       16000 kB\nMemFree:  1000 kB\nMemAvailable:    6000 kB\n");
     Files.writeString(proc.resolve("uptime"), "86500.42 300000.10\n");
+    Files.createDirectories(proc.resolve("sys/kernel"));
+    Files.writeString(proc.resolve("sys/kernel/osrelease"), "4.18.0-553.el8_10.x86_64\n");
+  }
+
+  private Path osRelease() throws IOException {
+    return Files.writeString(proc.resolve("os-release"),
+      "NAME=\"Rocky Linux\"\nPRETTY_NAME=\"Rocky Linux 8.10 (Green Obsidian)\"\n");
   }
 
   @Test
@@ -41,7 +48,8 @@ class ServerMonitorServiceTest {
 
   @Test
   void status_readsMemoryUptimeAndCpuBetweenSamples() throws IOException {
-    ServerMonitorService service = new ServerMonitorService(proc.toString(), "테스트 서버", "데이터=" + proc, CLOCK);
+    ServerMonitorService service = new ServerMonitorService(proc.toString(), "테스트 서버", "데이터=" + proc,
+      osRelease().toString(), CLOCK);
     writeProc("cpu  100 0 100 800 0 0 0 0\n");
     service.sampleCpu();
     // 두 번째 측정까지 사용 200, 쉬는 시간 800 증가 -> 20%
@@ -52,6 +60,9 @@ class ServerMonitorServiceTest {
 
     assertThat(status.available()).isTrue();
     assertThat(status.serverName()).isEqualTo("테스트 서버");
+    // 컨테이너가 아닌 서버의 운영체제 이름과 커널 버전
+    assertThat(status.osName()).isEqualTo("Rocky Linux 8.10 (Green Obsidian)");
+    assertThat(status.kernel()).isEqualTo("4.18.0-553.el8_10.x86_64");
     assertThat(status.cpuPercent()).isEqualTo(20.0);
     assertThat(status.memoryTotalBytes()).isEqualTo(16000L * 1024);
     assertThat(status.memoryUsedBytes()).isEqualTo(10000L * 1024);
@@ -64,7 +75,8 @@ class ServerMonitorServiceTest {
 
   @Test
   void status_fallsBackToJvmOperatingSystemValuesWhenProcIsMissing() {
-    ServerMonitorService service = new ServerMonitorService(proc.resolve("none").toString(), "", "", CLOCK);
+    ServerMonitorService service = new ServerMonitorService(proc.resolve("none").toString(), "", "",
+      proc.resolve("none").toString(), CLOCK);
     service.sampleCpu();
 
     ServerStatusResponse status = service.status();
@@ -75,12 +87,18 @@ class ServerMonitorServiceTest {
     assertThat(status.memoryTotalBytes()).isPositive();
     assertThat(status.memoryUsedBytes()).isBetween(0L, status.memoryTotalBytes());
     assertThat(status.uptimeSeconds()).isNull();
+    // 서버 os-release가 없으면 JVM이 아는 운영체제 이름
+    assertThat(status.osName()).startsWith(System.getProperty("os.name"));
+    assertThat(status.kernel()).isNull();
   }
 
   @Test
   void parseDisks_skipsMalformedItemsAndDefaultsToRoot() {
     assertThat(ServerMonitorService.parseDisks("시스템=/a, 잘못된값 ,데이터=/b"))
       .extracting(ServerMonitorService.DiskTarget::name).containsExactly("시스템", "데이터");
+    // 표시 이름이 서버 마운트 위치(/, /var)여도 첫 = 기준으로 나눔
+    assertThat(ServerMonitorService.parseDisks("/=/host/disks/system,/var=/"))
+      .containsExactly(new ServerMonitorService.DiskTarget("/", "/host/disks/system"), new ServerMonitorService.DiskTarget("/var", "/"));
     assertThat(ServerMonitorService.parseDisks(" ")).singleElement()
       .satisfies(d -> assertThat(d.path()).isEqualTo("/"));
   }

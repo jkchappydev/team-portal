@@ -57,3 +57,5 @@ app:
     proc-path: ${MONITOR_PROC_PATH:/proc}
     server-name: ${MONITOR_SERVER_NAME:포털 서버}
     disks: ${MONITOR_DISKS:}
+    # 서버 운영체제 이름을 읽을 os-release 파일 (compose에서 서버 파일을 읽기 전용으로 연결)
+    os-release-path: ${MONITOR_OS_RELEASE_PATH:/host/os-release}

@@ -64,6 +64,20 @@ final class ProcStats {
     return Long.parseLong(parts[1]) * 1024;
   }
 
+  // os-release 파일의 PRETTY_NAME (예: Rocky Linux 8.10 (Green Obsidian)), 없으면 null
+  static String parsePrettyName(String osRelease) {
+    for (String line : osRelease.split("\n")) {
+      if (line.startsWith("PRETTY_NAME=")) {
+        String value = line.substring("PRETTY_NAME=".length()).trim();
+        if (value.length() >= 2 && (value.startsWith("\"") && value.endsWith("\"") || value.startsWith("'") && value.endsWith("'"))) {
+          value = value.substring(1, value.length() - 1);
+        }
+        return value.isBlank() ? null : value;
+      }
+    }
+    return null;
+  }
+
   // /proc/uptime 첫 값 (부팅 후 초)
   static long parseUptimeSeconds(String uptime) {
     return (long) Double.parseDouble(uptime.trim().split("\\s+")[0]);

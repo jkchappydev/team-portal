@@ -50,7 +50,7 @@ class MonitorControllerTest {
 
   @Test
   void server_returnsServerStatus() throws Exception {
-    when(serverMonitorService.status()).thenReturn(new ServerStatusResponse(true, "포털 서버", 12.5, 4,
+    when(serverMonitorService.status()).thenReturn(new ServerStatusResponse(true, "포털 서버", "Rocky Linux 8.10 (Green Obsidian)", "4.18.0", 12.5, 4,
       7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)),
       OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9))));
 
@@ -59,6 +59,8 @@ class MonitorControllerTest {
       .andExpect(jsonPath("$.success").value(true))
       .andExpect(jsonPath("$.data.available").value(true))
       .andExpect(jsonPath("$.data.serverName").value("포털 서버"))
+      .andExpect(jsonPath("$.data.osName").value("Rocky Linux 8.10 (Green Obsidian)"))
+      .andExpect(jsonPath("$.data.kernel").value("4.18.0"))
       .andExpect(jsonPath("$.data.cpuPercent").value(12.5))
       .andExpect(jsonPath("$.data.memoryUsedBytes").value(7000))
       .andExpect(jsonPath("$.data.uptimeSeconds").value(86400))

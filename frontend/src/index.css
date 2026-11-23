@@ -1982,7 +1982,7 @@ body.bn-column-resizing {
   display: block;
 }
 .server-gauge-needle {
-  transition: transform 0.6s ease-out;
+  transition: transform 1.2s ease-in-out;
 }
 .server-gauge-value {
   margin-top: 2px;

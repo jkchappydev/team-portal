@@ -10,6 +10,10 @@ export interface ServerDiskDto {
 export interface ServerStatusDto {
   available: boolean;
   serverName: string;
+  // 서버 운영체제 이름 (예: Rocky Linux 8.10 (Green Obsidian))
+  osName: string | null;
+  // 리눅스 커널 버전 (리눅스가 아니면 null)
+  kernel: string | null;
   // 첫 측정 직후에는 null
   cpuPercent: number | null;
   cpuCores: number | null;

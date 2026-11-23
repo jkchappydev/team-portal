@@ -43,13 +43,15 @@ services:
       ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-example.com,example.org}
       ALLOWED_HOSTED_DOMAINS: ${ALLOWED_HOSTED_DOMAINS:-example.org,example.com}
       SESSION_COOKIE_SECURE: "true"
-      # 메인 모니터링 칸: 컨테이너 루트(/)는 Docker 데이터가 있는 디스크, 시스템 디스크는 아래 빈 폴더로 읽음
+      # 메인 모니터링 칸: "표시 이름=컨테이너 안 경로", 표시 이름은 서버의 마운트 위치 (컨테이너 / 는 Docker가 있는 서버 /var 디스크, 서버 / 디스크는 아래 빈 폴더로 읽음)
       MONITOR_SERVER_NAME: ${MONITOR_SERVER_NAME:-포털 서버}
-      MONITOR_DISKS: ${MONITOR_DISKS:-시스템=/host/disks/system,데이터=/}
+      MONITOR_DISKS: ${MONITOR_DISKS:-/=/host/disks/system,/var=/}
     volumes:
       - storage:/app/storage
-      # 시스템 디스크 사용량만 보려고 연결하는 빈 폴더 (읽기 전용, 없으면 Docker가 만듦)
+      # 서버 / 디스크 사용량만 보려고 연결하는 빈 폴더 (읽기 전용, 없으면 Docker가 만듦)
       - /opt/team-portal/disk-probe:/host/disks/system:ro
+      # 컨테이너가 아닌 서버의 운영체제 이름 (읽기 전용 파일 하나, /etc/os-release가 가리키는 실제 파일)
+      - /usr/lib/os-release:/host/os-release:ro
 
   collab:
     build: ./collab

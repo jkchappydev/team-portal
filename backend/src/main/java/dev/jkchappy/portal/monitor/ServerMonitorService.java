@@ -15,8 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-// 포털이 돌아가는 서버의 CPU·메모리·디스크·가동 시간
+// 포털이 돌아가는 서버의 운영체제, CPU·메모리·디스크·가동 시간
 // 컨테이너 안의 /proc는 호스트 값을 그대로 보여줌, 디스크는 compose에서 읽기 전용으로 연결한 경로의 파일 시스템
+// 운영체제 이름은 컨테이너 것이 아닌 서버 것을 보이려고 서버 os-release 파일을 읽기 전용으로 연결해 읽음
 @Slf4j
 @Service
 public class ServerMonitorService {
@@ -24,6 +25,7 @@ public class ServerMonitorService {
   private final Path procPath;
   private final String serverName;
   private final List<DiskTarget> disks;
+  private final String osName;
   private final Clock clock;
   // 마지막 CPU 측정값과 그 직전 측정 대비 사용률
   private ProcStats.CpuTimes lastCpu;
@@ -34,11 +36,26 @@ public class ServerMonitorService {
 
   public ServerMonitorService(@Value("${app.monitor.proc-path:/proc}") String procPath,
     @Value("${app.monitor.server-name:포털 서버}") String serverName,
-    @Value("${app.monitor.disks:}") String disks, Clock clock) {
+    @Value("${app.monitor.disks:}") String disks,
+    @Value("${app.monitor.os-release-path:/host/os-release}") String osReleasePath, Clock clock) {
     this.procPath = Path.of(procPath);
     this.serverName = serverName.isBlank() ? "포털 서버" : serverName.trim();
     this.disks = parseDisks(disks);
+    this.osName = readOsName(Path.of(osReleasePath));
     this.clock = clock;
+  }
+
+  // 서버 os-release의 이름, 연결된 파일이 없으면(개발 PC 등) JVM이 아는 운영체제 이름과 버전
+  static String readOsName(Path osRelease) {
+    try {
+      String pretty = ProcStats.parsePrettyName(Files.readString(osRelease));
+      if (pretty != null) {
+        return pretty;
+      }
+    } catch (IOException | RuntimeException e) {
+      // 아래 JVM 값 사용
+    }
+    return (System.getProperty("os.name", "") + " " + System.getProperty("os.version", "")).trim();
   }
 
   // "이름=경로,이름=경로" 형식, 비어 있으면 루트 하나
@@ -54,8 +71,8 @@ public class ServerMonitorService {
     return result.isEmpty() ? List.of(new DiskTarget("디스크", "/")) : List.copyOf(result);
   }
 
-  // CPU 사용률은 순간값이 아니라 두 측정 사이 평균이라 10초마다 측정해 둠
-  @Scheduled(fixedRate = 10_000)
+  // CPU 사용률은 순간값이 아니라 두 측정 사이 평균이라 2초마다 측정해 둠 (계기판이 실시간으로 움직이도록)
+  @Scheduled(fixedRate = 2_000)
   public synchronized void sampleCpu() {
     try {
       ProcStats.CpuTimes now = ProcStats.parseCpu(read("stat"));
@@ -96,11 +113,17 @@ public class ServerMonitorService {
         procAvailable = false;
       }
     }
+    String kernel = null;
+    try {
+      kernel = read("sys/kernel/osrelease").trim();
+    } catch (IOException | RuntimeException e) {
+      // 리눅스가 아니면 커널 버전 없음 (운영체제 이름에 버전이 들어 있음)
+    }
     List<ServerStatusResponse.Disk> diskStats = disks.stream()
       .map(this::diskStat)
       .filter(d -> d != null)
       .toList();
-    return new ServerStatusResponse(procAvailable, serverName, cpuPercent, Runtime.getRuntime().availableProcessors(),
+    return new ServerStatusResponse(procAvailable, serverName, osName, kernel, cpuPercent, Runtime.getRuntime().availableProcessors(),
       memoryUsed, memoryTotal, uptime, diskStats, OffsetDateTime.now(clock));
   }
 
