@@ -81,7 +81,7 @@ export function createDocument(spaceId: number, parentId?: number | null, title?
   });
 }
 
-// 본문 페이지 블록 복제용 페이지 사본 생성 (제목 뒤 "(사본)")
+// 본문 페이지 블록용 페이지 사본 생성 (parentId 없이 블록 메뉴 "복제"면 제목 뒤 "(사본)", 붙여넣기는 원래 제목)
 // parentId가 있으면 그 페이지 아래(다른 프로젝트 본문도 가능), 없으면 원본과 같은 상위의 맨 아래
 export function duplicateDocument(id: number, parentId?: number): Promise<DocumentSummaryDto> {
   const query = parentId === undefined ? "" : `?parentId=${parentId}`;

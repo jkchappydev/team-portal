@@ -69,7 +69,7 @@ public class DocumentController {
   }
 
   // 본문 페이지 블록 복제용 페이지 사본 생성
-  // parentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), 없으면 원본과 같은 자리
+  // parentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), 없으면 원본과 같은 자리 (그때만 제목 뒤 "(사본)")
   @PostMapping("/api/documents/{id}/duplicate")
   public ApiResponse<DocumentSummary> duplicate(@PathVariable Long id,
     @RequestParam(required = false) Long parentId, @CurrentUser Long userId) {

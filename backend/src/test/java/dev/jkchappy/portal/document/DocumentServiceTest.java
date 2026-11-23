@@ -145,7 +145,7 @@ class DocumentServiceTest {
     assertThat(copy.getKind()).isEqualTo(DocumentKind.PAGE);
   }
 
-  // 본문에 복사해 붙여넣은 페이지는 붙여넣은 곳(다른 프로젝트 본문 포함) 아래에 사본을 만듦
+  // 본문에 복사해 붙여넣은 페이지는 붙여넣은 곳(다른 프로젝트 본문 포함) 아래에 원래 제목으로 사본을 만듦
   @Test
   void duplicate_withTargetParentInOtherSpace_placesCopyThere() {
     Space source = space(10L);
@@ -171,6 +171,8 @@ class DocumentServiceTest {
     assertThat(captor.getValue().getSpaceId()).isEqualTo(20L);
     // 프로젝트 본문 아래는 최상위
     assertThat(captor.getValue().getParentId()).isNull();
+    // 붙여넣은 사본은 원래 제목 그대로 ("(사본)"은 블록 메뉴 복제에만)
+    assertThat(captor.getValue().getTitle()).isEqualTo("회의록");
     assertThat(original.getSpaceId()).isEqualTo(10L);
   }
 

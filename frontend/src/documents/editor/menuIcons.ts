@@ -6,6 +6,8 @@ export const MENU_ICONS = {
   above: "M8 13V3M4 7l4-4 4 4",
   below: "M8 3v10M4 9l4 4 4-4",
   copy: "M5.5 5.5h8v8h-8zM2.5 10.5v-8h8",
+  // 클립보드 (복사: 클립보드에 담기, 복제의 겹친 사각형과 구분)
+  clipboard: "M5.5 3H4v11h8V3h-1.5M6 2.5h4v2H6z",
   trash: "M2.5 4h11M6 4V2.75h4V4M3.75 4l.7 9.25h7.1l.7-9.25",
   merge: "M8 13.5V8M8 8 3.5 3M8 8l4.5-5M5.5 11 8 13.5l2.5-2.5",
   split: "M8 2.5V8M8 8l-4.5 5M8 8l4.5 5M5.5 5 8 2.5 10.5 5",

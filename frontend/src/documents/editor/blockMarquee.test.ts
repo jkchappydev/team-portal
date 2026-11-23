@@ -50,31 +50,38 @@ describe("끄는 도중 스크롤", () => {
 });
 
 describe("고른 블록 복사", () => {
-  // 고른 뒤 편집기 포커스를 빼 두므로 포커스를 먼저 돌려준 뒤 블록 범위를 선택하고 복사해야 클립보드에 들어감
-  it("편집기 포커스를 돌려준 뒤 첫 블록 처음~마지막 블록 끝을 선택하고 복사한다", () => {
+  // 예전에는 글자 선택으로 범위를 잡아 복사해, 페이지 블록처럼 글자가 없는 블록은 담기지 않고 화면 글자만 붙여넣어졌음
+  it("고른 블록을 편집기 내부 형식(blocknote/html)으로 클립보드에 직접 넣어 붙여넣으면 같은 블록으로 읽힌다", () => {
     const editor = BlockNoteEditor.create({
-      initialContent: [{ type: "paragraph", content: "줄 1" }, { type: "paragraph", content: "줄 2" }, { type: "paragraph", content: "줄 3" }],
+      initialContent: [
+        { type: "paragraph", content: "줄 1" },
+        { type: "heading", props: { level: 2 }, content: "제목" },
+        { type: "paragraph", content: "줄 3" },
+      ],
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
     editor.mount(host);
-    const view = editor.prosemirrorView!;
-    const order: string[] = [];
-    const focus = vi.spyOn(view, "focus").mockImplementation(() => { order.push("focus"); });
-    const execCommand = vi.fn(() => {
-      order.push("copy");
-      const { from, to } = view.state.selection;
-      order.push(view.state.doc.textBetween(from, to, "|"));
+    const data = new Map<string, string>();
+    let reachedEditor = false;
+    const onEditorCopy = () => { reachedEditor = true; };
+    host.addEventListener("copy", onEditorCopy);
+    // jsdom에는 execCommand("copy")가 없어 브라우저처럼 copy 이벤트를 일으킴
+    document.execCommand = vi.fn(() => {
+      const event = new Event("copy", { bubbles: true, cancelable: true }) as ClipboardEvent;
+      Object.defineProperty(event, "clipboardData", { value: { setData: (type: string, value: string) => data.set(type, value) } });
+      host.dispatchEvent(event);
       return true;
     });
-    document.execCommand = execCommand;
     const ids = editor.document.slice(0, 2).map((block) => block.id);
 
     copyBlocks(editor, ids);
 
-    expect(focus).toHaveBeenCalled();
-    expect(execCommand).toHaveBeenCalledWith("copy");
-    expect(order).toEqual(["focus", "copy", "줄 1|줄 2"]);
+    expect(data.get("text/plain")).toContain("줄 1");
+    const parsed = editor.tryParseHTMLToBlocks(data.get("blocknote/html")!);
+    expect(parsed.map((block) => [block.type, (block.props as { level?: number }).level])).toEqual([["paragraph", undefined], ["heading", 2]]);
+    // 편집기 자체 복사 처리가 클립보드를 덮어쓰지 않음
+    expect(reachedEditor).toBe(false);
     editor.unmount();
     host.remove();
   });

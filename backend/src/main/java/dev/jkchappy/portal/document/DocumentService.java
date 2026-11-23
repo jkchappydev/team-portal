@@ -152,7 +152,7 @@ public class DocumentService {
     return duplicate(id, userId, null);
   }
 
-  // targetParentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), null이면 원본과 같은 자리
+  // targetParentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), null이면 원본과 같은 자리 (그때만 제목 뒤 "(사본)")
   @Transactional
   public DocumentSummary duplicate(Long id, Long userId, Long targetParentId) {
     Document source = getLiveDocument(id);
@@ -162,7 +162,9 @@ public class DocumentService {
     }
     Long parentId = targetParentId == null ? source.getParentId() : targetParentId;
     Space space = targetParentId == null ? sourceSpace : getLiveSpace(getLiveDocument(targetParentId).getSpaceId());
-    Document copy = Document.copyOf(source, copyTitle(source.getTitle()), userId);
+    // "(사본)"은 블록 메뉴 복제(같은 자리)에만, 다른 곳에 복사해 붙여넣은 페이지는 원래 제목 그대로
+    String title = targetParentId == null ? copyTitle(source.getTitle()) : source.getTitle();
+    Document copy = Document.copyOf(source, title, userId);
     copy.moveToSpace(space.getId());
     Document saved = placeAndSave(space, copy, parentId);
     Map<Long, String> names = memberService.findNamesByIds(Set.of(userId));

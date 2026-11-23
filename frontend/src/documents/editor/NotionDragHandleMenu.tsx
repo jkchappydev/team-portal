@@ -8,6 +8,8 @@ import { ApiError } from "../../api/client";
 import { colorTableCells, tableColor, withoutIds } from "./blockMenu";
 import { copyBlockWithPages, referencedPageIds } from "./pageCommand";
 import { usePageCopy } from "./pageCopyContext";
+import { copyBlocks } from "./blockMarquee";
+import { clearPageCut } from "./pagePaste";
 import { ColorSubmenu } from "./ColorSubmenu";
 import { MenuIcon } from "./MenuIcon";
 import { MENU_ICONS } from "./menuIcons";
@@ -115,6 +117,12 @@ export function NotionDragHandleMenu() {
         pageCopy.onError(error instanceof ApiError && error.message ? error.message : "페이지를 복제하지 못했습니다."));
   };
 
+  // 블록을 클립보드에 담음 (고른 블록 Ctrl+C와 같은 방식, 잘라내기 기록은 지움)
+  const copy = () => {
+    copyBlocks(editor, [block.id]);
+    clearPageCut();
+  };
+
   const remove = () => editor.removeBlocks([block]);
 
   return (
@@ -147,6 +155,10 @@ export function NotionDragHandleMenu() {
       </Components.Generic.Menu.Item>
       <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.below} />} onClick={() => insert("after")}>
         아래에 삽입
+      </Components.Generic.Menu.Item>
+      {/* 복사: 클립보드에 담기만 함 (Ctrl+C와 같음, 페이지 블록은 붙여넣은 곳에 원래 제목의 사본), 복제: 바로 아래에 "(사본)" */}
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.clipboard} />} onClick={copy}>
+        <span className="menu-item-with-shortcut">복사<span className="menu-item-shortcut">Ctrl+C</span></span>
       </Components.Generic.Menu.Item>
       <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.copy} />} onClick={duplicate}>
         복제

@@ -2,7 +2,7 @@ import { createExtension } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { BLOCKS_CUT_EVENT } from "./pagePaste";
+import { BLOCKS_CUT_EVENT, clearPageCut } from "./pagePaste";
 import { SideMenuExtension } from "@blocknote/core/extensions";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
@@ -107,10 +107,28 @@ export function selectBlockRange(editor: AnyEditor, ids: string[]): void {
 
 // 고른 블록을 클립보드로 복사 (BlockNote 복사 처리를 그대로 씀)
 // 고른 뒤에는 편집기 포커스를 빼 두어 선택만 바꾸면 화면 선택이 따라오지 않고 복사도 비어 버림 → 먼저 포커스를 돌려줌
+// 고른 블록을 편집기 선택에 기대지 않고 직접 클립보드에 넣음
+// 예전에는 첫 블록 처음~마지막 블록 끝을 글자 선택으로 잡아 복사했는데, 페이지 블록처럼 글자가 없는 블록은 그 선택이 성립하지 않아
+// 블록이 담기지 않고 화면에 그려진 아이콘·제목만 일반 글로 붙여넣어졌음
+// 편집기 내부 형식(blocknote/html)이 있어 붙여넣으면 블록 그대로 들어오고, 페이지 블록은 붙여넣은 뒤 사본 페이지로 이어짐 (editor/pagePaste)
 export function copyBlocks(editor: AnyEditor, ids: string[]): void {
-  editor.prosemirrorView.focus();
-  selectBlockRange(editor, ids);
-  document.execCommand("copy");
+  const blocks = ids.map((id) => editor.getBlock(id)).filter((block) => block !== undefined);
+  if (blocks.length === 0) return;
+  const write = (event: ClipboardEvent) => {
+    if (!event.clipboardData) return;
+    event.preventDefault();
+    // 편집기 자체 복사 처리가 이어서 클립보드를 덮어쓰지 않게 막음
+    event.stopImmediatePropagation();
+    event.clipboardData.setData("blocknote/html", editor.blocksToFullHTML(blocks));
+    event.clipboardData.setData("text/html", editor.blocksToHTMLLossy(blocks));
+    event.clipboardData.setData("text/plain", editor.blocksToMarkdownLossy(blocks));
+  };
+  document.addEventListener("copy", write, { capture: true });
+  try {
+    document.execCommand("copy");
+  } finally {
+    document.removeEventListener("copy", write, { capture: true });
+  }
 }
 
 // 고른 블록에 대한 단축키 (한글 입력 상태에서는 Ctrl+C의 key가 "ㅊ"이나 "Process"로 와서 key만 보면 복사가 되다 말다 함 → 자판 위치 code로 판단)
@@ -348,6 +366,8 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
     if (action === "copy") {
       e.preventDefault();
       copyBlocks(editor, ids);
+      // 복사는 잘라내기 기록을 지움 (클립보드 복사 이벤트를 직접 처리해 편집기 쪽 복사 감지가 돌지 않으므로 여기서)
+      clearPageCut();
       collapseSelection(editor);
       editor.prosemirrorView.dom.blur();
       document.getSelection()?.removeAllRanges();
