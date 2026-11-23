@@ -8,12 +8,12 @@ import { PDF_FONT, PdfDocument } from "./PdfDocument";
 beforeAll(() => {
   // 테스트는 Node 환경에서 돌아 프로젝트 폴더 기준으로 글꼴 파일을 읽음
   const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
-  const dir = `${cwd}/node_modules/pretendard/dist/web/static/woff`;
+  const dir = `${cwd}/node_modules/pretendard/dist/public/static`;
   Font.register({
     family: PDF_FONT,
     fonts: [
-      { src: `${dir}/Pretendard-Regular.woff`, fontWeight: 400 },
-      { src: `${dir}/Pretendard-Bold.woff`, fontWeight: 700 },
+      { src: `${dir}/Pretendard-Regular.otf`, fontWeight: 400 },
+      { src: `${dir}/Pretendard-Bold.otf`, fontWeight: 700 },
     ],
   });
 });

@@ -30,14 +30,15 @@ async function loadDocument(documentId: number) {
 }
 
 // 한글 글꼴(Pretendard)은 PDF를 만들 때 한 번만 등록
+// woff(압축 형식)는 react-pdf가 글자를 배치할 때마다 풀어 읽어 3쪽 문서도 6초 넘게 화면이 멈췄음 → 압축 없는 otf 사용 (0.1초 수준)
 let fontsReady: Promise<void> | null = null;
 
 function registerFonts(): Promise<void> {
   fontsReady ??= Promise.all([
     import("@react-pdf/renderer"),
     import("./PdfDocument"),
-    import("pretendard/dist/web/static/woff/Pretendard-Regular.woff?url"),
-    import("pretendard/dist/web/static/woff/Pretendard-Bold.woff?url"),
+    import("pretendard/dist/public/static/Pretendard-Regular.otf?url"),
+    import("pretendard/dist/public/static/Pretendard-Bold.otf?url"),
   ]).then(([{ Font }, { PDF_FONT }, regular, bold]) => {
     Font.register({
       family: PDF_FONT,
