@@ -29,7 +29,8 @@ public class Document {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "space_id", nullable = false, updatable = false)
+  // 본문에서 잘라내 다른 프로젝트에 붙여넣으면 바뀜 (DocumentService.move)
+  @Column(name = "space_id", nullable = false)
   private Long spaceId;
 
   // 상위 페이지 (null이면 프로젝트 최상위)
@@ -38,6 +39,11 @@ public class Document {
 
   public void placeUnder(Long parentId) {
     this.parentId = parentId;
+  }
+
+  // 다른 프로젝트로 옮김 (하위 페이지도 함께 옮기는 것은 호출한 쪽에서)
+  public void moveToSpace(Long spaceId) {
+    this.spaceId = spaceId;
   }
 
   // 페이지, 파일 또는 WBS 항목

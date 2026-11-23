@@ -69,10 +69,12 @@ public class DocumentController {
   }
 
   // 본문 페이지 블록 복제용 페이지 사본 생성
+  // parentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), 없으면 원본과 같은 자리
   @PostMapping("/api/documents/{id}/duplicate")
-  public ApiResponse<DocumentSummary> duplicate(@PathVariable Long id, @CurrentUser Long userId) {
+  public ApiResponse<DocumentSummary> duplicate(@PathVariable Long id,
+    @RequestParam(required = false) Long parentId, @CurrentUser Long userId) {
     // 복제본에 속성(담당자 등)도 같은 값으로 복사
-    DocumentSummary copied = documentService.duplicate(id, userId);
+    DocumentSummary copied = documentService.duplicate(id, userId, parentId);
     propertyService.copyProperties(id, copied.id());
     return ApiResponse.ok(copied);
   }

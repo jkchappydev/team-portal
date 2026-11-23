@@ -30,7 +30,8 @@ import {
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { claimPageBlockBackfill, createDocument, duplicateDocument } from "../api/documents";
+import { claimPageBlockBackfill, createDocument, duplicateDocument, moveDocument } from "../api/documents";
+import { adoptPastedPages, BLOCKS_CUT_EVENT, clearPageCut, pageIdsIn, recordPageCut } from "./editor/pagePaste";
 import { PageCopyContext } from "./editor/pageCopyContext";
 import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
@@ -391,6 +392,50 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     },
     onError: setScheduleError,
   };
+
+  // 페이지 블록 복사·잘라내 붙여넣기 (editor/pagePaste): 잘라낸 것은 이 페이지 아래로 옮기고, 복사한 것은 이 페이지 아래에 사본
+  useEffect(() => {
+    if (!editable) return;
+    const dom = editor.prosemirrorView?.dom;
+    if (!dom) return;
+    const selectedBlocks = () => editor.getSelection()?.blocks ?? [editor.getTextCursorPosition().block];
+    const onCut = () => recordPageCut(documentId, pageIdsIn(selectedBlocks()));
+    const onMarqueeCut = (event: Event) => {
+      const ids = (event as CustomEvent<string[]>).detail;
+      recordPageCut(documentId, pageIdsIn(ids.map((id) => editor.getBlock(id)).filter((b) => b !== undefined)));
+    };
+    dom.addEventListener("cut", onCut, true);
+    dom.addEventListener("copy", clearPageCut, true);
+    dom.addEventListener(BLOCKS_CUT_EVENT, onMarqueeCut);
+    const refresh = (pageId: number) => {
+      void queryClient.invalidateQueries({ queryKey: ["document", pageId] });
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    };
+    const offChange = editor.onChange((_, { getChanges }) => {
+      const pasted = getChanges().filter((c) => c.type === "insert" && c.source.type === "paste").map((c) => c.block);
+      if (pasted.length === 0) return;
+      setScheduleError(null);
+      void adoptPastedPages(pasted, documentId, {
+        movePage: (pageId, target) => moveDocument(pageId, target).then(() => refresh(pageId)),
+        copyPage: (pageId, target) => duplicateDocument(pageId, target).then((created) => {
+          refresh(created.id);
+          return created.id;
+        }),
+        pointBlockTo: (blockId, newId) => {
+          const block = editor.getBlock(blockId);
+          if (block) editor.updateBlock(block, { props: { documentId: newId } } as never);
+        },
+        onError: setScheduleError,
+      });
+    });
+    return () => {
+      dom.removeEventListener("cut", onCut, true);
+      dom.removeEventListener("copy", clearPageCut, true);
+      dom.removeEventListener(BLOCKS_CUT_EVENT, onMarqueeCut);
+      offChange?.();
+    };
+  }, [editor, editable, documentId, queryClient]);
 
   // 예전 하위 페이지 트리의 항목을 본문 맨 끝에 페이지 블록으로 한 번만 붙임 (서버 목록은 처음 가져간 한 명만 받음)
   // 읽기 전용이면 가져가지 않아 다음에 편집 가능한 사람이 열 때 붙음

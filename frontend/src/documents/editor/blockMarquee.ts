@@ -2,6 +2,7 @@ import { createExtension } from "@blocknote/core";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { BLOCKS_CUT_EVENT } from "./pagePaste";
 import type { Node as PMNode } from "@tiptap/pm/model";
 
 type AnyEditor = BlockNoteEditor<any, any, any>;
@@ -326,6 +327,8 @@ export function installBlockMarquee(editor: AnyEditor, area: HTMLElement, signal
       e.stopPropagation();
       // 블록 범위를 잠깐 선택해 복사한 뒤 블록을 지움
       copyBlocks(editor, ids);
+      // 복사 이벤트로 지워진 잘라내기 기록을 다시 남기도록 알림 (잘라낸 페이지 블록은 붙여넣으면 옮김, editor/pagePaste)
+      editor.prosemirrorView.dom.dispatchEvent(new CustomEvent(BLOCKS_CUT_EVENT, { detail: ids }));
       clear();
       editor.removeBlocks(ids.filter((id) => editor.getBlock(id)));
       return;

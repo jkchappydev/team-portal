@@ -145,6 +145,35 @@ class DocumentServiceTest {
     assertThat(copy.getKind()).isEqualTo(DocumentKind.PAGE);
   }
 
+  // 본문에 복사해 붙여넣은 페이지는 붙여넣은 곳(다른 프로젝트 본문 포함) 아래에 사본을 만듦
+  @Test
+  void duplicate_withTargetParentInOtherSpace_placesCopyThere() {
+    Space source = space(10L);
+    Space target = space(20L);
+    target.assignHomeDocument(50L);
+    Document original = child(5L, 10L, null, "회의록");
+    when(documentRepository.findById(5L)).thenReturn(Optional.of(original));
+    when(documentRepository.findById(50L)).thenReturn(Optional.of(document(50L, 20L)));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(source));
+    when(spaceRepository.findById(20L)).thenReturn(Optional.of(target));
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(20L)).thenReturn(List.of());
+    when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> {
+      Document saved = invocation.getArgument(0);
+      ReflectionTestUtils.setField(saved, "id", 21L);
+      return saved;
+    });
+    when(memberService.findNamesByIds(Set.of(1L))).thenReturn(Map.of(1L, "작성자"));
+
+    service().duplicate(5L, 1L, 50L);
+
+    ArgumentCaptor<Document> captor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(captor.capture());
+    assertThat(captor.getValue().getSpaceId()).isEqualTo(20L);
+    // 프로젝트 본문 아래는 최상위
+    assertThat(captor.getValue().getParentId()).isNull();
+    assertThat(original.getSpaceId()).isEqualTo(10L);
+  }
+
   // 파일·WBS 항목은 본문이 없어 복제하지 않음
   @Test
   void duplicate_file_throwsInvalidInput() {
@@ -445,17 +474,46 @@ class DocumentServiceTest {
     assertThatThrownBy(() -> service().move(1L, 1L, null)).isInstanceOf(BusinessException.class);
   }
 
+  // 본문에서 잘라내 다른 프로젝트 본문에 붙여넣으면 그 프로젝트 최상위로 옮기고 하위 페이지도 함께 옮김
   @Test
-  void move_toOtherSpace_rejected() {
-    Document doc = child(1L, 10L, null, "페이지");
+  void move_toOtherSpaceHome_movesSubtreeToThatSpace() {
+    Document doc = child(1L, 10L, null, "옮길 페이지");
+    Document sub = child(3L, 10L, 1L, "하위");
+    Document unrelated = child(6L, 10L, null, "그대로 둘 페이지");
+    Space target = space(20L);
+    target.assignHomeDocument(50L);
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+    when(documentRepository.findById(50L)).thenReturn(Optional.of(document(50L, 20L)));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
+    when(spaceRepository.findById(20L)).thenReturn(Optional.of(target));
+    when(documentRepository.findBySpaceId(10L)).thenReturn(List.of(doc, sub, unrelated));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of(1L, "홍길동"));
+
+    service().move(1L, 50L, null);
+
+    assertThat(doc.getSpaceId()).isEqualTo(20L);
+    assertThat(doc.getParentId()).isNull();
+    assertThat(sub.getSpaceId()).isEqualTo(20L);
+    assertThat(sub.getParentId()).isEqualTo(1L);
+    assertThat(unrelated.getSpaceId()).isEqualTo(10L);
+  }
+
+  // 다른 프로젝트의 페이지 아래로 옮기면 그 페이지의 하위가 됨
+  @Test
+  void move_underPageInOtherSpace_setsParentAndSpace() {
+    Document doc = child(1L, 10L, null, "옮길 페이지");
     Document other = child(2L, 20L, null, "다른 프로젝트 페이지");
     when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
     when(documentRepository.findById(2L)).thenReturn(Optional.of(other));
     when(spaceRepository.findById(10L)).thenReturn(Optional.of(space(10L)));
     when(spaceRepository.findById(20L)).thenReturn(Optional.of(space(20L)));
+    when(documentRepository.findBySpaceId(10L)).thenReturn(List.of(doc));
+    when(memberService.findNamesByIds(any())).thenReturn(Map.of(1L, "홍길동"));
 
-    assertThatThrownBy(() -> service().move(1L, 2L, null)).isInstanceOf(BusinessException.class);
-    assertThat(doc.getParentId()).isNull();
+    service().move(1L, 2L, null);
+
+    assertThat(doc.getSpaceId()).isEqualTo(20L);
+    assertThat(doc.getParentId()).isEqualTo(2L);
   }
 
   @Test

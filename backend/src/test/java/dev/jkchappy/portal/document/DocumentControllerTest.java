@@ -84,7 +84,7 @@ class DocumentControllerTest {
   // 페이지 블록 복제: 새로 만든 사본 페이지 정보를 돌려줌
   @Test
   void duplicate_returnsCopiedDocument() throws Exception {
-    when(documentService.duplicate(7L, 1L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentSummary(
+    when(documentService.duplicate(7L, 1L, null)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentSummary(
       20L, 10L, "개발", "회의록 (사본)", null, "작성자", java.time.OffsetDateTime.parse("2026-11-16T00:00:00Z"),
       3L, "PAGE", null));
 
@@ -226,5 +226,20 @@ class DocumentControllerTest {
       .andExpect(jsonPath("$.success").value(true));
 
     verify(formService).purge(7L);
+  }
+
+  // 본문에 복사해 붙여넣은 페이지: 붙여넣은 페이지 아래에 사본을 만들도록 상위 페이지를 넘김
+  @Test
+  void duplicate_withParentId_passesTargetParent() throws Exception {
+    when(documentService.duplicate(7L, 1L, 50L)).thenReturn(new dev.jkchappy.portal.document.dto.DocumentSummary(
+      21L, 20L, "운영", "회의록 (사본)", null, "작성자", java.time.OffsetDateTime.parse("2026-11-23T00:00:00Z"),
+      null, "PAGE", null));
+
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+        .post("/api/documents/7/duplicate").param("parentId", "50").with(loginAs(1L)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.id").value(21));
+
+    verify(propertyService).copyProperties(7L, 21L);
   }
 }

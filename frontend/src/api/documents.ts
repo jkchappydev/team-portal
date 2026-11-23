@@ -81,9 +81,16 @@ export function createDocument(spaceId: number, parentId?: number | null, title?
   });
 }
 
-// 본문 페이지 블록 복제용 페이지 사본 생성 (같은 상위의 맨 아래, 제목 뒤 "(사본)")
-export function duplicateDocument(id: number): Promise<DocumentSummaryDto> {
-  return apiFetch<DocumentSummaryDto>(`/api/documents/${id}/duplicate`, { method: "POST" });
+// 본문 페이지 블록 복제용 페이지 사본 생성 (제목 뒤 "(사본)")
+// parentId가 있으면 그 페이지 아래(다른 프로젝트 본문도 가능), 없으면 원본과 같은 상위의 맨 아래
+export function duplicateDocument(id: number, parentId?: number): Promise<DocumentSummaryDto> {
+  const query = parentId === undefined ? "" : `?parentId=${parentId}`;
+  return apiFetch<DocumentSummaryDto>(`/api/documents/${id}/duplicate${query}`, { method: "POST" });
+}
+
+// 페이지를 parentId 아래로 옮김 (다른 프로젝트 본문이면 하위 페이지와 함께 그 프로젝트로)
+export function moveDocument(id: number, parentId: number): Promise<DocumentDetailDto> {
+  return apiFetch<DocumentDetailDto>(`/api/documents/${id}/parent`, { method: "PATCH", body: JSON.stringify({ parentId }) });
 }
 
 export function getDocument(id: number): Promise<DocumentDetailDto> {

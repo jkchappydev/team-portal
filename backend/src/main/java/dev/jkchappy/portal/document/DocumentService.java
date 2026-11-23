@@ -18,8 +18,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -147,13 +149,22 @@ public class DocumentService {
   // (본문 안의 하위 페이지 블록은 원래 하위 페이지를 그대로 가리킴)
   @Transactional
   public DocumentSummary duplicate(Long id, Long userId) {
+    return duplicate(id, userId, null);
+  }
+
+  // targetParentId: 사본을 둘 상위 페이지 (본문에 복사해 붙여넣은 페이지, 다른 프로젝트 본문도 가능), null이면 원본과 같은 자리
+  @Transactional
+  public DocumentSummary duplicate(Long id, Long userId, Long targetParentId) {
     Document source = getLiveDocument(id);
-    Space space = getLiveSpace(source.getSpaceId());
-    if (!source.isPage() || space.isHomeDocument(id)) {
+    Space sourceSpace = getLiveSpace(source.getSpaceId());
+    if (!source.isPage() || sourceSpace.isHomeDocument(id)) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "페이지만 복제할 수 있습니다.");
     }
-    Document saved = placeAndSave(space, Document.copyOf(source, copyTitle(source.getTitle()), userId),
-      source.getParentId());
+    Long parentId = targetParentId == null ? source.getParentId() : targetParentId;
+    Space space = targetParentId == null ? sourceSpace : getLiveSpace(getLiveDocument(targetParentId).getSpaceId());
+    Document copy = Document.copyOf(source, copyTitle(source.getTitle()), userId);
+    copy.moveToSpace(space.getId());
+    Document saved = placeAndSave(space, copy, parentId);
     Map<Long, String> names = memberService.findNamesByIds(Set.of(userId));
     return DocumentSummary.from(saved, space.getName(), names.getOrDefault(userId, ""));
   }
@@ -233,22 +244,30 @@ public class DocumentService {
     if (space.isHomeDocument(id)) {
       throw new BusinessException(ErrorCode.INVALID_INPUT, "최상위 페이지 본문은 옮길 수 없습니다.");
     }
+    // 새 상위가 다른 프로젝트(본문 포함)에 있으면 그 프로젝트로 옮김 (본문에서 잘라내 다른 프로젝트에 붙여넣은 경우)
+    Space target = parentId == null ? space : getLiveSpace(getLiveDocument(parentId).getSpaceId());
     // 최상위 페이지 본문 아래로 옮기면 최상위
-    Long resolved = parentId == null || space.isHomeDocument(parentId) ? null : parentId;
+    Long resolved = parentId == null || target.isHomeDocument(parentId) ? null : parentId;
     if (resolved != null) {
       if (resolved.equals(id)) {
         throw new BusinessException(ErrorCode.INVALID_INPUT, "자기 자신 아래로는 옮길 수 없습니다.");
       }
       Document parent = getLiveDocument(resolved);
-      checkParent(parent, doc.getSpaceId());
+      checkParent(parent, target.getId());
       // 새 상위의 경로에 자신이 있으면 자기 하위 페이지 안으로 옮기는 것이라 순환이 생김
       if (ancestors(parent).stream().anyMatch(a -> a.getId().equals(id))) {
         throw new BusinessException(ErrorCode.INVALID_INPUT, "하위 페이지 안으로는 옮길 수 없습니다.");
       }
     }
+    if (!target.getId().equals(space.getId())) {
+      // 하위 페이지(휴지통에 있는 것 포함)도 함께 새 프로젝트로
+      for (Document moved : subtreeOf(doc)) {
+        moved.moveToSpace(target.getId());
+      }
+    }
     doc.placeUnder(resolved);
     // 새 상위 페이지 안의 형제들 사이에 끼워 넣고 0부터 다시 번호를 매김
-    List<Document> siblings = new ArrayList<>(siblingsOf(doc.getSpaceId(), resolved, id));
+    List<Document> siblings = new ArrayList<>(siblingsOf(target.getId(), resolved, id));
     int position = index == null ? siblings.size() : Math.clamp(index, 0, siblings.size());
     siblings.add(position, doc);
     for (int i = 0; i < siblings.size(); i++) {
@@ -274,6 +293,24 @@ public class DocumentService {
   }
 
   // 같은 상위 페이지 아래의 살아 있는 페이지를 표시 순서대로 (프로젝트 본문과 excludedId 제외)
+  // 자신과 모든 하위 페이지 (상위 참조를 따라 내려감, 순환 데이터 방어로 한 번씩만)
+  private List<Document> subtreeOf(Document root) {
+    Map<Long, List<Document>> childrenByParent = documentRepository.findBySpaceId(root.getSpaceId()).stream()
+      .filter(d -> d.getParentId() != null)
+      .collect(Collectors.groupingBy(Document::getParentId));
+    List<Document> result = new ArrayList<>();
+    Set<Long> seen = new HashSet<>();
+    Deque<Document> queue = new ArrayDeque<>(List.of(root));
+    while (!queue.isEmpty()) {
+      Document current = queue.poll();
+      if (seen.add(current.getId())) {
+        result.add(current);
+        queue.addAll(childrenByParent.getOrDefault(current.getId(), List.of()));
+      }
+    }
+    return result;
+  }
+
   private List<Document> siblingsOf(Long spaceId, Long parentId, Long excludedId) {
     Space space = getLiveSpace(spaceId);
     return documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(spaceId)
