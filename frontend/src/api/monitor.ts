@@ -24,8 +24,9 @@ export interface ServerStatusDto {
   checkedAt: string;
 }
 
-export function getServerStatus(): Promise<ServerStatusDto> {
-  return apiFetch<ServerStatusDto>("/api/monitor/server");
+// 포털 서버를 맨 앞에, 그 뒤로 다른 운영 서버들 (다른 서버는 백엔드가 5초마다 읽어 둔 값)
+export function getServerStatuses(): Promise<ServerStatusDto[]> {
+  return apiFetch<ServerStatusDto[]>("/api/monitor/servers");
 }
 
 // 주소 호출(HTTP) 또는 포트 연결(TCP) 결과

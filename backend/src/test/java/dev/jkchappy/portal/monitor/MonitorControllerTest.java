@@ -46,6 +46,9 @@ class MonitorControllerTest {
   @MockitoBean
   private ServiceCheckService serviceCheckService;
 
+  @MockitoBean
+  private RemoteServerMonitor remoteServerMonitor;
+
   @BeforeEach
   void stubAuthenticatedMember() {
     lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
@@ -53,23 +56,28 @@ class MonitorControllerTest {
   }
 
   @Test
-  void server_returnsServerStatus() throws Exception {
+  void servers_returnsPortalServerFirstThenRemoteServers() throws Exception {
     when(serverMonitorService.status()).thenReturn(new ServerStatusResponse(true, "포털 서버", "Rocky Linux 8.10 (Green Obsidian)", "4.18.0", 12.5, 4,
       7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)),
       OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9))));
 
-    mockMvc.perform(get("/api/monitor/server"))
+    when(remoteServerMonitor.statuses()).thenReturn(List.of(new ServerStatusResponse(false, "다른 서버", null, null,
+      null, null, null, null, null, List.of(), OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)))));
+
+    mockMvc.perform(get("/api/monitor/servers"))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.success").value(true))
-      .andExpect(jsonPath("$.data.available").value(true))
-      .andExpect(jsonPath("$.data.serverName").value("포털 서버"))
-      .andExpect(jsonPath("$.data.osName").value("Rocky Linux 8.10 (Green Obsidian)"))
-      .andExpect(jsonPath("$.data.kernel").value("4.18.0"))
-      .andExpect(jsonPath("$.data.cpuPercent").value(12.5))
-      .andExpect(jsonPath("$.data.memoryUsedBytes").value(7000))
-      .andExpect(jsonPath("$.data.uptimeSeconds").value(86400))
-      .andExpect(jsonPath("$.data.disks[0].name").value("시스템"))
-      .andExpect(jsonPath("$.data.disks[0].totalBytes").value(100));
+      .andExpect(jsonPath("$.data[0].available").value(true))
+      .andExpect(jsonPath("$.data[0].serverName").value("포털 서버"))
+      .andExpect(jsonPath("$.data[0].osName").value("Rocky Linux 8.10 (Green Obsidian)"))
+      .andExpect(jsonPath("$.data[0].kernel").value("4.18.0"))
+      .andExpect(jsonPath("$.data[0].cpuPercent").value(12.5))
+      .andExpect(jsonPath("$.data[0].memoryUsedBytes").value(7000))
+      .andExpect(jsonPath("$.data[0].uptimeSeconds").value(86400))
+      .andExpect(jsonPath("$.data[0].disks[0].name").value("시스템"))
+      .andExpect(jsonPath("$.data[0].disks[0].totalBytes").value(100))
+      .andExpect(jsonPath("$.data[1].serverName").value("다른 서버"))
+      .andExpect(jsonPath("$.data[1].available").value(false));
   }
 
   @Test

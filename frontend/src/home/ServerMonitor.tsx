@@ -1,7 +1,9 @@
-import { Anchor, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { useState } from "react";
+import { Anchor, Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getServerStatus } from "../api/monitor";
+import { getServerStatuses } from "../api/monitor";
+import type { ServerStatusDto } from "../api/monitor";
 import { Panel } from "./Panel";
 import { ServerGauge } from "./ServerGauge";
 import type { ServerGaugeProps } from "./ServerGauge";
@@ -17,17 +19,65 @@ export function formatUptime(seconds: number): string {
   return days > 0 ? `${days}일 ${hours}시간` : `${hours}시간 ${Math.floor((seconds % 3_600) / 60)}분`;
 }
 
-// 포털 서버의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에 (2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)
-// 메인 화면 칸과 모니터링 상세 화면이 같이 씀
+// 마지막으로 고른 서버 (화면을 다시 열어도 유지, 저장소를 못 쓰면 포털 서버)
+const SELECTED_KEY = "monitor-selected-server";
+
+function readSelected(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSelected(name: string): void {
+  try {
+    localStorage.setItem(SELECTED_KEY, name);
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 고른 서버를 보여 줌
+  }
+}
+
+// 운영 서버들의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에 (2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)
+// 서버가 여럿이면 위의 서버 버튼으로 하나씩 봄, 메인 화면 칸과 모니터링 상세 화면이 같이 씀
 export function ServerOverview() {
-  const { data, isError, isLoading } = useQuery({
-    queryKey: ["monitor", "server"],
-    queryFn: getServerStatus,
+  const { data: servers, isError } = useQuery({
+    queryKey: ["monitor", "servers"],
+    queryFn: getServerStatuses,
     refetchInterval: 2_000,
   });
+  const [selected, setSelected] = useState<string | null>(readSelected);
+  const list = servers ?? [];
+  const current = list.find((s) => s.serverName === selected) ?? list[0];
 
+  return (
+    <Stack gap="sm">
+      {isError && <Text size="sm" c="red">서버 정보를 불러오지 못했습니다.</Text>}
+      {list.length > 1 && current && (
+        // 서버 이름이 길어 좁은 화면에서는 다음 줄로 넘어가는 버튼 묶음
+        <Group gap={6} role="group" aria-label="서버 선택">
+          {list.map((s) => (
+            <Button
+              key={s.serverName}
+              size="compact-xs"
+              variant={s.serverName === current.serverName ? "filled" : "default"}
+              aria-pressed={s.serverName === current.serverName}
+              onClick={() => { setSelected(s.serverName); writeSelected(s.serverName); }}
+            >
+              {s.serverName}
+            </Button>
+          ))}
+        </Group>
+      )}
+      {current && <ServerDetail data={current} />}
+    </Stack>
+  );
+}
+
+// 서버 하나의 이름·운영체제·가동 시간과 계기판
+function ServerDetail({ data }: { data: ServerStatusDto }) {
   const gauges: (ServerGaugeProps & { key: string })[] = [];
-  if (data?.available) {
+  if (data.available) {
     gauges.push({ key: "cpu", label: "CPU", percent: data.cpuPercent, detail: data.cpuCores ? `${data.cpuCores}코어` : undefined });
     if (data.memoryUsedBytes !== null && data.memoryTotalBytes !== null && data.memoryTotalBytes > 0) {
       gauges.push({
@@ -48,11 +98,13 @@ export function ServerOverview() {
     }
   }
 
+  if (!data.available) {
+    // 서버 버튼에 어느 서버인지 보이므로 안내만
+    return <Text size="sm" c="dimmed">서버 정보를 읽을 수 없습니다.</Text>;
+  }
   return (
     <>
-      {isError && <Text size="sm" c="red">서버 정보를 불러오지 못했습니다.</Text>}
-      {!isLoading && data && !data.available && <Text size="sm" c="dimmed">서버 정보를 읽을 수 없습니다.</Text>}
-      {data?.available && (
+      {(
         <Stack gap="sm">
           <div>
             <Group justify="space-between" gap="xs">

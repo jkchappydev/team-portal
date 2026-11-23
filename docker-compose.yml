@@ -48,6 +48,8 @@ services:
       MONITOR_DISKS: ${MONITOR_DISKS:-/=/host/disks/system,/var=/}
       # 모니터링 상세 화면에서 확인할 애플리케이션·DB 목록 (서버 .env에 둠, 서버의 다른 포트는 host.docker.internal:포트)
       MONITOR_TARGETS: ${MONITOR_TARGETS:-}
+      # 다른 운영 서버 자원 (각 서버 node_exporter 주소, 서버 .env에 둠)
+      MONITOR_REMOTE_SERVERS: ${MONITOR_REMOTE_SERVERS:-}
     # 컨테이너에서 서버(호스트)의 다른 애플리케이션 포트로 연결할 이름
     extra_hosts:
       - "host.docker.internal:host-gateway"

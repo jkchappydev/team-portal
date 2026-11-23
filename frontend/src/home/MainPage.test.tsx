@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { listNewCs } from "../api/cs";
 import { listRecentDocuments } from "../api/documents";
 import { listHolidays } from "../api/holidays";
-import { getServerStatus } from "../api/monitor";
+import { getServerStatuses } from "../api/monitor";
 import { listSpaces } from "../api/spaces";
 import { listWorkStatuses } from "../api/workStatuses";
 import { MainPage } from "./MainPage";
@@ -15,7 +15,7 @@ import { thisWeekDays } from "./thisWeek";
 vi.mock("../api/cs", () => ({ listNewCs: vi.fn() }));
 vi.mock("../api/documents", () => ({ listRecentDocuments: vi.fn() }));
 vi.mock("../api/holidays", () => ({ listHolidays: vi.fn() }));
-vi.mock("../api/monitor", () => ({ getServerStatus: vi.fn() }));
+vi.mock("../api/monitor", () => ({ getServerStatuses: vi.fn() }));
 vi.mock("../api/spaces", () => ({ listSpaces: vi.fn() }));
 vi.mock("../api/workStatuses", () => ({ listWorkStatuses: vi.fn() }));
 
@@ -41,9 +41,9 @@ describe("MainPage", () => {
       { id: 9, spaceId: 3, spaceName: "개발", title: "배포 절차", icon: null, kind: "PAGE", updatedByName: "이영희", updatedAt: new Date().toISOString() },
     ]);
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [] });
-    vi.mocked(getServerStatus).mockResolvedValue({ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10 (Green Obsidian)", kernel: "4.18.0-553.el8_10.x86_64",
+    vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10 (Green Obsidian)", kernel: "4.18.0-553.el8_10.x86_64",
       cpuPercent: 12, cpuCores: 4, memoryUsedBytes: 8 * 1024 ** 3, memoryTotalBytes: 16 * 1024 ** 3, uptimeSeconds: 3 * 86_400 + 7_200,
-      disks: [{ name: "시스템", usedBytes: 95 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 }], checkedAt: new Date().toISOString() });
+      disks: [{ name: "시스템", usedBytes: 95 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 }], checkedAt: new Date().toISOString() }]);
   });
   afterEach(cleanup);
 
@@ -153,19 +153,36 @@ describe("MainPage", () => {
   });
 
   it("디스크가 여럿이면 계기판 이름에 서버 마운트 위치를 붙인다", async () => {
-    vi.mocked(getServerStatus).mockResolvedValue({ available: true, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: 12, cpuCores: 4,
+    vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: 12, cpuCores: 4,
       memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
       disks: [{ name: "/", usedBytes: 1, totalBytes: 2 }, { name: "/var", usedBytes: 1, totalBytes: 4 }],
-      checkedAt: new Date().toISOString() });
+      checkedAt: new Date().toISOString() }]);
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
     expect(await within(panel).findByText("DISK (/)")).toBeTruthy();
     expect(within(panel).getByText("DISK (/var)")).toBeTruthy();
   });
 
+  it("서버가 여럿이면 서버 버튼으로 골라 그 서버의 계기판을 보여준다", async () => {
+    const base = { osName: null, kernel: null, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
+      disks: [], checkedAt: new Date().toISOString() };
+    vi.mocked(getServerStatuses).mockResolvedValue([
+      { ...base, available: true, serverName: "10.0.0.1", cpuPercent: 10 },
+      { ...base, available: true, serverName: "10.0.0.2", cpuPercent: 80 },
+      { ...base, available: false, serverName: "10.0.0.3", cpuPercent: null },
+    ]);
+    renderPage();
+    const panel = screen.getByRole("region", { name: "모니터링" });
+    expect((await within(panel).findAllByRole("meter"))[0].getAttribute("aria-valuenow")).toBe("10");
+    fireEvent.click(within(panel).getByText("10.0.0.2"));
+    expect(within(panel).getAllByRole("meter")[0].getAttribute("aria-valuenow")).toBe("80");
+    fireEvent.click(within(panel).getByText("10.0.0.3"));
+    expect(within(panel).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
+  });
+
   it("서버 정보를 읽을 수 없으면 안내한다", async () => {
-    vi.mocked(getServerStatus).mockResolvedValue({ available: false, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: null, cpuCores: 4,
-      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() });
+    vi.mocked(getServerStatuses).mockResolvedValue([{ available: false, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: null, cpuCores: 4,
+      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() }]);
     renderPage();
     expect(await within(screen.getByRole("region", { name: "모니터링" })).findByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
   });

@@ -3,10 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getServerStatus, getServiceStatus } from "../api/monitor";
+import { getServerStatuses, getServiceStatus } from "../api/monitor";
 import { MonitoringPage } from "./MonitoringPage";
 
-vi.mock("../api/monitor", () => ({ getServerStatus: vi.fn(), getServiceStatus: vi.fn() }));
+vi.mock("../api/monitor", () => ({ getServerStatuses: vi.fn(), getServiceStatus: vi.fn() }));
 
 describe("MonitoringPage", () => {
   beforeAll(() => {
@@ -17,9 +17,9 @@ describe("MonitoringPage", () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(getServerStatus).mockResolvedValue({ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10",
+    vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10",
       kernel: null, cpuPercent: 10, cpuCores: 4, memoryUsedBytes: 1, memoryTotalBytes: 2, uptimeSeconds: 100,
-      disks: [], checkedAt: new Date().toISOString() });
+      disks: [], checkedAt: new Date().toISOString() }]);
   });
   afterEach(cleanup);
 
