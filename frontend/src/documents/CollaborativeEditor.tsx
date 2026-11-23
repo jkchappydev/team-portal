@@ -30,8 +30,9 @@ import {
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { claimPageBlockBackfill, createDocument, duplicateDocument, moveDocument } from "../api/documents";
-import { adoptPastedPages, BLOCKS_CUT_EVENT, clearPageCut, pageIdsIn, recordPageCut } from "./editor/pagePaste";
+import { claimPageBlockBackfill, createDocument, deleteDocument, duplicateDocument, moveDocument, restoreDocument } from "../api/documents";
+import { adoptPastedPages, BLOCKS_CUT_EVENT, clearPageCut, isPageCut, pageIdsIn, recordPageCut } from "./editor/pagePaste";
+import { createPageRemovalTracker } from "./editor/pageRemoval";
 import { PageCopyContext } from "./editor/pageCopyContext";
 import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
@@ -411,9 +412,25 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       void queryClient.invalidateQueries({ queryKey: ["document", pageId] });
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
       void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+      void queryClient.invalidateQueries({ queryKey: ["trash"] });
     };
+    // 지운 페이지 블록의 페이지는 휴지통으로, 되돌리기로 돌아온 블록의 페이지는 복원 (editor/pageRemoval)
+    const removal = createPageRemovalTracker(documentId, {
+      referencedIds: () => new Set(pageIdsIn(editor.document as never)),
+      isCut: isPageCut,
+      trashPage: (pageId) => deleteDocument(pageId).then(() => refresh(pageId)),
+      restorePage: (pageId) => restoreDocument(pageId).then(() => refresh(pageId)),
+      onError: setScheduleError,
+    });
     const offChange = editor.onChange((_, { getChanges }) => {
-      const pasted = getChanges().filter((c) => c.type === "insert" && c.source.type === "paste").map((c) => c.block);
+      const changes = getChanges();
+      // 다른 사람의 변경은 그 사람 화면에서 처리
+      const local = changes.filter((c) => c.source.type !== "yjs-remote");
+      removal.removed(pageIdsIn(local.filter((c) => c.type === "delete").map((c) => c.block)));
+      removal.restored(pageIdsIn(local
+        .filter((c) => c.type === "insert" && (c.source.type === "undo" || c.source.type === "redo" || c.source.type === "undo-redo"))
+        .map((c) => c.block)));
+      const pasted = changes.filter((c) => c.type === "insert" && c.source.type === "paste").map((c) => c.block);
       if (pasted.length === 0) return;
       setScheduleError(null);
       void adoptPastedPages(pasted, documentId, {
@@ -434,6 +451,7 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       dom.removeEventListener("copy", clearPageCut, true);
       dom.removeEventListener(BLOCKS_CUT_EVENT, onMarqueeCut);
       offChange?.();
+      removal.dispose();
     };
   }, [editor, editable, documentId, queryClient]);
 

@@ -63,6 +63,11 @@ export function clearPageCut(): void {
   writeCut(null);
 }
 
+// 잘라내 붙여넣기를 기다리는 페이지인지 (본문에서 블록이 지워져도 휴지통으로 보내지 않음)
+export function isPageCut(pageId: number): boolean {
+  return readCut()?.pageIds.includes(pageId) ?? false;
+}
+
 // 잘라낸 페이지면 잘라낸 페이지(원래 본문) ID를 돌려주고 기록에서 뺌 (같은 내용을 다시 붙여넣으면 그때는 사본)
 export function takePageCut(pageId: number): number | null {
   const record = readCut();
