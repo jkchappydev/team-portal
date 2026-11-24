@@ -1,5 +1,6 @@
 import "@blocknote/core/fonts/inter.css";
-import "@blocknote/mantine/style.css";
+// Mantine 기본 스타일은 main.tsx에서 한 번만 불러옴 (style.css는 Mantine을 한 벌 더 넣어, 편집기를 연 뒤 다른 화면의 여백 등을 덮어씀)
+import "@blocknote/mantine/blocknoteStyles.css";
 import type { Block } from "@blocknote/core";
 import { ko } from "@blocknote/core/locales";
 import { BlockNoteView } from "@blocknote/mantine";
