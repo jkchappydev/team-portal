@@ -4,31 +4,37 @@ import dev.jkchappy.portal.common.ApiResponse;
 import dev.jkchappy.portal.monitor.dto.ServerHistoryResponse;
 import dev.jkchappy.portal.monitor.dto.ServerStatusResponse;
 import dev.jkchappy.portal.monitor.dto.ServiceStatusResponse;
-import java.util.ArrayList;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/monitor")
 @RequiredArgsConstructor
 public class MonitorController {
 
-  private final ServerMonitorService serverMonitorService;
-  private final RemoteServerMonitor remoteServerMonitor;
+  private final ServerStatusStream serverStatusStream;
   private final ServiceCheckService serviceCheckService;
   private final MetricHistoryService metricHistoryService;
 
   // 포털 서버를 맨 앞에, 그 뒤로 설정한 다른 운영 서버들의 자원
   @GetMapping("/servers")
   public ApiResponse<List<ServerStatusResponse>> servers() {
-    List<ServerStatusResponse> result = new ArrayList<>();
-    result.add(serverMonitorService.status());
-    result.addAll(remoteServerMonitor.statuses());
-    return ApiResponse.ok(result);
+    return ApiResponse.ok(serverStatusStream.snapshot());
+  }
+
+  // 같은 목록을 2초마다 받는 실시간 연결 (계기판 화면용)
+  @GetMapping(value = "/servers/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter serversStream(HttpServletResponse response) {
+    // nginx(포털 내부·운영 앞단 모두)가 값을 모아 두지 않고 바로 넘기도록 지정
+    response.setHeader("X-Accel-Buffering", "no");
+    return serverStatusStream.subscribe();
   }
 
   // 애플리케이션·DB 동작 상태 (30초마다 확인한 마지막 결과)

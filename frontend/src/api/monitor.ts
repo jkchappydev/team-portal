@@ -32,6 +32,9 @@ export function getServerStatuses(): Promise<ServerStatusDto[]> {
   return apiFetch<ServerStatusDto[]>("/api/monitor/servers");
 }
 
+// 같은 목록을 2초마다 보내는 실시간 연결(SSE), 이벤트 이름은 "servers"이고 값은 목록 JSON (응답 포장 없음)
+export const SERVERS_STREAM_URL = "/api/monitor/servers/stream";
+
 // 주소 호출(HTTP) 또는 포트 연결(TCP) 결과
 export interface ServiceCheckDto {
   // 어느 운영 서버 것인지 (서버 이름 또는 IP, null이면 포털 서버)

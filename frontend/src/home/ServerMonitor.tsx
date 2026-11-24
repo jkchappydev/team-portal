@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Anchor, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getServerStatuses } from "../api/monitor";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getServerStatuses, SERVERS_STREAM_URL } from "../api/monitor";
 import type { ServerStatusDto } from "../api/monitor";
 import { Panel } from "./Panel";
 import { ClockIcon, CpuIcon, DiskIcon, MemoryIcon, ServerStatusBadge } from "../monitoring/MonitorIcons";
@@ -55,13 +55,68 @@ export interface ServerSelection {
   isError: boolean;
 }
 
-// 서버 목록(2초마다 갱신해 바늘이 실시간으로 움직임, 화면을 보고 있지 않은 탭은 쉼)과 고른 서버
+const SERVERS_KEY = ["monitor", "servers"];
+// 실시간 연결을 못 쓰게 됐을 때(서버 재시작 등) 2초 조회로 버티다가 다시 연결을 시도하는 간격
+export const STREAM_RETRY_MS = 30_000;
+const POLL_MS = 2_000;
+// EventSource.CLOSED (다시 연결하지 않고 끝난 상태)
+const CLOSED = 2;
+
+// 화면이 보이는 동안 서버가 2초마다 보내는 서버 목록을 받아 캐시에 넣음 (탭이 가려지면 연결을 닫음)
+// 연결을 쓸 수 있으면 true, 못 쓰면 false (이때는 2초 조회로 대신함)
+export function useServerStream(): boolean {
+  const queryClient = useQueryClient();
+  const supported = typeof EventSource !== "undefined";
+  const [live, setLive] = useState(supported);
+
+  useEffect(() => {
+    if (!supported) return;
+    // 끊긴 뒤 일정 시간이 지나면 다시 연결 시도
+    if (!live) {
+      const timer = setTimeout(() => setLive(true), STREAM_RETRY_MS);
+      return () => clearTimeout(timer);
+    }
+    let source: EventSource | null = null;
+    const onServers = (event: Event) => {
+      queryClient.setQueryData(SERVERS_KEY, JSON.parse((event as MessageEvent<string>).data) as ServerStatusDto[]);
+    };
+    // 네트워크가 잠깐 끊기면 브라우저가 알아서 다시 연결, 오류 응답으로 끝나 버리면 조회로 전환
+    const onError = () => {
+      if (source?.readyState === CLOSED) {
+        close();
+        setLive(false);
+      }
+    };
+    const open = () => {
+      if (source) return;
+      source = new EventSource(SERVERS_STREAM_URL);
+      source.addEventListener("servers", onServers);
+      source.addEventListener("error", onError);
+    };
+    const close = () => {
+      source?.close();
+      source = null;
+    };
+    const onVisibility = () => (document.visibilityState === "hidden" ? close() : open());
+    if (document.visibilityState !== "hidden") open();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      close();
+    };
+  }, [supported, live, queryClient]);
+
+  return live;
+}
+
+// 서버 목록(실시간 연결로 2초마다 받아 바늘이 움직임, 화면을 보고 있지 않은 탭은 쉼)과 고른 서버
 // 상세 화면은 계기판과 애플리케이션·DB 목록이 같은 선택을 쓰도록 이 값을 함께 넘김
 export function useServerSelection(): ServerSelection {
+  const live = useServerStream();
   const { data: servers, isError } = useQuery({
-    queryKey: ["monitor", "servers"],
+    queryKey: SERVERS_KEY,
     queryFn: getServerStatuses,
-    refetchInterval: 2_000,
+    refetchInterval: live ? false : POLL_MS,
   });
   const [selected, setSelected] = useState<string | null>(readSelected);
   const list = servers ?? [];
@@ -77,9 +132,17 @@ export function useServerSelection(): ServerSelection {
 
 // 운영 서버들의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에
 // 서버가 여럿이면 위의 서버 버튼으로 하나씩 봄, 메인 화면 칸과 모니터링 상세 화면이 같이 씀
+// 선택을 넘겨받으면 그 연결을 쓰고, 아니면 직접 연결 (한 화면에 실시간 연결이 둘 생기지 않게)
 export function ServerOverview({ selection }: { selection?: ServerSelection }) {
-  const own = useServerSelection();
-  const { list, current, select, isError } = selection ?? own;
+  return selection ? <ServerOverviewView selection={selection} /> : <OwnServerOverview />;
+}
+
+function OwnServerOverview() {
+  return <ServerOverviewView selection={useServerSelection()} />;
+}
+
+function ServerOverviewView({ selection }: { selection: ServerSelection }) {
+  const { list, current, select, isError } = selection;
 
   return (
     <Stack gap="sm">

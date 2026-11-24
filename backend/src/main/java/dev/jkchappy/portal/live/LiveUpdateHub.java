@@ -3,6 +3,7 @@ package dev.jkchappy.portal.live;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -36,22 +37,23 @@ public class LiveUpdateHub {
   // 저장이 확정된 뒤에만 알려 다른 화면이 옛 데이터를 다시 읽지 않게 함
   @TransactionalEventListener(fallbackExecution = true)
   public void onChange(LiveUpdateEvent event) {
-    broadcast(SseEmitter.event().name(event.topic()).data(event.topic()));
+    broadcast(() -> SseEmitter.event().name(event.topic()).data(event.topic()));
   }
 
   // 프록시 유휴 시간 초과(기본 60초)로 끊기지 않도록 주기적으로 빈 신호 전송
   @Scheduled(fixedRate = 25_000)
   public void heartbeat() {
-    broadcast(SseEmitter.event().comment("ping"));
+    broadcast(() -> SseEmitter.event().comment("ping"));
   }
 
   int subscriberCount() {
     return emitters.size();
   }
 
-  private void broadcast(SseEmitter.SseEventBuilder event) {
+  // 이벤트는 연결마다 새로 만듦 (같은 이벤트를 다시 보내면 끝 줄바꿈이 보낼 때마다 쌓임)
+  void broadcast(Supplier<SseEmitter.SseEventBuilder> event) {
     for (SseEmitter emitter : emitters) {
-      send(emitter, event);
+      send(emitter, event.get());
     }
   }
 

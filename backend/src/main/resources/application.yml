@@ -28,6 +28,12 @@ spring:
   session:
     jdbc:
       initialize-schema: never
+  # 주기 작업(서버 상태 전송·지표 수집·외부 확인 등)이 서로 기다리지 않도록 스레드를 여러 개 사용
+  # (다른 서버 지표 읽기·애플리케이션 확인은 응답을 몇 초까지 기다림)
+  task:
+    scheduling:
+      pool:
+        size: 4
 
 server:
   forward-headers-strategy: framework

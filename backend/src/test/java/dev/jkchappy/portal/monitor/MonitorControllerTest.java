@@ -8,7 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.jkchappy.portal.account.AccountService;
@@ -30,6 +32,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @WebMvcTest(MonitorController.class)
 @Import({ControllerTestSecurity.class, GlobalExceptionHandler.class, WebConfig.class, CurrentUserArgumentResolver.class,
@@ -46,13 +49,10 @@ class MonitorControllerTest {
   private MemberService memberService;
 
   @MockitoBean
-  private ServerMonitorService serverMonitorService;
+  private ServerStatusStream serverStatusStream;
 
   @MockitoBean
   private ServiceCheckService serviceCheckService;
-
-  @MockitoBean
-  private RemoteServerMonitor remoteServerMonitor;
 
   @MockitoBean
   private MetricHistoryService metricHistoryService;
@@ -65,12 +65,12 @@ class MonitorControllerTest {
 
   @Test
   void servers_returnsPortalServerFirstThenRemoteServers() throws Exception {
-    when(serverMonitorService.status()).thenReturn(new ServerStatusResponse(true, "포털 서버", "Rocky Linux 8.10 (Green Obsidian)", "4.18.0", 12.5, 4,
-      7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)), 2048.0, 1024.0,
-      OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9))));
-
-    when(remoteServerMonitor.statuses()).thenReturn(List.of(new ServerStatusResponse(false, "다른 서버", null, null,
-      null, null, null, null, null, List.of(), null, null, OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)))));
+    when(serverStatusStream.snapshot()).thenReturn(List.of(
+      new ServerStatusResponse(true, "포털 서버", "Rocky Linux 8.10 (Green Obsidian)", "4.18.0", 12.5, 4,
+        7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)), 2048.0, 1024.0,
+        OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9))),
+      new ServerStatusResponse(false, "다른 서버", null, null,
+        null, null, null, null, null, List.of(), null, null, OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)))));
 
     mockMvc.perform(get("/api/monitor/servers"))
       .andExpect(status().isOk())
@@ -86,6 +86,15 @@ class MonitorControllerTest {
       .andExpect(jsonPath("$.data[0].disks[0].totalBytes").value(100))
       .andExpect(jsonPath("$.data[1].serverName").value("다른 서버"))
       .andExpect(jsonPath("$.data[1].available").value(false));
+  }
+
+  @Test
+  void serversStream_startsUnbufferedEventStream() throws Exception {
+    when(serverStatusStream.subscribe()).thenReturn(new SseEmitter());
+
+    mockMvc.perform(get("/api/monitor/servers/stream"))
+      .andExpect(request().asyncStarted())
+      .andExpect(header().string("X-Accel-Buffering", "no"));
   }
 
   @Test
