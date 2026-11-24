@@ -131,7 +131,7 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
   if (!data.available) {
     return (
       <Stack gap={4}>
-        <Group justify="space-between" gap="xs" wrap="nowrap">
+        <Group gap={8} wrap="nowrap">
           <Text size="sm" fw={600} style={{ minWidth: 0 }} truncate>{data.serverName}</Text>
           <ServerStatusBadge online={false} />
         </Group>
@@ -145,10 +145,11 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
         <Stack gap="sm">
           {/* 왼쪽 서버 이름, 오른쪽 위 운영체제 이름(커널 버전은 사용자 요청으로 표시하지 않음)과 그 아래 가동 시간 */}
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
-            <Stack gap={4} align="flex-start" style={{ minWidth: 0 }}>
-              <Text size="sm" fw={600} maw="100%" truncate>{data.serverName}</Text>
+            {/* 서버 이름 바로 옆에 상태 알약 (이름이 길면 이름만 줄여 보임) */}
+            <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+              <Text size="sm" fw={600} style={{ minWidth: 0 }} truncate>{data.serverName}</Text>
               <ServerStatusBadge online />
-            </Stack>
+            </Group>
             <Stack gap={0} align="flex-end" style={{ minWidth: 0 }}>
               {data.osName && <Text size="xs" c="dimmed" ta="right" truncate maw="100%">{data.osName}</Text>}
               {data.uptimeSeconds !== null && (
