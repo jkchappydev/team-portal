@@ -1,5 +1,6 @@
 package dev.jkchappy.portal.monitor;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,7 +11,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// 다른 서버 node_exporter의 /metrics(Prometheus 텍스트 형식)에서 모니터링에 쓰는 값만 뽑음
+// 다른 서버 node_exporter(리눅스)·windows_exporter(윈도우)의 /metrics(Prometheus 텍스트 형식)에서 모니터링에 쓰는 값만 뽑음
 record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalBytes, Long memoryAvailableBytes,
   Long uptimeSeconds, String osName, String kernel, List<Filesystem> filesystems) {
 
@@ -19,6 +20,8 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
 
   // 디스크로 보여 줄 파일 시스템 종류 (스냅 패키지 squashfs·tmpfs 등은 제외)
   private static final Set<String> DISK_TYPES = Set.of("xfs", "ext4", "ext3", "btrfs");
+  // 윈도우는 드라이브 문자가 있는 볼륨만 (복구 파티션 HarddiskVolume1 등은 제외)
+  private static final Pattern WINDOWS_DRIVE = Pattern.compile("[A-Za-z]:");
   private static final Pattern LABEL = Pattern.compile("(\\w+)=\"((?:[^\"\\\\]|\\\\.)*)\"");
 
   record Sample(String name, Map<String, String> labels, double value) {
@@ -64,7 +67,8 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
     return samples;
   }
 
-  static NodeExporterStats from(String text) {
+  // now: 가동 시간 계산용 현재 시각 (node_exporter는 서버 시각 node_time_seconds가 있으면 그것을 씀)
+  static NodeExporterStats from(String text, Instant now) {
     List<Sample> samples = parse(text);
     double cpuTotal = 0;
     double cpuIdle = 0;
@@ -72,7 +76,7 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
     Long memTotal = null;
     Long memAvailable = null;
     Double boot = null;
-    Double now = null;
+    Double serverNow = null;
     String osName = null;
     String kernel = null;
     // 같은 장치가 여러 경로에 붙어 있으면 처음 경로 하나만
@@ -94,7 +98,7 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
         case "node_memory_MemTotal_bytes" -> memTotal = (long) s.value();
         case "node_memory_MemAvailable_bytes" -> memAvailable = (long) s.value();
         case "node_boot_time_seconds" -> boot = s.value();
-        case "node_time_seconds" -> now = s.value();
+        case "node_time_seconds" -> serverNow = s.value();
         case "node_os_info" -> osName = s.labels().get("pretty_name");
         case "node_uname_info" -> kernel = s.labels().get("release");
         case "node_filesystem_size_bytes" -> {
@@ -105,6 +109,29 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
           }
         }
         case "node_filesystem_avail_bytes" -> avails.put(s.labels().getOrDefault("mountpoint", ""), s.value());
+        // 윈도우 (모드: idle·user·privileged·interrupt·dpc, 코어 라벨은 "소켓,번호")
+        case "windows_cpu_time_seconds_total" -> {
+          cpuTotal += s.value();
+          if (s.labels().getOrDefault("mode", "").equals("idle")) {
+            cpuIdle += s.value();
+          }
+          cpus.add(s.labels().getOrDefault("core", ""));
+        }
+        case "windows_memory_physical_total_bytes" -> memTotal = (long) s.value();
+        case "windows_memory_available_bytes" -> memAvailable = (long) s.value();
+        case "windows_system_boot_time_timestamp" -> boot = s.value();
+        case "windows_os_info" -> {
+          osName = s.labels().get("product");
+          kernel = s.labels().get("version");
+        }
+        case "windows_logical_disk_size_bytes" -> {
+          String volume = s.labels().getOrDefault("volume", "");
+          if (WINDOWS_DRIVE.matcher(volume).matches()) {
+            sizes.put(volume, s.value());
+            fsInfo.putIfAbsent(volume, s);
+          }
+        }
+        case "windows_logical_disk_free_bytes" -> avails.put(s.labels().getOrDefault("volume", ""), s.value());
         default -> {
           // 쓰지 않는 값
         }
@@ -116,6 +143,7 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
       if (mount.startsWith("/boot") || !avails.containsKey(mount)) {
         continue;
       }
+      // 윈도우 볼륨은 device 라벨이 없어 드라이브 문자로 구분
       String device = entry.getValue().labels().getOrDefault("device", mount);
       byDevice.putIfAbsent(device, new Filesystem(mount, sizes.get(mount).longValue(), avails.get(mount).longValue()));
     }
@@ -124,7 +152,8 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
       .sorted((a, b) -> a.mountpoint().compareTo(b.mountpoint()))
       .toList();
     ProcStats.CpuTimes cpu = cpus.isEmpty() ? null : new ProcStats.CpuTimes(Math.round(cpuTotal * 100), Math.round(cpuIdle * 100));
-    Long uptime = boot != null && now != null ? (long) (now - boot) : null;
+    double current = serverNow != null ? serverNow : now.getEpochSecond();
+    Long uptime = boot != null ? (long) (current - boot) : null;
     return new NodeExporterStats(cpu, cpus.size(), memTotal, memAvailable, uptime, osName, kernel, filesystems);
   }
 }

@@ -48,7 +48,7 @@ class RemoteServerMonitorTest {
 
   @Test
   void from_readsMemoryUptimeOsAndRealDisksOnly() {
-    NodeExporterStats stats = NodeExporterStats.from(metrics(0, 100));
+    NodeExporterStats stats = NodeExporterStats.from(metrics(0, 100), CLOCK.instant());
 
     assertThat(stats.cpuCores()).isEqualTo(2);
     assertThat(stats.memoryTotalBytes()).isEqualTo(16_000_000_000L);
@@ -57,6 +57,39 @@ class RemoteServerMonitorTest {
     assertThat(stats.osName()).isEqualTo("Rocky Linux 8.10 (Green Obsidian)");
     assertThat(stats.kernel()).isEqualTo("4.18.0-553.el8_10.x86_64");
     assertThat(stats.filesystems()).extracting(NodeExporterStats.Filesystem::mountpoint).containsExactly("/", "/var");
+  }
+
+  @Test
+  void from_readsWindowsExporterMetricsWithDriveLettersOnly() {
+    String windows = """
+      windows_cpu_logical_processor 2
+      windows_cpu_time_seconds_total{core="0,0",mode="idle"} 300
+      windows_cpu_time_seconds_total{core="0,0",mode="user"} 60
+      windows_cpu_time_seconds_total{core="0,0",mode="privileged"} 40
+      windows_cpu_time_seconds_total{core="0,1",mode="idle"} 100
+      windows_memory_physical_total_bytes 1.6e+10
+      windows_memory_available_bytes 4e+09
+      windows_system_boot_time_timestamp %d
+      windows_os_info{build_number="14393",product="Windows Server 2016 Standard",version="10.0.14393"} 1
+      windows_logical_disk_size_bytes{volume="E:"} 4e+12
+      windows_logical_disk_free_bytes{volume="E:"} 3e+12
+      windows_logical_disk_size_bytes{volume="C:"} 5e+10
+      windows_logical_disk_free_bytes{volume="C:"} 5e+09
+      windows_logical_disk_size_bytes{volume="HarddiskVolume1"} 5e+08
+      windows_logical_disk_free_bytes{volume="HarddiskVolume1"} 1e+08
+      """.formatted(CLOCK.instant().getEpochSecond() - 7_200);
+
+    NodeExporterStats stats = NodeExporterStats.from(windows, CLOCK.instant());
+
+    assertThat(stats.cpuCores()).isEqualTo(2);
+    // 전체 500초 중 쉬는 시간 400초
+    assertThat(stats.cpu()).isEqualTo(new ProcStats.CpuTimes(50_000, 40_000));
+    assertThat(stats.memoryTotalBytes()).isEqualTo(16_000_000_000L);
+    assertThat(stats.memoryAvailableBytes()).isEqualTo(4_000_000_000L);
+    assertThat(stats.uptimeSeconds()).isEqualTo(7_200L);
+    assertThat(stats.osName()).isEqualTo("Windows Server 2016 Standard");
+    assertThat(stats.filesystems()).extracting(NodeExporterStats.Filesystem::mountpoint).containsExactly("C:", "E:");
+    assertThat(stats.filesystems().getFirst().availableBytes()).isEqualTo(5_000_000_000L);
   }
 
   @Test

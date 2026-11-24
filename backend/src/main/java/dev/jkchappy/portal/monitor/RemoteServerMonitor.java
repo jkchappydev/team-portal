@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-// 포털 서버가 아닌 다른 운영 서버의 자원 (각 서버 node_exporter의 /metrics를 읽음)
+// 포털 서버가 아닌 다른 운영 서버의 자원 (리눅스는 node_exporter, 윈도우는 windows_exporter의 /metrics를 읽음)
 // 접속자마다 다른 서버를 부르지 않도록 5초마다 읽어 두고, CPU 사용률은 직전 읽기와의 차이로 계산
 @Slf4j
 @Service
@@ -42,7 +42,7 @@ public class RemoteServerMonitor {
     this.clock = clock;
   }
 
-  // "이름=http://주소:9100/metrics"를 ; 으로 나열, 형식이 맞지 않는 항목은 건너뜀
+  // "이름=http://주소:9100/metrics"(윈도우는 :9182)를 ; 으로 나열, 형식이 맞지 않는 항목은 건너뜀
   static List<RemoteServer> parse(String value) {
     List<RemoteServer> result = new ArrayList<>();
     for (String item : value.split(";")) {
@@ -92,7 +92,7 @@ public class RemoteServerMonitor {
       lastCpu.remove(server.name());
       return unavailable(server);
     }
-    return toStatus(server.name(), NodeExporterStats.from(text));
+    return toStatus(server.name(), NodeExporterStats.from(text, clock.instant()));
   }
 
   ServerStatusResponse toStatus(String name, NodeExporterStats stats) {
