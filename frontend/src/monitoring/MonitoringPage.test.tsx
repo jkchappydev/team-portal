@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getServerHistory, getServerStatuses, getServiceStatus } from "../api/monitor";
+import { splitServerName } from "../home/ServerMonitor";
 import { MonitoringPage } from "./MonitoringPage";
 
 vi.mock("../api/monitor", () => ({ getServerStatuses: vi.fn(), getServiceStatus: vi.fn(), getServerHistory: vi.fn() }));
@@ -96,7 +97,7 @@ describe("MonitoringPage", () => {
     expect(within(apps).getByText("팀 포털")).toBeTruthy();
     expect(within(apps).queryByText("스쿨북스")).toBeNull();
 
-    fireEvent.click(await screen.findByText("10.0.0.2 (스쿨북스)"));
+    fireEvent.click(await screen.findByRole("button", { name: "10.0.0.2 (스쿨북스) Online" }));
     expect(within(apps).getByText("스쿨북스")).toBeTruthy();
     expect(within(apps).queryByText("팀 포털")).toBeNull();
   });
@@ -152,5 +153,10 @@ describe("MonitoringPage", () => {
     fireEvent.click(within(overview).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" }));
     expect(await within(overview).findByText("Offline")).toBeTruthy();
     expect(within(overview).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
+  });
+
+  it("서버 고르기 칸은 \"IP (이름)\"을 이름과 IP 두 줄로 나눠 보여준다", () => {
+    expect(splitServerName("211.252.85.222 (더북리스트, EDC)")).toEqual({ title: "더북리스트, EDC", address: "211.252.85.222" });
+    expect(splitServerName("포털 서버")).toEqual({ title: "포털 서버", address: null });
   });
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Anchor, Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Anchor, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getServerStatuses } from "../api/monitor";
@@ -18,6 +18,12 @@ export function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86_400);
   const hours = Math.floor((seconds % 86_400) / 3_600);
   return days > 0 ? `${days}일 ${hours}시간` : `${hours}시간 ${Math.floor((seconds % 3_600) / 60)}분`;
+}
+
+// "IP (이름)" 형식이면 이름과 IP로 나눔 (아니면 전체를 이름으로)
+export function splitServerName(serverName: string): { title: string; address: string | null } {
+  const match = /^(\S+) \((.+)\)$/.exec(serverName);
+  return match ? { title: match[2], address: match[1] } : { title: serverName, address: null };
 }
 
 // 마지막으로 고른 서버 (화면을 다시 열어도 유지, 저장소를 못 쓰면 포털 서버)
@@ -79,23 +85,29 @@ export function ServerOverview({ selection }: { selection?: ServerSelection }) {
     <Stack gap="sm">
       {isError && <Text size="sm" c="red">서버 정보를 불러오지 못했습니다.</Text>}
       {list.length > 1 && current && (
-        // 서버 이름이 길어 좁은 화면에서는 다음 줄로 넘어가는 버튼 묶음
-        <Group gap={6} role="group" aria-label="서버 선택">
-          {list.map((s) => (
-            <Button
-              key={s.serverName}
-              size="compact-xs"
-              variant={s.serverName === current.serverName ? "filled" : "default"}
-              // 서버를 읽을 수 있는지 초록·빨강 점 (점만으로 구분하지 않도록 이름표에도 상태를 붙임)
-              leftSection={<span className={`server-dot ${s.available ? "is-online" : "is-offline"}`} aria-hidden />}
-              aria-label={`${s.serverName} ${s.available ? "Online" : "Offline"}`}
-              aria-pressed={s.serverName === current.serverName}
-              onClick={() => select(s.serverName)}
-            >
-              {s.serverName}
-            </Button>
-          ))}
-        </Group>
+        // 서버 고르기: 같은 폭 칸을 화면 폭에 맞춰 나란히 (좁으면 여러 줄), 칸마다 상태 점·이름·IP
+        <div className="server-picker" role="group" aria-label="서버 선택">
+          {list.map((s) => {
+            const { title, address } = splitServerName(s.serverName);
+            const active = s.serverName === current.serverName;
+            return (
+              <UnstyledButton
+                key={s.serverName}
+                className="server-pick"
+                data-active={active || undefined}
+                aria-label={`${s.serverName} ${s.available ? "Online" : "Offline"}`}
+                aria-pressed={active}
+                onClick={() => select(s.serverName)}
+              >
+                <span className={`server-dot ${s.available ? "is-online" : "is-offline"}`} aria-hidden />
+                <span className="server-pick-text">
+                  <span className="server-pick-title">{title}</span>
+                  {address && <span className="server-pick-address">{address}</span>}
+                </span>
+              </UnstyledButton>
+            );
+          })}
+        </div>
       )}
       {current && <ServerDetail data={current} />}
     </Stack>

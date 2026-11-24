@@ -90,6 +90,16 @@ export function formatTick(t: number, spanMs: number): string {
   return d.getHours() === 0 && d.getMinutes() === 0 ? date : `${date} ${time}`;
 }
 
+// 값 상자 높이와 점과의 간격 (px)
+const TOOLTIP_HEIGHT = 44;
+const TOOLTIP_GAP = 10;
+
+// 값 상자가 점을 가리지 않도록: 점 위에 자리가 있으면 점 위, 없으면(값이 높을 때) 점 아래
+export function tooltipTop(pointY: number): number {
+  const above = pointY - TOOLTIP_HEIGHT - TOOLTIP_GAP;
+  return above >= 0 ? above : pointY + TOOLTIP_GAP;
+}
+
 // 마우스를 올린 점의 시각 (월/일 시:분)
 function formatFull(t: number): string {
   const d = new Date(t);
@@ -195,7 +205,7 @@ export function MetricChart({ title, icon, color, points, from, to, bucketMs, ki
         {hover && hover.v !== null && (
           <div className="metric-chart-tooltip" style={{
             left: Math.min(Math.max(x(hover.t), MARGIN.left + 60), width - 70),
-            top: MARGIN.top,
+            top: tooltipTop(y(hover.v)),
           }}>
             <div className="metric-chart-tooltip-time">{formatFull(hover.t)}</div>
             <div className="metric-chart-tooltip-value">{format(hover.v)}</div>
