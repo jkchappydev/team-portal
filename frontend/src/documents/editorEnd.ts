@@ -11,6 +11,16 @@ function isEmptyParagraph(block: EndEditor["document"][number]): boolean {
   return block.type === "paragraph" && Array.isArray(block.content) && block.content.length === 0;
 }
 
+// 메뉴·팝오버처럼 본문 위에 띄운 요소 (BlockNote는 이런 요소를 본문 상자 안쪽 포털에 그림)
+const FLOATING_UI = "[role='menu'], .mantine-Menu-dropdown, .mantine-Popover-dropdown, [data-floating-ui-portal]";
+
+// 누른 곳이 본문 위에 띄운 메뉴 안인지 확인
+// 본문 아래 빈 곳 처리에서 빼야 함: 표가 마지막 블록이면 칸 메뉴의 아래쪽 색 항목이 화면상 표보다 아래라,
+// 누르는 순간 커서가 문서 끝으로 옮겨져 칸 선택이 풀리고 메뉴가 사라져 색이 바뀌지 않았음
+export function isInFloatingUi(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest(FLOATING_UI);
+}
+
 // 누른 곳이 본문 마지막 블록보다 아래인지 확인 (편집기 끝 줄 영역과 그 아래 빈 곳)
 export function isBelowLastBlock(container: HTMLElement, clientY: number): boolean {
   const blocks = container.querySelectorAll(".bn-editor > .bn-block-group > .bn-block-outer");

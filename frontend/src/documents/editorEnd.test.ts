@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { focusEditorEnd, isBelowLastBlock, releaseBlockSelection } from "./editorEnd";
+import { focusEditorEnd, isBelowLastBlock, isInFloatingUi, releaseBlockSelection } from "./editorEnd";
 import type { EndEditor } from "./editorEnd";
 
 function fakeEditor(document: EndEditor["document"]) {
@@ -97,5 +97,30 @@ describe("releaseBlockSelection", () => {
     const editor = selectionEditor("text");
     releaseBlockSelection(editor, page().querySelector("p")!);
     expect(editor.setTextCursorPosition).not.toHaveBeenCalled();
+  });
+});
+
+// 예전에는 표가 마지막 블록일 때 칸 메뉴의 아래쪽 색 항목을 누르면 본문 아래 빈 곳 클릭으로 처리돼 색이 바뀌지 않았음
+describe("isInFloatingUi", () => {
+  it("본문 위에 띄운 메뉴·팝오버 안을 누르면 본문 아래 빈 곳 처리에서 뺀다", () => {
+    const menu = document.createElement("div");
+    menu.className = "mantine-Menu-dropdown";
+    const item = document.createElement("button");
+    menu.appendChild(item);
+    const popover = document.createElement("div");
+    popover.className = "mantine-Popover-dropdown";
+    const inner = document.createElement("span");
+    popover.appendChild(inner);
+    expect(isInFloatingUi(item)).toBe(true);
+    expect(isInFloatingUi(inner)).toBe(true);
+  });
+
+  it("본문 글 영역이나 빈 곳은 그대로 처리한다", () => {
+    const editor = document.createElement("div");
+    editor.className = "bn-editor";
+    const line = document.createElement("p");
+    editor.appendChild(line);
+    expect(isInFloatingUi(line)).toBe(false);
+    expect(isInFloatingUi(null)).toBe(false);
   });
 });

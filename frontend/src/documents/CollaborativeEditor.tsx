@@ -62,7 +62,7 @@ import { sameViewers, viewersOf } from "./presence";
 import type { PresenceUser, Viewer } from "./presence";
 import { dropTargetAt, insertDroppedFiles } from "./fileDrop";
 import type { DropEditor } from "./fileDrop";
-import { focusEditorEnd, isBelowLastBlock, releaseBlockSelection } from "./editorEnd";
+import { focusEditorEnd, isBelowLastBlock, isInFloatingUi, releaseBlockSelection } from "./editorEnd";
 import type { EndEditor, SelectionEditor } from "./editorEnd";
 import { userColor } from "./userColor";
 
@@ -500,7 +500,7 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
   // (이미지가 마지막 블록이면 편집기·브라우저가 이미지를 다시 선택해 여러 번 눌러야 입력되던 문제)
   // 메뉴처럼 포털로 띄운 요소는 React 이벤트만 거쳐 오므로 실제 본문 영역 안을 누른 경우만 처리
   const onMouseDownCapture = (e: MouseEvent<HTMLDivElement>) => {
-    if (!editable || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return;
+    if (!editable || e.button !== 0 || !e.currentTarget.contains(e.target as Node) || isInFloatingUi(e.target)) return;
     if (!isBelowLastBlock(e.currentTarget, e.clientY)) {
       releaseBlockSelection(editor as unknown as SelectionEditor, e.target as Element);
       return;
