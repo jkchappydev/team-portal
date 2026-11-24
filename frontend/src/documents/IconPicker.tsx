@@ -197,16 +197,17 @@ export function ImageUpload({ documentId, onDone, onCancel }: { documentId: numb
         // 끌고 올라와 있으면 점선 테두리로 놓을 자리 표시
         style={{
           borderRadius: 8, textAlign: "center",
-          background: dragging ? "var(--mantine-primary-color-light)" : "var(--mantine-color-gray-0)",
+          // 다크 모드에서는 어두운 회색 (예전에는 밝은 회색으로 고정돼 창 안에서 이 상자만 하얗게 보였음)
+          background: dragging ? "var(--mantine-primary-color-light)" : "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))",
           outline: dragging ? "2px dashed var(--mantine-primary-color-filled)" : "2px dashed transparent",
           outlineOffset: -2,
         }}
       >
         {pending ? (
+          // 고른 이미지 미리보기만 보여줌 (누르면 다른 파일을 고름, 저장을 눌러야 적용)
           <Group justify="center" gap="sm">
             <img src={pending.kind === "file" ? pending.preview : pending.url} alt="" referrerPolicy="no-referrer"
               style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6 }} />
-            <Text size="sm" c="dimmed">다른 이미지 선택</Text>
           </Group>
         ) : (
           <Text size="sm">{dragging ? "여기에 놓으세요" : "🖼️ 이미지 업로드"}</Text>
