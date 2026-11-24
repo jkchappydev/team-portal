@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import type { BlockNoteEditor } from "@blocknote/core";
 import { TableHandlesExtension } from "@blocknote/core/extensions";
 import { useBlockNoteEditor, useComponentsContext, useEditorState, usePortalElement } from "@blocknote/react";
 import type { Node as PmNode, ResolvedPos } from "@tiptap/pm/model";
@@ -32,11 +33,24 @@ function cellPosition(doc: PmNode, { tablePos, row, col }: CellAddress): number 
   return pos;
 }
 
+// 칸 선택을 끝낸 칸(head)이 시작 칸(anchor)보다 왼쪽이면 왼쪽으로 끈 것
+function dragSide(editor: Pick<BlockNoteEditor<any, any, any>, "prosemirrorView" | "prosemirrorState">): "left" | "right" {
+  const view = editor.prosemirrorView;
+  const selection = editor.prosemirrorState.selection;
+  if (!view || !(selection instanceof CellSelection)) return "right";
+  const anchor = view.nodeDOM(selection.$anchorCell.pos);
+  const head = view.nodeDOM(selection.$headCell.pos);
+  if (!(anchor instanceof Element) || !(head instanceof Element)) return "right";
+  return head.getBoundingClientRect().left < anchor.getBoundingClientRect().left ? "left" : "right";
+}
+
 interface HandlePosition {
   // 어느 칸 선택에 대한 위치인지 (선택이 바뀌면 이전 위치는 쓰지 않음)
   key: string;
   top: number;
   left: number;
+  // 버튼이 붙은 변 (메뉴도 그쪽으로 엶)
+  side: "left" | "right";
 }
 
 // 노션처럼 표에서 여러 칸을 고르면 선택 범위 오른쪽 가운데에 버튼을 띄우고, 누르면 색·셀 병합·콘텐츠 삭제 메뉴를 보여줌
@@ -57,7 +71,8 @@ export function CellSelectionMenu() {
   });
   const [position, setPosition] = useState<HandlePosition | null>(null);
 
-  // 선택 범위(테두리를 그린 칸들)의 오른쪽 변 가운데에 버튼 배치, 스크롤·창 크기 변경 시 다시 계산
+  // 선택 범위(테두리를 그린 칸들)에서 드래그를 끝낸 쪽 변 가운데에 버튼 배치, 스크롤·창 크기 변경 시 다시 계산
+  // 오른쪽으로 끌면 오른쪽 변, 왼쪽으로 끌면 왼쪽 변 (위아래로만 끌면 오른쪽)
   useLayoutEffect(() => {
     const container = editor.domElement;
     if (!selectionKey || !container) return;
@@ -70,7 +85,9 @@ export function CellSelectionMenu() {
       const rects = cells.map((cell) => cell.getBoundingClientRect());
       const top = Math.min(...rects.map((r) => r.top));
       const bottom = Math.max(...rects.map((r) => r.bottom));
-      setPosition({ key: selectionKey, top: (top + bottom) / 2, left: Math.max(...rects.map((r) => r.right)) });
+      const side = dragSide(editor);
+      const left = side === "left" ? Math.min(...rects.map((r) => r.left)) : Math.max(...rects.map((r) => r.right));
+      setPosition({ key: selectionKey, top: (top + bottom) / 2, left, side });
     };
     place();
     window.addEventListener("scroll", place, true);
@@ -117,7 +134,7 @@ export function CellSelectionMenu() {
   };
 
   return createPortal(
-    <Components.Generic.Menu.Root position="right-start" portalElement={portalElement}>
+    <Components.Generic.Menu.Root position={position.side === "left" ? "left-start" : "right-start"} portalElement={portalElement}>
       <Components.Generic.Menu.Trigger>
         <button
           type="button"
