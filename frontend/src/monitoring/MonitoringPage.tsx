@@ -4,7 +4,7 @@ import { Box, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { getServiceStatus } from "../api/monitor";
 import type { ServiceCheckDto } from "../api/monitor";
-import { ServerOverview, useServerSelection } from "../home/ServerMonitor";
+import { ServerOverview, ServerPicker, useServerSelection } from "../home/ServerMonitor";
 import { ServerHistory } from "./ServerHistory";
 
 // 정상은 초록, 장애는 빨강 점과 글자
@@ -114,8 +114,10 @@ export function MonitoringPage() {
           <Text size="xs" c="dimmed" aria-live="off">{secondsLeft > 0 ? `${secondsLeft}초 후 새로고침` : "새로고침 중"}</Text>
         )}
       </Group>
+      {/* 서버 고르기는 기본 정보·사용 기록·애플리케이션 전체에 적용되므로 칸 바깥 위에 둠 */}
+      <ServerPicker selection={selection} />
       <Section title="기본 정보">
-        <ServerOverview selection={selection} />
+        <ServerOverview selection={selection} picker="none" />
       </Section>
       {/* 고른 서버의 CPU·메모리·네트워크 사용 기록 그래프 */}
       {current && <ServerHistory server={current} />}

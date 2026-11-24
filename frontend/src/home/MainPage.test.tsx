@@ -180,6 +180,21 @@ describe("MainPage", () => {
     expect(within(panel).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
   });
 
+  it("메인 서버 고르기는 한 줄 작은 칸에 이름만 보이고 IP는 마우스를 올리면 보인다", async () => {
+    const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
+      disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
+    vi.mocked(getServerStatuses).mockResolvedValue([
+      { ...base, available: true, serverName: "10.0.0.1 (개발서버)" },
+      { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)" },
+    ]);
+    renderPage();
+    const panel = screen.getByRole("region", { name: "모니터링" });
+    const picker = await within(panel).findByRole("group", { name: "서버 선택" });
+    expect(picker.classList.contains("is-compact")).toBe(true);
+    expect(within(picker).queryByText("10.0.0.2")).toBeNull();
+    expect(within(picker).getByRole("button", { name: "10.0.0.2 (스쿨북스) Online" }).getAttribute("title")).toBe("스쿨북스 (10.0.0.2)");
+  });
+
   it("서버 정보를 읽을 수 없으면 안내한다", async () => {
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: false, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: null, cpuCores: 4,
       memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);

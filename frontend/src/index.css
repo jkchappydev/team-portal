@@ -2060,3 +2060,12 @@ body.bn-column-resizing {
 .server-pick-title { font-size: 13px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .server-pick-address { font-size: 11px; line-height: 1.3; color: var(--mantine-color-dimmed); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .server-pick[data-active] .server-pick-title { color: var(--mantine-primary-color-filled); }
+
+/* 메인 칸용 한 줄 서버 고르기: 같은 폭 작은 칸에 점·이름만, 이름이 길면 줄임, 칸이 64px보다 좁아질 화면에서는 옆으로 넘김 */
+.server-picker.is-compact { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.server-picker.is-compact::-webkit-scrollbar { display: none; }
+.server-picker.is-compact .server-pick { flex: 1 1 0; min-width: 64px; gap: 6px; padding: 5px 8px; border-radius: var(--mantine-radius-xl); }
+.server-picker.is-compact .server-pick-title { font-size: 12px; font-weight: 500; }
+.server-picker.is-compact .server-pick[data-active] .server-pick-title { font-weight: 600; }
+/* 옆으로 넘기는 칸 밖으로 나간 초점 테두리가 잘리지 않게 안쪽에 그림 */
+.server-picker.is-compact .server-pick:focus-visible { outline-offset: -2px; }

@@ -100,6 +100,13 @@ describe("MonitoringPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "10.0.0.2 (스쿨북스) Online" }));
     expect(within(apps).getByText("스쿨북스")).toBeTruthy();
     expect(within(apps).queryByText("팀 포털")).toBeNull();
+
+    // 서버 고르기는 화면 전체에 적용되므로 기본 정보 칸 바깥에 이름·IP 칸으로 하나만 있음
+    const picker = screen.getByRole("group", { name: "서버 선택" });
+    expect(screen.getByRole("region", { name: "기본 정보" }).contains(picker)).toBe(false);
+    expect(picker.classList.contains("is-compact")).toBe(false);
+    expect(within(picker).getByText("10.0.0.2")).toBeTruthy();
+    expect(screen.getAllByRole("group", { name: "서버 선택" })).toHaveLength(1);
   });
 
   it("고른 서버의 사용 기록 그래프 네 개와 지금 네트워크 전송량을 보여주고 기간을 바꿔 다시 읽는다", async () => {
@@ -148,9 +155,11 @@ describe("MonitoringPage", () => {
 
     const overview = screen.getByRole("region", { name: "기본 정보" });
     expect(await within(overview).findByText("Online")).toBeTruthy();
-    expect(within(overview).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" })).toBeTruthy();
+    // 서버 버튼은 기본 정보 칸 바깥 위의 서버 고르기에 있음
+    const picker = screen.getByRole("group", { name: "서버 선택" });
+    expect(within(picker).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" })).toBeTruthy();
 
-    fireEvent.click(within(overview).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" }));
+    fireEvent.click(within(picker).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" }));
     expect(await within(overview).findByText("Offline")).toBeTruthy();
     expect(within(overview).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
   });
