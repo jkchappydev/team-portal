@@ -43,7 +43,7 @@ describe("MainPage", () => {
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [] });
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10 (Green Obsidian)", kernel: "4.18.0-553.el8_10.x86_64",
       cpuPercent: 12, cpuCores: 4, memoryUsedBytes: 8 * 1024 ** 3, memoryTotalBytes: 16 * 1024 ** 3, uptimeSeconds: 3 * 86_400 + 7_200,
-      disks: [{ name: "시스템", usedBytes: 95 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 }], checkedAt: new Date().toISOString() }]);
+      disks: [{ name: "시스템", usedBytes: 95 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 }], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
   });
   afterEach(cleanup);
 
@@ -156,7 +156,7 @@ describe("MainPage", () => {
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: 12, cpuCores: 4,
       memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
       disks: [{ name: "/", usedBytes: 1, totalBytes: 2 }, { name: "/var", usedBytes: 1, totalBytes: 4 }],
-      checkedAt: new Date().toISOString() }]);
+      networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
     expect(await within(panel).findByText("DISK (/)")).toBeTruthy();
@@ -165,7 +165,7 @@ describe("MainPage", () => {
 
   it("서버가 여럿이면 서버 버튼으로 골라 그 서버의 계기판을 보여준다", async () => {
     const base = { osName: null, kernel: null, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
-      disks: [], checkedAt: new Date().toISOString() };
+      disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
     vi.mocked(getServerStatuses).mockResolvedValue([
       { ...base, available: true, serverName: "10.0.0.1", cpuPercent: 10 },
       { ...base, available: true, serverName: "10.0.0.2", cpuPercent: 80 },
@@ -182,7 +182,7 @@ describe("MainPage", () => {
 
   it("서버 정보를 읽을 수 없으면 안내한다", async () => {
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: false, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: null, cpuCores: 4,
-      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() }]);
+      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
     renderPage();
     expect(await within(screen.getByRole("region", { name: "모니터링" })).findByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
   });

@@ -59,6 +59,8 @@ app:
     disks: ${MONITOR_DISKS:}
     # 서버 운영체제 이름을 읽을 os-release 파일 (compose에서 서버 파일을 읽기 전용으로 연결)
     os-release-path: ${MONITOR_OS_RELEASE_PATH:/host/os-release}
+    # 컨테이너가 아닌 서버의 네트워크 누적값 (compose에서 서버 /proc/1/net/dev를 연결, 없으면 네트워크 값 없음)
+    net-dev-path: ${MONITOR_NET_DEV_PATH:/host/net-dev}
     # 모니터링 상세 화면에서 확인할 대상: "구분|이름|대상"을 ; 으로 나열 (구분 app·db, 대상 https://주소 또는 host:port)
     targets: ${MONITOR_TARGETS:}
     # 다른 운영 서버 자원: "이름=http://주소:9100/metrics"를 ; 으로 나열 (각 서버 node_exporter, 비면 포털 서버만)

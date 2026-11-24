@@ -3,10 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getServerStatuses, getServiceStatus } from "../api/monitor";
+import { getServerHistory, getServerStatuses, getServiceStatus } from "../api/monitor";
 import { MonitoringPage } from "./MonitoringPage";
 
-vi.mock("../api/monitor", () => ({ getServerStatuses: vi.fn(), getServiceStatus: vi.fn() }));
+vi.mock("../api/monitor", () => ({ getServerStatuses: vi.fn(), getServiceStatus: vi.fn(), getServerHistory: vi.fn() }));
 
 describe("MonitoringPage", () => {
   beforeAll(() => {
@@ -18,9 +18,11 @@ describe("MonitoringPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     localStorage.clear();
+    vi.mocked(getServerHistory).mockResolvedValue({ serverName: "포털 서버", range: "1h",
+      from: new Date(Date.now() - 3_600_000).toISOString(), to: new Date().toISOString(), bucketSeconds: 60, points: [] });
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: "Rocky Linux 8.10",
       kernel: null, cpuPercent: 10, cpuCores: 4, memoryUsedBytes: 1, memoryTotalBytes: 2, uptimeSeconds: 100,
-      disks: [], checkedAt: new Date().toISOString() }]);
+      disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
   });
   afterEach(cleanup);
 
@@ -76,7 +78,7 @@ describe("MonitoringPage", () => {
 
   it("고른 서버의 애플리케이션·DB만 보여주고 포털 DB는 포털 서버에서만 보여준다", async () => {
     const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null,
-      uptimeSeconds: null, disks: [], checkedAt: new Date().toISOString() };
+      uptimeSeconds: null, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
     vi.mocked(getServerStatuses).mockResolvedValue([
       { ...base, available: true, serverName: "10.0.0.1 (개발서버)" },
       { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)" },
@@ -104,5 +106,29 @@ describe("MonitoringPage", () => {
     const db = screen.getByRole("region", { name: "DB" });
     expect(within(db).queryByText("포털 DB")).toBeNull();
     expect(within(db).getByText("이 서버에 확인할 DB가 설정되지 않았습니다.")).toBeTruthy();
+  });
+
+  it("고른 서버의 사용 기록 그래프 네 개와 지금 네트워크 전송량을 보여주고 기간을 바꿔 다시 읽는다", async () => {
+    vi.mocked(getServiceStatus).mockResolvedValue({ checkedAt: null, portalDatabase: null, apps: [], databases: [] });
+    vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: null, kernel: null,
+      cpuPercent: 10, cpuCores: 4, memoryUsedBytes: 1, memoryTotalBytes: 2, uptimeSeconds: 100, disks: [],
+      networkRxBytesPerSec: 2334.72, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
+    renderPage();
+
+    const history = await screen.findByRole("region", { name: "사용 기록" });
+    for (const title of ["CPU 사용률", "메모리 사용률", "네트워크 수신", "네트워크 송신"]) {
+      expect(await within(history).findByText(title)).toBeTruthy();
+    }
+    // 기록이 아직 없으면 그래프마다 안내
+    expect(within(history).getAllByText("아직 쌓인 기록이 없습니다.")).toHaveLength(4);
+    expect(getServerHistory).toHaveBeenCalledWith("포털 서버", "1h");
+
+    const network = screen.getByRole("region", { name: "네트워크 상태" });
+    expect(within(network).getByText("2.28 KB/s")).toBeTruthy();
+    expect(within(network).getByText("측정 중")).toBeTruthy();
+
+    fireEvent.click(within(history).getByText("7일"));
+    await vi.waitFor(() => expect(getServerHistory).toHaveBeenCalledWith("포털 서버", "7d"));
+    expect(localStorage.getItem("monitor-history-range")).toBe("7d");
   });
 });

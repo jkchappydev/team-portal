@@ -49,12 +49,12 @@ class ServerMonitorServiceTest {
   @Test
   void status_readsMemoryUptimeAndCpuBetweenSamples() throws IOException {
     ServerMonitorService service = new ServerMonitorService(proc.toString(), "테스트 서버", "데이터=" + proc,
-      osRelease().toString(), CLOCK);
+      osRelease().toString(), proc.resolve("net-dev").toString(), CLOCK);
     writeProc("cpu  100 0 100 800 0 0 0 0\n");
-    service.sampleCpu();
+    service.sample();
     // 두 번째 측정까지 사용 200, 쉬는 시간 800 증가 -> 20%
     writeProc("cpu  200 0 200 1600 0 0 0 0\n");
-    service.sampleCpu();
+    service.sample();
 
     ServerStatusResponse status = service.status();
 
@@ -76,8 +76,8 @@ class ServerMonitorServiceTest {
   @Test
   void status_fallsBackToJvmOperatingSystemValuesWhenProcIsMissing() {
     ServerMonitorService service = new ServerMonitorService(proc.resolve("none").toString(), "", "",
-      proc.resolve("none").toString(), CLOCK);
-    service.sampleCpu();
+      proc.resolve("none").toString(), proc.resolve("none").toString(), CLOCK);
+    service.sample();
 
     ServerStatusResponse status = service.status();
 
@@ -90,6 +90,52 @@ class ServerMonitorServiceTest {
     // 서버 os-release가 없으면 JVM이 아는 운영체제 이름
     assertThat(status.osName()).startsWith(System.getProperty("os.name"));
     assertThat(status.kernel()).isNull();
+    // 서버 네트워크 파일이 없으면 전송량도 비움
+    assertThat(status.networkRxBytesPerSec()).isNull();
+    assertThat(service.counters().network()).isNull();
+  }
+
+  @Test
+  void parseNetDev_sumsExternalInterfacesOnly() {
+    String netDev = """
+      Inter-|   Receive                                                |  Transmit
+       face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+          lo: 9000 10 0 0 0 0 0 0 9000 10 0 0 0 0 0 0
+        eth0: 1000 10 0 0 0 0 0 0 2000 10 0 0 0 0 0 0
+        eth1: 500 5 0 0 0 0 0 0 100 5 0 0 0 0 0 0
+      docker0: 7000 1 0 0 0 0 0 0 7000 1 0 0 0 0 0 0
+      br-4f3908d6bd8a: 300 1 0 0 0 0 0 0 300 1 0 0 0 0 0 0
+      veth9f22290: 400 1 0 0 0 0 0 0 400 1 0 0 0 0 0 0
+      """;
+
+    assertThat(ProcStats.parseNetDev(netDev)).isEqualTo(new ProcStats.NetBytes(1500, 2100));
+  }
+
+  @Test
+  void netRate_dividesDifferenceBySecondsAndSkipsCounterReset() {
+    Instant t0 = Instant.parse("2026-11-24T00:00:00Z");
+    Instant t1 = t0.plusSeconds(4);
+
+    assertThat(ProcStats.netRate(new ProcStats.NetBytes(1000, 2000), t0, new ProcStats.NetBytes(5000, 2400), t1))
+      .isEqualTo(new ProcStats.NetRate(1000, 100));
+    // 장치가 다시 시작돼 누적값이 줄면 계산하지 않음
+    assertThat(ProcStats.netRate(new ProcStats.NetBytes(1000, 2000), t0, new ProcStats.NetBytes(10, 2400), t1)).isNull();
+    assertThat(ProcStats.netRate(new ProcStats.NetBytes(1000, 2000), t0, new ProcStats.NetBytes(5000, 2400), t0)).isNull();
+  }
+
+  @Test
+  void counters_readCpuMemoryAndServerNetwork() throws IOException {
+    writeProc("cpu  100 0 100 800 0 0 0 0\n");
+    Files.writeString(proc.resolve("net-dev"), "h\nh\n  eth0: 1000 1 0 0 0 0 0 0 2000 1 0 0 0 0 0 0\n");
+    ServerMonitorService service = new ServerMonitorService(proc.toString(), "테스트 서버", "",
+      osRelease().toString(), proc.resolve("net-dev").toString(), CLOCK);
+
+    MetricCounters counters = service.counters();
+
+    assertThat(counters.cpu()).isEqualTo(new ProcStats.CpuTimes(1000, 800));
+    assertThat(counters.cpuPercent()).isNull();
+    assertThat(counters.memoryPercent()).isEqualTo(62.5);
+    assertThat(counters.network()).isEqualTo(new ProcStats.NetBytes(1000, 2000));
   }
 
   @Test

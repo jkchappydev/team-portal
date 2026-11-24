@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 // 다른 서버 node_exporter(리눅스)·windows_exporter(윈도우)의 /metrics(Prometheus 텍스트 형식)에서 모니터링에 쓰는 값만 뽑음
 record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalBytes, Long memoryAvailableBytes,
-  Long uptimeSeconds, String osName, String kernel, List<Filesystem> filesystems) {
+  Long uptimeSeconds, String osName, String kernel, List<Filesystem> filesystems, ProcStats.NetBytes network) {
 
   record Filesystem(String mountpoint, long sizeBytes, long availableBytes) {
   }
@@ -22,6 +22,8 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
   private static final Set<String> DISK_TYPES = Set.of("xfs", "ext4", "ext3", "btrfs");
   // 윈도우는 드라이브 문자가 있는 볼륨만 (복구 파티션 HarddiskVolume1 등은 제외)
   private static final Pattern WINDOWS_DRIVE = Pattern.compile("[A-Za-z]:");
+  // 윈도우 네트워크 장치 중 서버 밖과 주고받지 않는 가상 장치 (이름 일부)
+  private static final List<String> WINDOWS_VIRTUAL_NICS = List.of("isatap", "loopback", "teredo", "6to4", "pseudo");
   private static final Pattern LABEL = Pattern.compile("(\\w+)=\"((?:[^\"\\\\]|\\\\.)*)\"");
 
   record Sample(String name, Map<String, String> labels, double value) {
@@ -84,6 +86,9 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
     Map<String, Double> sizes = new HashMap<>();
     Map<String, Double> avails = new HashMap<>();
     Map<String, Sample> fsInfo = new LinkedHashMap<>();
+    long rx = 0;
+    long tx = 0;
+    boolean hasNetwork = false;
     for (Sample s : samples) {
       switch (s.name()) {
         case "node_cpu_seconds_total" -> {
@@ -132,6 +137,27 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
           }
         }
         case "windows_logical_disk_free_bytes" -> avails.put(s.labels().getOrDefault("volume", ""), s.value());
+        case "node_network_receive_bytes_total", "node_network_transmit_bytes_total" -> {
+          if (ProcStats.isExternalInterface(s.labels().getOrDefault("device", ""))) {
+            hasNetwork = true;
+            if (s.name().equals("node_network_receive_bytes_total")) {
+              rx += (long) s.value();
+            } else {
+              tx += (long) s.value();
+            }
+          }
+        }
+        case "windows_net_bytes_received_total", "windows_net_bytes_sent_total" -> {
+          String nic = s.labels().getOrDefault("nic", "").toLowerCase(java.util.Locale.ROOT);
+          if (WINDOWS_VIRTUAL_NICS.stream().noneMatch(nic::contains)) {
+            hasNetwork = true;
+            if (s.name().equals("windows_net_bytes_received_total")) {
+              rx += (long) s.value();
+            } else {
+              tx += (long) s.value();
+            }
+          }
+        }
         default -> {
           // 쓰지 않는 값
         }
@@ -154,6 +180,7 @@ record NodeExporterStats(ProcStats.CpuTimes cpu, int cpuCores, Long memoryTotalB
     ProcStats.CpuTimes cpu = cpus.isEmpty() ? null : new ProcStats.CpuTimes(Math.round(cpuTotal * 100), Math.round(cpuIdle * 100));
     double current = serverNow != null ? serverNow : now.getEpochSecond();
     Long uptime = boot != null ? (long) (current - boot) : null;
-    return new NodeExporterStats(cpu, cpus.size(), memTotal, memAvailable, uptime, osName, kernel, filesystems);
+    return new NodeExporterStats(cpu, cpus.size(), memTotal, memAvailable, uptime, osName, kernel, filesystems,
+      hasNetwork ? new ProcStats.NetBytes(rx, tx) : null);
   }
 }

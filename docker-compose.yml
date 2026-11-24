@@ -59,6 +59,8 @@ services:
       - /opt/team-portal/disk-probe:/host/disks/system:ro
       # 컨테이너가 아닌 서버의 운영체제 이름 (읽기 전용 파일 하나, /etc/os-release가 가리키는 실제 파일)
       - /usr/lib/os-release:/host/os-release:ro
+      # 컨테이너가 아닌 서버 전체 네트워크 송수신량 (서버 첫 프로세스 기준 /proc 파일 하나, 읽기 전용)
+      - /proc/1/net/dev:/host/net-dev:ro
 
   collab:
     build: ./collab

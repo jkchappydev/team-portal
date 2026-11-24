@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 // 포털이 돌아가는 서버의 운영체제, CPU·메모리·디스크·가동 시간
 // 컨테이너 안의 /proc는 호스트 값을 그대로 보여줌, 디스크는 compose에서 읽기 전용으로 연결한 경로의 파일 시스템
 // 운영체제 이름은 컨테이너 것이 아닌 서버 것을 보이려고 서버 os-release 파일을 읽기 전용으로 연결해 읽음
+// 네트워크도 컨테이너 것이 아닌 서버 것(서버 /proc/1/net/dev를 읽기 전용으로 연결)
 @Slf4j
 @Service
 public class ServerMonitorService {
@@ -26,10 +28,15 @@ public class ServerMonitorService {
   private final String serverName;
   private final List<DiskTarget> disks;
   private final String osName;
+  private final Path netDevPath;
   private final Clock clock;
   // 마지막 CPU 측정값과 그 직전 측정 대비 사용률
   private ProcStats.CpuTimes lastCpu;
   private volatile Double cpuPercent;
+  // 마지막 네트워크 누적값과 그 직전 측정 대비 초당 전송량
+  private ProcStats.NetBytes lastNet;
+  private Instant lastNetAt;
+  private volatile ProcStats.NetRate netRate;
 
   record DiskTarget(String name, String path) {
   }
@@ -37,11 +44,13 @@ public class ServerMonitorService {
   public ServerMonitorService(@Value("${app.monitor.proc-path:/proc}") String procPath,
     @Value("${app.monitor.server-name:포털 서버}") String serverName,
     @Value("${app.monitor.disks:}") String disks,
-    @Value("${app.monitor.os-release-path:/host/os-release}") String osReleasePath, Clock clock) {
+    @Value("${app.monitor.os-release-path:/host/os-release}") String osReleasePath,
+    @Value("${app.monitor.net-dev-path:/host/net-dev}") String netDevPath, Clock clock) {
     this.procPath = Path.of(procPath);
     this.serverName = serverName.isBlank() ? "포털 서버" : serverName.trim();
     this.disks = parseDisks(disks);
     this.osName = readOsName(Path.of(osReleasePath));
+    this.netDevPath = Path.of(netDevPath);
     this.clock = clock;
   }
 
@@ -71,9 +80,49 @@ public class ServerMonitorService {
     return result.isEmpty() ? List.of(new DiskTarget("디스크", "/")) : List.copyOf(result);
   }
 
-  // CPU 사용률은 순간값이 아니라 두 측정 사이 평균이라 2초마다 측정해 둠 (계기판이 실시간으로 움직이도록)
+  public String serverName() {
+    return serverName;
+  }
+
+  // CPU 사용률은 순간값이 아니라 두 측정 사이 평균이라 2초마다 측정해 둠 (네트워크 전송량도 같이)
   @Scheduled(fixedRate = 2_000)
-  public synchronized void sampleCpu() {
+  public synchronized void sample() {
+    sampleCpu();
+    sampleNetwork();
+  }
+
+  private void sampleNetwork() {
+    Instant now = clock.instant();
+    ProcStats.NetBytes current = readNetwork();
+    netRate = current != null && lastNet != null ? ProcStats.netRate(lastNet, lastNetAt, current, now) : null;
+    lastNet = current;
+    lastNetAt = now;
+  }
+
+  // 연결한 서버 네트워크 파일이 없으면(개발 PC 등) null
+  private ProcStats.NetBytes readNetwork() {
+    try {
+      return ProcStats.parseNetDev(Files.readString(netDevPath));
+    } catch (IOException | RuntimeException e) {
+      return null;
+    }
+  }
+
+  // 사용 기록용 지금 값 (CPU 누적값을 못 읽으면 2초마다 잰 사용률)
+  public MetricCounters counters() {
+    ProcStats.CpuTimes cpu = null;
+    try {
+      cpu = ProcStats.parseCpu(read("stat"));
+    } catch (IOException | RuntimeException e) {
+      // 아래 cpuPercent 사용
+    }
+    ServerStatusResponse status = status();
+    Double memory = status.memoryTotalBytes() == null || status.memoryUsedBytes() == null ? null
+      : MetricCounters.memoryPercent(status.memoryTotalBytes(), status.memoryTotalBytes() - status.memoryUsedBytes());
+    return new MetricCounters(clock.instant(), cpu, cpu == null ? cpuPercent : null, memory, readNetwork());
+  }
+
+  private void sampleCpu() {
     try {
       ProcStats.CpuTimes now = ProcStats.parseCpu(read("stat"));
       if (lastCpu != null) {
@@ -119,12 +168,14 @@ public class ServerMonitorService {
     } catch (IOException | RuntimeException e) {
       // 리눅스가 아니면 커널 버전 없음 (운영체제 이름에 버전이 들어 있음)
     }
+    ProcStats.NetRate rate = netRate;
     List<ServerStatusResponse.Disk> diskStats = disks.stream()
       .map(this::diskStat)
       .filter(d -> d != null)
       .toList();
     return new ServerStatusResponse(procAvailable, serverName, osName, kernel, cpuPercent, Runtime.getRuntime().availableProcessors(),
-      memoryUsed, memoryTotal, uptime, diskStats, OffsetDateTime.now(clock));
+      memoryUsed, memoryTotal, uptime, diskStats, rate == null ? null : rate.rxBytesPerSec(),
+      rate == null ? null : rate.txBytesPerSec(), OffsetDateTime.now(clock));
   }
 
   private ServerStatusResponse.Disk diskStat(DiskTarget target) {

@@ -5,6 +5,7 @@ import { getServiceStatus } from "../api/monitor";
 import type { PortalDatabaseDto, ServiceCheckDto } from "../api/monitor";
 import { ServerOverview, formatBytes, useServerSelection } from "../home/ServerMonitor";
 import { formatRelative } from "../notifications/updateFormat";
+import { ServerHistory } from "./ServerHistory";
 
 // 정상은 초록, 장애는 빨강 점과 글자
 function StatusMark({ up }: { up: boolean }) {
@@ -75,7 +76,7 @@ export function belongsTo(check: ServiceCheckDto, serverName: string, isPortalSe
   return serverName === check.server || serverName.startsWith(`${check.server} `);
 }
 
-// 모니터링 상세: 서버 기본 정보(계기판), 서버에서 도는 애플리케이션과 DB가 정상인지
+// 모니터링 상세: 서버 기본 정보(계기판), 사용 기록 그래프, 서버에서 도는 애플리케이션과 DB가 정상인지
 // 애플리케이션·DB는 백엔드가 30초마다 확인한 결과를 10초마다 다시 읽음
 export function MonitoringPage() {
   const { data, isError } = useQuery({ queryKey: ["monitor", "services"], queryFn: getServiceStatus, refetchInterval: 10_000 });
@@ -96,6 +97,8 @@ export function MonitoringPage() {
       <Section title="기본 정보">
         <ServerOverview selection={selection} />
       </Section>
+      {/* 고른 서버의 CPU·메모리·네트워크 사용 기록 그래프 */}
+      {current && <ServerHistory server={current} />}
       {isError && <Text size="sm" c="red">애플리케이션·DB 상태를 불러오지 못했습니다.</Text>}
       {pending && <Text size="sm" c="dimmed">확인 중입니다. 잠시 뒤 다시 보입니다.</Text>}
       {data?.checkedAt && (

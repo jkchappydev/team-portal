@@ -1,6 +1,10 @@
 package dev.jkchappy.portal.monitor;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,6 +16,7 @@ import dev.jkchappy.portal.common.GlobalExceptionHandler;
 import dev.jkchappy.portal.common.WebConfig;
 import dev.jkchappy.portal.member.CurrentUserArgumentResolver;
 import dev.jkchappy.portal.member.MemberService;
+import dev.jkchappy.portal.monitor.dto.ServerHistoryResponse;
 import dev.jkchappy.portal.monitor.dto.ServerStatusResponse;
 import dev.jkchappy.portal.monitor.dto.ServiceStatusResponse;
 import dev.jkchappy.portal.support.ControllerTestSecurity;
@@ -49,6 +54,9 @@ class MonitorControllerTest {
   @MockitoBean
   private RemoteServerMonitor remoteServerMonitor;
 
+  @MockitoBean
+  private MetricHistoryService metricHistoryService;
+
   @BeforeEach
   void stubAuthenticatedMember() {
     lenient().when(accountService.requireActiveMemberId(anyString())).thenAnswer(invocation ->
@@ -58,11 +66,11 @@ class MonitorControllerTest {
   @Test
   void servers_returnsPortalServerFirstThenRemoteServers() throws Exception {
     when(serverMonitorService.status()).thenReturn(new ServerStatusResponse(true, "포털 서버", "Rocky Linux 8.10 (Green Obsidian)", "4.18.0", 12.5, 4,
-      7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)),
+      7_000L, 16_000L, 86_400L, List.of(new ServerStatusResponse.Disk("시스템", 44L, 100L)), 2048.0, 1024.0,
       OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9))));
 
     when(remoteServerMonitor.statuses()).thenReturn(List.of(new ServerStatusResponse(false, "다른 서버", null, null,
-      null, null, null, null, null, List.of(), OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)))));
+      null, null, null, null, null, List.of(), null, null, OffsetDateTime.of(2026, 11, 23, 15, 0, 0, 0, ZoneOffset.ofHours(9)))));
 
     mockMvc.perform(get("/api/monitor/servers"))
       .andExpect(status().isOk())
@@ -97,5 +105,27 @@ class MonitorControllerTest {
       .andExpect(jsonPath("$.data.databases[0].server").value("10.0.0.2"))
       .andExpect(jsonPath("$.data.databases[0].up").value(false))
       .andExpect(jsonPath("$.data.databases[0].message").value("연결 안 됨"));
+  }
+
+  @Test
+  void history_returnsBucketedPointsForServerAndRange() throws Exception {
+    OffsetDateTime to = OffsetDateTime.of(2026, 11, 24, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+    when(metricHistoryService.history("다른 서버", MetricHistoryService.Range.HOUR_6)).thenReturn(new ServerHistoryResponse(
+      "다른 서버", "6h", to.minusHours(6), to, 300,
+      List.of(new ServerHistoryResponse.Point(to.minusMinutes(5), 3.5, 62.0, 2048.0, 512.0))));
+
+    mockMvc.perform(get("/api/monitor/history").param("server", "다른 서버").param("range", "6h"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data.bucketSeconds").value(300))
+      .andExpect(jsonPath("$.data.points[0].cpuPercent").value(3.5))
+      .andExpect(jsonPath("$.data.points[0].rxBytesPerSec").value(2048.0));
+  }
+
+  @Test
+  void history_rejectsUnknownRange() throws Exception {
+    mockMvc.perform(get("/api/monitor/history").param("server", "다른 서버").param("range", "3d"))
+      .andExpect(status().isBadRequest());
+
+    verify(metricHistoryService, never()).history(any(), eq(MetricHistoryService.Range.HOUR_1));
   }
 }

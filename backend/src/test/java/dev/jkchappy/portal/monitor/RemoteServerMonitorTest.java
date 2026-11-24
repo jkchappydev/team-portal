@@ -43,6 +43,12 @@ class RemoteServerMonitorTest {
       node_filesystem_avail_bytes{device="/dev/loop0",fstype="squashfs",mountpoint="/var/lib/snapd/snap/core/1"} 0
       node_filesystem_size_bytes{device="tmpfs",fstype="tmpfs",mountpoint="/run"} 8e+09
       node_filesystem_avail_bytes{device="tmpfs",fstype="tmpfs",mountpoint="/run"} 8e+09
+      node_network_receive_bytes_total{device="eth0"} 5000
+      node_network_transmit_bytes_total{device="eth0"} 7000
+      node_network_receive_bytes_total{device="lo"} 90000
+      node_network_transmit_bytes_total{device="lo"} 90000
+      node_network_receive_bytes_total{device="docker0"} 3000
+      node_network_transmit_bytes_total{device="docker0"} 3000
       """.formatted(idle0, busy0);
   }
 
@@ -57,6 +63,8 @@ class RemoteServerMonitorTest {
     assertThat(stats.osName()).isEqualTo("Rocky Linux 8.10 (Green Obsidian)");
     assertThat(stats.kernel()).isEqualTo("4.18.0-553.el8_10.x86_64");
     assertThat(stats.filesystems()).extracting(NodeExporterStats.Filesystem::mountpoint).containsExactly("/", "/var");
+    // 서버 밖과 주고받는 장치(eth0)만
+    assertThat(stats.network()).isEqualTo(new ProcStats.NetBytes(5000, 7000));
   }
 
   @Test
@@ -77,6 +85,10 @@ class RemoteServerMonitorTest {
       windows_logical_disk_free_bytes{volume="C:"} 5e+09
       windows_logical_disk_size_bytes{volume="HarddiskVolume1"} 5e+08
       windows_logical_disk_free_bytes{volume="HarddiskVolume1"} 1e+08
+      windows_net_bytes_received_total{nic="Intel R PRO 1000 MT Network Connection"} 4000
+      windows_net_bytes_sent_total{nic="Intel R PRO 1000 MT Network Connection"} 6000
+      windows_net_bytes_received_total{nic="isatap._8a1b2c3d"} 100
+      windows_net_bytes_sent_total{nic="isatap._8a1b2c3d"} 100
       """.formatted(CLOCK.instant().getEpochSecond() - 7_200);
 
     NodeExporterStats stats = NodeExporterStats.from(windows, CLOCK.instant());
@@ -90,6 +102,7 @@ class RemoteServerMonitorTest {
     assertThat(stats.osName()).isEqualTo("Windows Server 2016 Standard");
     assertThat(stats.filesystems()).extracting(NodeExporterStats.Filesystem::mountpoint).containsExactly("C:", "E:");
     assertThat(stats.filesystems().getFirst().availableBytes()).isEqualTo(5_000_000_000L);
+    assertThat(stats.network()).isEqualTo(new ProcStats.NetBytes(4000, 6000));
   }
 
   @Test
@@ -134,6 +147,10 @@ class RemoteServerMonitorTest {
       ServerStatusResponse down = monitor.statuses().get(1);
       assertThat(down.serverName()).isEqualTo("꺼진 서버");
       assertThat(down.available()).isFalse();
+      // 사용 기록에는 읽기에 성공한 서버만
+      assertThat(monitor.counters()).containsOnlyKeys("운영");
+      assertThat(monitor.counters().get("운영").memoryPercent()).isEqualTo(62.5);
+      assertThat(monitor.counters().get("운영").network()).isEqualTo(new ProcStats.NetBytes(5000, 7000));
     } finally {
       server.stop(0);
     }

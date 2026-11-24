@@ -21,6 +21,9 @@ export interface ServerStatusDto {
   memoryTotalBytes: number | null;
   uptimeSeconds: number | null;
   disks: ServerDiskDto[];
+  // 서버 밖과 주고받는 초당 바이트 (첫 측정 직후나 읽을 수 없으면 null)
+  networkRxBytesPerSec: number | null;
+  networkTxBytesPerSec: number | null;
   checkedAt: string;
 }
 
@@ -63,4 +66,30 @@ export interface ServiceStatusDto {
 
 export function getServiceStatus(): Promise<ServiceStatusDto> {
   return apiFetch<ServiceStatusDto>("/api/monitor/services");
+}
+
+export type HistoryRange = "1h" | "6h" | "24h" | "7d";
+
+// 사용 기록 한 구간의 평균 (at: 구간 시작 시각, 값이 없던 항목은 null)
+export interface HistoryPointDto {
+  at: string;
+  cpuPercent: number | null;
+  memoryPercent: number | null;
+  rxBytesPerSec: number | null;
+  txBytesPerSec: number | null;
+}
+
+// 서버 하나의 사용 기록: from~to를 bucketSeconds 간격으로 묶은 점들 (기록이 없는 구간은 빠짐)
+export interface ServerHistoryDto {
+  serverName: string;
+  range: HistoryRange;
+  from: string;
+  to: string;
+  bucketSeconds: number;
+  points: HistoryPointDto[];
+}
+
+export function getServerHistory(server: string, range: HistoryRange): Promise<ServerHistoryDto> {
+  const params = new URLSearchParams({ server, range });
+  return apiFetch<ServerHistoryDto>(`/api/monitor/history?${params}`);
 }

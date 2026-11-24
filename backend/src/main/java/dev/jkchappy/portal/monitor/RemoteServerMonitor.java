@@ -8,8 +8,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,12 @@ public class RemoteServerMonitor {
   private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
   private final Map<String, ProcStats.CpuTimes> lastCpu = new ConcurrentHashMap<>();
   private final Map<String, ServerStatusResponse> latest = new ConcurrentHashMap<>();
+  // 네트워크 전송량 계산용 직전 누적값, 사용 기록용 마지막으로 읽은 값
+  private final Map<String, TimedNet> lastNet = new ConcurrentHashMap<>();
+  private final Map<String, MetricCounters> latestCounters = new ConcurrentHashMap<>();
+
+  private record TimedNet(ProcStats.NetBytes bytes, Instant at) {
+  }
 
   public RemoteServerMonitor(@Value("${app.monitor.remote-servers:}") String servers, Clock clock) {
     this.servers = parse(servers);
@@ -66,6 +74,18 @@ public class RemoteServerMonitor {
       .toList();
   }
 
+  // 사용 기록용: 설정 순서대로, 마지막 읽기에 성공한 서버만
+  public Map<String, MetricCounters> counters() {
+    Map<String, MetricCounters> result = new LinkedHashMap<>();
+    for (RemoteServer server : servers) {
+      MetricCounters counters = latestCounters.get(server.name());
+      if (counters != null) {
+        result.put(server.name(), counters);
+      }
+    }
+    return result;
+  }
+
   @Scheduled(initialDelay = 1_000, fixedRate = 5_000)
   public void refresh() {
     try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -81,6 +101,7 @@ public class RemoteServerMonitor {
       HttpRequest request = HttpRequest.newBuilder(URI.create(server.metricsUrl())).timeout(TIMEOUT).GET().build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() != 200) {
+        forget(server.name());
         return unavailable(server);
       }
       text = response.body();
@@ -89,13 +110,27 @@ public class RemoteServerMonitor {
       return unavailable(server);
     } catch (IOException | RuntimeException e) {
       log.debug("{} 서버 지표 읽기 실패: {}", server.name(), e.getMessage());
-      lastCpu.remove(server.name());
+      forget(server.name());
       return unavailable(server);
     }
     return toStatus(server.name(), NodeExporterStats.from(text, clock.instant()));
   }
 
+  private void forget(String name) {
+    lastCpu.remove(name);
+    lastNet.remove(name);
+    latestCounters.remove(name);
+  }
+
   ServerStatusResponse toStatus(String name, NodeExporterStats stats) {
+    Instant now = clock.instant();
+    latestCounters.put(name, new MetricCounters(now, stats.cpu(), null,
+      MetricCounters.memoryPercent(stats.memoryTotalBytes(), stats.memoryAvailableBytes()), stats.network()));
+    ProcStats.NetRate rate = null;
+    if (stats.network() != null) {
+      TimedNet before = lastNet.put(name, new TimedNet(stats.network(), now));
+      rate = before == null ? null : ProcStats.netRate(before.bytes(), before.at(), stats.network(), now);
+    }
     Double cpuPercent = null;
     if (stats.cpu() != null) {
       ProcStats.CpuTimes before = lastCpu.put(name, stats.cpu());
@@ -108,11 +143,11 @@ public class RemoteServerMonitor {
       .toList();
     return new ServerStatusResponse(true, name, stats.osName(), stats.kernel(), cpuPercent,
       stats.cpuCores() > 0 ? stats.cpuCores() : null, used, stats.memoryTotalBytes(), stats.uptimeSeconds(), disks,
-      OffsetDateTime.now(clock));
+      rate == null ? null : rate.rxBytesPerSec(), rate == null ? null : rate.txBytesPerSec(), OffsetDateTime.now(clock));
   }
 
   private ServerStatusResponse unavailable(RemoteServer server) {
-    return new ServerStatusResponse(false, server.name(), null, null, null, null, null, null, null, List.of(),
+    return new ServerStatusResponse(false, server.name(), null, null, null, null, null, null, null, List.of(), null, null,
       OffsetDateTime.now(clock));
   }
 }

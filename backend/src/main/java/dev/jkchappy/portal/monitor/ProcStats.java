@@ -39,6 +39,57 @@ final class ProcStats {
     return Math.max(0, Math.min(100, percent));
   }
 
+  // 서버가 주고받은 누적 바이트 (실제 네트워크 장치 합계)
+  record NetBytes(long rx, long tx) {
+  }
+
+  // 초당 받은·보낸 바이트
+  record NetRate(double rxBytesPerSec, double txBytesPerSec) {
+  }
+
+  // 서버 밖과 주고받는 장치만 (자기 자신 lo, 도커·가상 머신 내부 연결 장치는 같은 트래픽이 두 번 잡히므로 제외)
+  static boolean isExternalInterface(String name) {
+    return !(name.equals("lo") || name.startsWith("docker") || name.startsWith("br-") || name.startsWith("veth")
+      || name.startsWith("virbr") || name.startsWith("cni") || name.startsWith("flannel") || name.startsWith("cali")
+      || name.startsWith("vxlan") || name.startsWith("kube") || name.startsWith("tunl"));
+  }
+
+  // /proc/net/dev: 앞 두 줄은 제목, "장치: 받은바이트 패킷 ... (받은 값 8개) 보낸바이트 ..."
+  static NetBytes parseNetDev(String netDev) {
+    long rx = 0;
+    long tx = 0;
+    boolean found = false;
+    for (String line : netDev.split("\n")) {
+      int colon = line.indexOf(':');
+      if (colon < 0) {
+        continue;
+      }
+      String name = line.substring(0, colon).trim();
+      String[] values = line.substring(colon + 1).trim().split("\\s+");
+      if (values.length < 9 || !isExternalInterface(name)) {
+        continue;
+      }
+      rx += Long.parseLong(values[0]);
+      tx += Long.parseLong(values[8]);
+      found = true;
+    }
+    if (!found) {
+      throw new IllegalArgumentException("네트워크 장치가 없습니다.");
+    }
+    return new NetBytes(rx, tx);
+  }
+
+  // 두 측정 사이 초당 전송량, 시간이 흐르지 않았거나 누적값이 줄었으면(장치 재시작) null
+  static NetRate netRate(NetBytes before, java.time.Instant beforeAt, NetBytes after, java.time.Instant afterAt) {
+    double seconds = java.time.Duration.between(beforeAt, afterAt).toMillis() / 1000.0;
+    long rx = after.rx() - before.rx();
+    long tx = after.tx() - before.tx();
+    if (seconds <= 0 || rx < 0 || tx < 0) {
+      return null;
+    }
+    return new NetRate(rx / seconds, tx / seconds);
+  }
+
   // /proc/meminfo의 전체·사용 가능 메모리 (바이트)
   record Memory(long totalBytes, long availableBytes) {
   }
