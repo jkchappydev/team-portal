@@ -4,6 +4,7 @@ import type { DropCursorOptions } from "@blocknote/core/extensions";
 import type { Fragment, Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { marqueeSelection } from "./blockMarquee";
 
 // 화면에 보이는 블록 한 줄 (문서 순서대로)
 export interface DropRow {
@@ -166,10 +167,17 @@ function blockPositions(doc: PMNode, id: string): Record<DropPlacement, number> 
   return found;
 }
 
+// 끌어서 고른 여러 블록 중 하나를 끌면 고른 블록 전체를 옮김
+// BlockNote는 편집기 글자 선택 범위로 끌 블록을 정하는데, 페이지·이미지처럼 글자가 없는 블록이 처음·끝에 있으면
+// 그 범위가 잡히지 않아 손잡이로 잡은 블록 하나만 끌렸음 → 고른 블록 목록을 직접 씀
+export function withMarqueeBlocks(dragged: string[], marquee: string[]): string[] {
+  return marquee.length > 1 && dragged.some((id) => marquee.includes(id)) ? marquee : dragged;
+}
+
 // 이 편집기 안에서 블록 손잡이로 끄는 중일 때만 노션식 위치를 씀 (파일·외부 글 끌어오기는 기본 처리)
 function internalDrag(editor: BlockNoteEditor<any, any, any>, view: EditorView, event: DragEvent): string[] | null {
   if (!view.dragging?.slice || !event.dataTransfer?.types.includes("blocknote/html")) return null;
-  const ids = draggedBlockIds(view.dragging.slice.content);
+  const ids = withMarqueeBlocks(draggedBlockIds(view.dragging.slice.content), marqueeSelection(editor));
   return ids.length > 0 && ids.every((id) => editor.getBlock(id)) ? ids : null;
 }
 

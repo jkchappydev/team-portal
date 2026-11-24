@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { afterEach } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { collectDropRows, moveBlocks, pickDropTarget, pickDropTargetAt } from "./blockDrop";
+import { collectDropRows, moveBlocks, pickDropTarget, pickDropTargetAt, withMarqueeBlocks } from "./blockDrop";
 import { editorSchema } from "./schema";
 import type { DropRow } from "./blockDrop";
 
@@ -208,5 +208,18 @@ describe("collectDropRows 토글", () => {
     moveBlocks(editor, ["a"], { blockId: "open", placement: "firstChild" });
     expect(editor.getBlock("open")?.children.map((b) => b.id)).toEqual(["a"]);
     editor.unmount();
+  });
+});
+
+// 예전에는 고른 블록 처음·끝이 페이지·이미지처럼 글자 없는 블록이면 손잡이로 잡은 블록 하나만 옮겨졌음
+describe("withMarqueeBlocks", () => {
+  it("고른 여러 블록 중 하나를 끌면 고른 블록 전체를 옮긴다", () => {
+    expect(withMarqueeBlocks(["b"], ["a", "b", "c"])).toEqual(["a", "b", "c"]);
+  });
+
+  it("고른 블록 밖을 끌거나 하나만 골랐으면 끈 블록만 옮긴다", () => {
+    expect(withMarqueeBlocks(["d"], ["a", "b", "c"])).toEqual(["d"]);
+    expect(withMarqueeBlocks(["a"], ["a"])).toEqual(["a"]);
+    expect(withMarqueeBlocks(["a"], [])).toEqual(["a"]);
   });
 });
