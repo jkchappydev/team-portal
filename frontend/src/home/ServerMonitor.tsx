@@ -130,14 +130,14 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
     <>
       {(
         <Stack gap="sm">
-          <div>
-            <Group justify="space-between" gap="xs">
-              <Text size="sm" fw={600}>{data.serverName}</Text>
+          {/* 왼쪽 서버 이름, 오른쪽 위 운영체제 이름(커널 버전은 사용자 요청으로 표시하지 않음)과 그 아래 가동 시간 */}
+          <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
+            <Text size="sm" fw={600} style={{ minWidth: 0 }} truncate>{data.serverName}</Text>
+            <Stack gap={0} align="flex-end" style={{ minWidth: 0 }}>
+              {data.osName && <Text size="xs" c="dimmed" ta="right" truncate maw="100%">{data.osName}</Text>}
               {data.uptimeSeconds !== null && <Text size="xs" c="dimmed">가동 {formatUptime(data.uptimeSeconds)}</Text>}
-            </Group>
-            {/* 운영체제 이름 (커널 버전은 사용자 요청으로 표시하지 않음) */}
-            {data.osName && <Text size="xs" c="dimmed" truncate>{data.osName}</Text>}
-          </div>
+            </Stack>
+          </Group>
           <SimpleGrid cols={gauges.length} spacing="xs">
             {gauges.map(({ key, ...gauge }) => <ServerGauge key={key} {...gauge} />)}
           </SimpleGrid>

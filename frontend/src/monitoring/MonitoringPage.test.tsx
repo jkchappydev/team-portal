@@ -37,7 +37,7 @@ describe("MonitoringPage", () => {
     );
   }
 
-  it("서버 기본 정보와 애플리케이션·DB 상태를 정상·장애로 보여준다", async () => {
+  it("서버 기본 정보와 애플리케이션 상태를 정상·장애로 보여주고 DB 영역은 없다", async () => {
     vi.mocked(getServiceStatus).mockResolvedValue({
       checkedAt: new Date().toISOString(),
       portalDatabase: { up: true, version: "PostgreSQL 17.6", responseMs: 3, connections: 5, sizeBytes: 48 * 1024 ** 3, message: null },
@@ -57,12 +57,9 @@ describe("MonitoringPage", () => {
     expect(within(apps).getByText("HTTP 200 · 85ms")).toBeTruthy();
     expect(within(apps).getByText("연결 안 됨")).toBeTruthy();
     expect(within(apps).getByText("장애")).toBeTruthy();
-    const db = screen.getByRole("region", { name: "DB" });
-    expect(within(db).getByText("포털 DB")).toBeTruthy();
-    expect(within(db).getByText("PostgreSQL 17.6")).toBeTruthy();
-    expect(within(db).getByText("3ms · 연결 5개 · 48.0GB")).toBeTruthy();
-    expect(within(db).getByText("포트 연결됨 · 1ms")).toBeTruthy();
-    expect(within(db).getAllByText("정상")).toHaveLength(2);
+    expect(within(apps).getByText("정상")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "DB" })).toBeNull();
+    expect(screen.queryByText("포털 DB")).toBeNull();
   });
 
   it("아직 확인 전이면 확인 중이라고 안내하고, 대상이 없으면 설정 안내를 보여준다", async () => {
@@ -76,7 +73,7 @@ describe("MonitoringPage", () => {
     expect(await screen.findByText("이 서버에 확인할 애플리케이션이 설정되지 않았습니다.")).toBeTruthy();
   });
 
-  it("고른 서버의 애플리케이션·DB만 보여주고 포털 DB는 포털 서버에서만 보여준다", async () => {
+  it("고른 서버의 애플리케이션만 보여준다", async () => {
     const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null,
       uptimeSeconds: null, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
     vi.mocked(getServerStatuses).mockResolvedValue([
@@ -98,14 +95,10 @@ describe("MonitoringPage", () => {
     const apps = await screen.findByRole("region", { name: "애플리케이션" });
     expect(within(apps).getByText("팀 포털")).toBeTruthy();
     expect(within(apps).queryByText("스쿨북스")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "DB" })).getByText("포털 DB")).toBeTruthy();
 
     fireEvent.click(await screen.findByText("10.0.0.2 (스쿨북스)"));
     expect(within(apps).getByText("스쿨북스")).toBeTruthy();
     expect(within(apps).queryByText("팀 포털")).toBeNull();
-    const db = screen.getByRole("region", { name: "DB" });
-    expect(within(db).queryByText("포털 DB")).toBeNull();
-    expect(within(db).getByText("이 서버에 확인할 DB가 설정되지 않았습니다.")).toBeTruthy();
   });
 
   it("고른 서버의 사용 기록 그래프 네 개와 지금 네트워크 전송량을 보여주고 기간을 바꿔 다시 읽는다", async () => {
@@ -130,5 +123,15 @@ describe("MonitoringPage", () => {
     fireEvent.click(within(history).getByText("7일"));
     await vi.waitFor(() => expect(getServerHistory).toHaveBeenCalledWith("포털 서버", "7d"));
     expect(localStorage.getItem("monitor-history-range")).toBe("7d");
+  });
+
+  it("마지막 확인 대신 다음 새로고침까지 남은 초를 보여준다", async () => {
+    // 10초 전에 확인 -> 다음 확인 결과는 32초 뒤라 22초 남음
+    vi.mocked(getServiceStatus).mockResolvedValue({ checkedAt: new Date(Date.now() - 10_000).toISOString(),
+      portalDatabase: null, apps: [], databases: [] });
+    renderPage();
+
+    expect(await screen.findByText(/^2[12]초 후 새로고침$/)).toBeTruthy();
+    expect(screen.queryByText(/마지막 확인/)).toBeNull();
   });
 });
