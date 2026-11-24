@@ -130,7 +130,8 @@ export function CellSelectionMenu() {
           <MenuIcon d={MENU_ICONS.more} strokeWidth={2.4} />
         </button>
       </Components.Generic.Menu.Trigger>
-      <Components.Generic.Menu.Dropdown className="bn-menu-dropdown">
+      {/* bn-table-handle-menu: 메뉴 상자의 overflow를 풀어 "색" 하위 메뉴가 상자 밖으로 펼쳐지게 함 (블록 메뉴의 bn-drag-handle-menu와 같음) */}
+      <Components.Generic.Menu.Dropdown className="bn-menu-dropdown bn-table-handle-menu">
         <ColorSubmenu
           kinds={["textColor", "backgroundColor"]}
           current={(kind: ColorKind) => cellsColor(selected.content, selected.cells, kind)}
