@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
 import { editorSchema } from "./schema";
-import { liftCalloutTitle, mergeHeadingUp } from "./calloutBackspace";
+import { deleteEmptyLineForward, liftCalloutTitle, mergeHeadingUp } from "./calloutBackspace";
 
 const p = (text: string) => ({ type: "paragraph" as const, content: text });
 const text = (block: { content?: unknown }) =>
@@ -122,5 +122,33 @@ describe("제목 맨 앞 Backspace", () => {
     expect(mergeHeadingUp(editor)).toBe(false);
     editor.setTextCursorPosition(editor.document[0].id, "end");
     expect(mergeHeadingUp(editor)).toBe(false);
+  });
+});
+
+describe("빈 줄에서 Delete", () => {
+  function editorOf(content: unknown[]) {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: content as never });
+    editor.mount(document.createElement("div"));
+    mounted.push(editor);
+    return editor;
+  }
+
+  // 예전에는 아래 제목 글이 빈 문단으로 끌려와 제목 형식이 풀렸음
+  it("빈 줄만 지우고 아래 제목 형식은 그대로 두며, 커서는 아래 줄 맨 앞", () => {
+    const editor = editorOf([{ type: "paragraph" }, { type: "heading", props: { level: 2 }, content: "제목" }]);
+    editor.setTextCursorPosition(editor.document[0].id, "start");
+    expect(deleteEmptyLineForward(editor)).toBe(true);
+    expect(editor.document.map((b) => [b.type, text(b)])).toEqual([["heading", "제목"]]);
+    expect(editor.document[0].props).toMatchObject({ level: 2 });
+    expect(editor.getTextCursorPosition().block.id).toBe(editor.document[0].id);
+    expect(caretOffset(editor)).toBe(0);
+  });
+
+  it("글이 있는 줄이거나 아래 줄이 없으면 기본 동작에 맡긴다", () => {
+    const editor = editorOf([p("글"), { type: "heading", props: { level: 2 }, content: "제목" }, { type: "paragraph" }]);
+    editor.setTextCursorPosition(editor.document[0].id, "end");
+    expect(deleteEmptyLineForward(editor)).toBe(false);
+    editor.setTextCursorPosition(editor.document[2].id, "start");
+    expect(deleteEmptyLineForward(editor)).toBe(false);
   });
 });

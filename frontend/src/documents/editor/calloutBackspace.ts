@@ -86,10 +86,26 @@ export function mergeHeadingUp(editor: AnyEditor): boolean {
   return true;
 }
 
+// 노션처럼 빈 글 줄에서 Delete를 누르면 빈 줄만 지우고 아래 줄 형식(제목 등)은 그대로 둠
+// BlockNote 기본은 아래 줄 글을 빈 줄로 끌어와 아래 줄 형식이 빈 줄 형식(문단)으로 바뀌었음
+// 빈 줄에 하위 줄이 있거나, 바로 아래 같은 단계 글 줄이 없으면 기본 동작
+export function deleteEmptyLineForward(editor: AnyEditor): boolean {
+  const selection = editor.prosemirrorState.selection;
+  if (!selection.empty) return false;
+  const block = editor.getTextCursorPosition().block;
+  if (!TEXT_TYPES.has(block.type) || !Array.isArray(block.content) || block.content.length > 0 || block.children.length > 0) return false;
+  const below = editor.getNextBlock(block.id);
+  if (!below || !TEXT_TYPES.has(below.type)) return false;
+  editor.removeBlocks([block.id]);
+  editor.setTextCursorPosition(below.id, "start");
+  return true;
+}
+
 export const calloutBackspaceExtension = createExtension({
   key: "calloutBackspace",
   keyboardShortcuts: {
     // 한글 조합 중에는 글자 지우기로 둠
     Backspace: ({ editor, event }) => !event.isComposing && (liftCalloutTitle(editor) || mergeHeadingUp(editor)),
+    Delete: ({ editor, event }) => !event.isComposing && deleteEmptyLineForward(editor),
   },
 });
