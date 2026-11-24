@@ -64,9 +64,12 @@ export function pickDropTarget(rows: DropRow[], y: number): DropTarget | null {
   return { blockId: target.id, placement: "after" };
 }
 
-// 블록 줄 좌우 가장자리 중 옆에 놓기로 보는 폭 (줄 너비의 20%, 최대 120px)
+// 블록 줄 오른쪽 가장자리 중 옆에 놓기로 보는 폭 (줄 너비의 20%, 최대 120px)
 const SIDE_ZONE_RATIO = 0.2;
 const SIDE_ZONE_MAX = 120;
+// 왼쪽 옆 놓기 폭: 손잡이가 줄 왼쪽 바깥에 있어 끌다 보면 마우스가 줄 앞쪽으로 들어오기 쉬움
+// 위·아래 놓기를 우선하도록 줄 맨 앞 좁은 띠만 옆 놓기로 봄
+const LEFT_SIDE_ZONE_MAX = 24;
 // 열 사이 간격의 절반: 열 경계 근처도 그 열로 봄
 const COLUMN_GAP_HALF = 12;
 
@@ -83,7 +86,7 @@ export function pickDropTargetAt(rows: DropRow[], x: number, y: number, allowSid
   // 블록 자기 줄 높이 안에서만 (콜아웃은 상자 전체)
   if (y < row.top || y > (row.container ? row.blockBottom : row.bottom)) return target;
   const zone = Math.min(SIDE_ZONE_MAX, (row.right - row.left) * SIDE_ZONE_RATIO);
-  if (x >= row.left && x <= row.left + zone) return { blockId: row.id, placement: "left" };
+  if (x >= row.left && x <= row.left + Math.min(zone, LEFT_SIDE_ZONE_MAX)) return { blockId: row.id, placement: "left" };
   if (x >= row.right - zone && x <= row.right + COLUMN_GAP_HALF) return { blockId: row.id, placement: "right" };
   return target;
 }

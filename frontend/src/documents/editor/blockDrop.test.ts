@@ -79,6 +79,14 @@ describe("pickDropTargetAt", () => {
     expect(pickDropTargetAt([wide("a", 0, 30)], -20, 10)).toEqual({ blockId: "a", placement: "before" });
   });
 
+  // 예전에는 줄 앞 120px까지 왼쪽 옆 놓기라, 손잡이에서 끌다 마우스가 조금만 들어와도 다단이 먼저 잡혔음
+  it("왼쪽 옆 놓기는 줄 맨 앞 24px까지만, 그 오른쪽은 위아래로 놓는다", () => {
+    const rows = [wide("a", 0, 30), wide("b", 30, 60)];
+    expect(pickDropTargetAt(rows, 24, 40)).toEqual({ blockId: "b", placement: "left" });
+    expect(pickDropTargetAt(rows, 40, 40)).toEqual({ blockId: "b", placement: "before" });
+    expect(pickDropTargetAt(rows, 40, 50)).toEqual({ blockId: "b", placement: "after" });
+  });
+
   it("옆에 놓을 수 없는 줄(목록 하위 등)이나 옆 놓기를 막으면 위아래로만 놓는다", () => {
     expect(pickDropTargetAt([wide("a", 0, 30, { sideAllowed: false })], 290, 10)).toEqual({ blockId: "a", placement: "before" });
     expect(pickDropTargetAt([wide("a", 0, 30)], 290, 10, false)).toEqual({ blockId: "a", placement: "before" });
