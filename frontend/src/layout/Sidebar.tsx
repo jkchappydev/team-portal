@@ -128,7 +128,9 @@ export function Sidebar({ user }: Props) {
         </Stack>
       </ScrollArea>
       <SearchDialog opened={searching} onClose={() => setSearching(false)} />
-      <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+      {/* 위 구분선은 사이드바 양쪽 끝까지 (바깥 여백 sm만큼 넓히고 안쪽 여백으로 내용 자리는 그대로) */}
+      <Group justify="space-between" pt="sm" mx="calc(var(--mantine-spacing-sm) * -1)" px="sm"
+        style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
         {/* 이름(옆에 직책)을 누르면 설정 창 */}
         {user ? (
           <Button size="compact-sm" variant="subtle" color="gray" px={6} aria-label="설정"
