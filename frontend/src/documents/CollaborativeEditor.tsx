@@ -23,6 +23,7 @@ import { tableHandleDragExtension } from "./editor/tableHandleDrag";
 import { checkListAnimationExtension } from "./editor/checkListAnimation";
 import { blockDropExtension, notionDropCursor } from "./editor/blockDrop";
 import { calloutBackspaceExtension } from "./editor/calloutBackspace";
+import { undoAnywhereExtension } from "./editor/undoAnywhere";
 import { blockMarqueeExtension, installBlockMarquee } from "./editor/blockMarquee";
 import {
   FormattingToolbarController, getDefaultReactSlashMenuItems, SuggestionMenuController, TableHandlesController,
@@ -259,7 +260,8 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       pasteHandler: editorPasteHandler,
       // 코드 블록 문법 색칠 (언어별 문법은 필요할 때 불러옴)
       extensions: [syntaxHighlighter, formatShortcutsExtension, activeTableCellExtension, tableHandleDragExtension,
-        checkListAnimationExtension, blockDropExtension(), blockMarqueeExtension(), calloutBackspaceExtension, keepLineTypeOnPasteExtension, autolinkFilterExtension],
+        checkListAnimationExtension, blockDropExtension(), blockMarqueeExtension(), calloutBackspaceExtension, keepLineTypeOnPasteExtension, autolinkFilterExtension,
+        undoAnywhereExtension()],
       // 블록 이동 시 놓일 위치 표시줄 (기본 5px은 두꺼워 노션처럼 얇게), 위치는 노션식 계산 (editor/blockDrop.ts)
       dropCursor: { width: 3, color: "var(--mantine-primary-color-filled)", hooks: notionDropCursor },
       // 노션처럼 표의 행·열 색칠(배경·글자), 첫 행·첫 열 머리글, 셀 병합·분할 허용
