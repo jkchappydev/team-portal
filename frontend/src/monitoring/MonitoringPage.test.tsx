@@ -134,4 +134,23 @@ describe("MonitoringPage", () => {
     expect(await screen.findByText(/^2[12]초 후 새로고침$/)).toBeTruthy();
     expect(screen.queryByText(/마지막 확인/)).toBeNull();
   });
+
+  it("서버를 읽으면 Online, 못 읽으면 Offline 표시와 서버 버튼 상태를 보여준다", async () => {
+    vi.mocked(getServiceStatus).mockResolvedValue({ checkedAt: null, portalDatabase: null, apps: [], databases: [] });
+    const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null,
+      uptimeSeconds: 3_600, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
+    vi.mocked(getServerStatuses).mockResolvedValue([
+      { ...base, available: true, serverName: "10.0.0.1 (개발서버)" },
+      { ...base, available: false, serverName: "10.0.0.2 (스쿨북스)" },
+    ]);
+    renderPage();
+
+    const overview = screen.getByRole("region", { name: "기본 정보" });
+    expect(await within(overview).findByText("Online")).toBeTruthy();
+    expect(within(overview).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" })).toBeTruthy();
+
+    fireEvent.click(within(overview).getByRole("button", { name: "10.0.0.2 (스쿨북스) Offline" }));
+    expect(await within(overview).findByText("Offline")).toBeTruthy();
+    expect(within(overview).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
+  });
 });

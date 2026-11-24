@@ -1,9 +1,11 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Group, Paper, SegmentedControl, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { getServerHistory } from "../api/monitor";
 import type { HistoryPointDto, HistoryRange, ServerStatusDto } from "../api/monitor";
 import { MetricChart, formatRate } from "./MetricChart";
+import { CpuIcon, DownloadIcon, MemoryIcon, NetworkIcon, UploadIcon } from "./MonitorIcons";
 import type { ChartPoint } from "./MetricChart";
 
 const RANGES: { value: HistoryRange; label: string }[] = [
@@ -33,11 +35,11 @@ function writeRange(range: HistoryRange): void {
   }
 }
 
-const CHARTS: { key: keyof Omit<HistoryPointDto, "at">; title: string; color: string; kind: "percent" | "rate" }[] = [
-  { key: "cpuPercent", title: "CPU 사용률", color: "var(--mantine-color-blue-6)", kind: "percent" },
-  { key: "memoryPercent", title: "메모리 사용률", color: "var(--mantine-color-teal-6)", kind: "percent" },
-  { key: "rxBytesPerSec", title: "네트워크 수신", color: "var(--mantine-color-violet-6)", kind: "rate" },
-  { key: "txBytesPerSec", title: "네트워크 송신", color: "var(--mantine-color-orange-6)", kind: "rate" },
+const CHARTS: { key: keyof Omit<HistoryPointDto, "at">; title: string; color: string; kind: "percent" | "rate"; icon: ReactNode }[] = [
+  { key: "cpuPercent", title: "CPU 사용률", color: "var(--mantine-color-blue-6)", kind: "percent", icon: <CpuIcon /> },
+  { key: "memoryPercent", title: "메모리 사용률", color: "var(--mantine-color-teal-6)", kind: "percent", icon: <MemoryIcon /> },
+  { key: "rxBytesPerSec", title: "네트워크 수신", color: "var(--mantine-color-violet-6)", kind: "rate", icon: <DownloadIcon /> },
+  { key: "txBytesPerSec", title: "네트워크 송신", color: "var(--mantine-color-orange-6)", kind: "rate", icon: <UploadIcon /> },
 ];
 
 // 고른 서버의 CPU·메모리·네트워크 사용 기록 그래프와 지금 네트워크 전송량
@@ -67,7 +69,7 @@ export function ServerHistory({ server }: { server: ServerStatusDto }) {
             {CHARTS.map((chart) => {
               const points: ChartPoint[] = data.points.map((p) => ({ t: Date.parse(p.at), v: p[chart.key] }));
               return (
-                <MetricChart key={chart.key} title={chart.title} color={chart.color} kind={chart.kind}
+                <MetricChart key={chart.key} title={chart.title} icon={chart.icon} color={chart.color} kind={chart.kind}
                   points={points} from={from} to={to} bucketMs={data.bucketSeconds * 1000} />
               );
             })}
@@ -75,20 +77,20 @@ export function ServerHistory({ server }: { server: ServerStatusDto }) {
         )}
       </Paper>
       <Paper withBorder radius="md" p="md" component="section" aria-label="네트워크 상태">
-        <Title order={5} mb="sm">네트워크 상태</Title>
+        <Title order={5} mb="sm" className="icon-text"><NetworkIcon size={18} />네트워크 상태</Title>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <NetworkRate label="다운로드" arrow="↓" value={server.networkRxBytesPerSec} />
-          <NetworkRate label="업로드" arrow="↑" value={server.networkTxBytesPerSec} />
+          <NetworkRate label="다운로드" icon={<DownloadIcon />} value={server.networkRxBytesPerSec} />
+          <NetworkRate label="업로드" icon={<UploadIcon />} value={server.networkTxBytesPerSec} />
         </SimpleGrid>
       </Paper>
     </Stack>
   );
 }
 
-function NetworkRate({ label, arrow, value }: { label: string; arrow: string; value: number | null }) {
+function NetworkRate({ label, icon, value }: { label: string; icon: ReactNode; value: number | null }) {
   return (
     <Group justify="space-between" className="network-rate" wrap="nowrap">
-      <Text size="sm"><span aria-hidden>{arrow} </span>{label}</Text>
+      <Text size="sm" className="icon-text">{icon}{label}</Text>
       <Text size="sm" fw={600}>{value === null ? "측정 중" : formatRate(value)}</Text>
     </Group>
   );

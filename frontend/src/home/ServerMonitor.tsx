@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getServerStatuses } from "../api/monitor";
 import type { ServerStatusDto } from "../api/monitor";
 import { Panel } from "./Panel";
+import { ClockIcon, CpuIcon, DiskIcon, MemoryIcon, ServerStatusBadge } from "../monitoring/MonitorIcons";
 import { ServerGauge } from "./ServerGauge";
 import type { ServerGaugeProps } from "./ServerGauge";
 
@@ -85,6 +86,9 @@ export function ServerOverview({ selection }: { selection?: ServerSelection }) {
               key={s.serverName}
               size="compact-xs"
               variant={s.serverName === current.serverName ? "filled" : "default"}
+              // 서버를 읽을 수 있는지 초록·빨강 점 (점만으로 구분하지 않도록 이름표에도 상태를 붙임)
+              leftSection={<span className={`server-dot ${s.available ? "is-online" : "is-offline"}`} aria-hidden />}
+              aria-label={`${s.serverName} ${s.available ? "Online" : "Offline"}`}
               aria-pressed={s.serverName === current.serverName}
               onClick={() => select(s.serverName)}
             >
@@ -102,11 +106,12 @@ export function ServerOverview({ selection }: { selection?: ServerSelection }) {
 function ServerDetail({ data }: { data: ServerStatusDto }) {
   const gauges: (ServerGaugeProps & { key: string })[] = [];
   if (data.available) {
-    gauges.push({ key: "cpu", label: "CPU", percent: data.cpuPercent, detail: data.cpuCores ? `${data.cpuCores}코어` : undefined });
+    gauges.push({ key: "cpu", label: "CPU", icon: <CpuIcon size={13} />, percent: data.cpuPercent, detail: data.cpuCores ? `${data.cpuCores}코어` : undefined });
     if (data.memoryUsedBytes !== null && data.memoryTotalBytes !== null && data.memoryTotalBytes > 0) {
       gauges.push({
         key: "memory",
         label: "MEMORY",
+        icon: <MemoryIcon size={13} />,
         percent: (data.memoryUsedBytes / data.memoryTotalBytes) * 100,
         detail: `${formatBytes(data.memoryUsedBytes)} / ${formatBytes(data.memoryTotalBytes)}`,
       });
@@ -116,6 +121,7 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
       gauges.push({
         key: `disk-${disk.name}`,
         label: data.disks.length > 1 ? `DISK (${disk.name})` : "DISK",
+        icon: <DiskIcon size={13} />,
         percent: (disk.usedBytes / disk.totalBytes) * 100,
         detail: `${formatBytes(disk.usedBytes)} / ${formatBytes(disk.totalBytes)}`,
       });
@@ -123,8 +129,15 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
   }
 
   if (!data.available) {
-    // 서버 버튼에 어느 서버인지 보이므로 안내만
-    return <Text size="sm" c="dimmed">서버 정보를 읽을 수 없습니다.</Text>;
+    return (
+      <Stack gap={4}>
+        <Group justify="space-between" gap="xs" wrap="nowrap">
+          <Text size="sm" fw={600} style={{ minWidth: 0 }} truncate>{data.serverName}</Text>
+          <ServerStatusBadge online={false} />
+        </Group>
+        <Text size="sm" c="dimmed">서버 정보를 읽을 수 없습니다.</Text>
+      </Stack>
+    );
   }
   return (
     <>
@@ -132,10 +145,15 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
         <Stack gap="sm">
           {/* 왼쪽 서버 이름, 오른쪽 위 운영체제 이름(커널 버전은 사용자 요청으로 표시하지 않음)과 그 아래 가동 시간 */}
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
-            <Text size="sm" fw={600} style={{ minWidth: 0 }} truncate>{data.serverName}</Text>
+            <Stack gap={4} align="flex-start" style={{ minWidth: 0 }}>
+              <Text size="sm" fw={600} maw="100%" truncate>{data.serverName}</Text>
+              <ServerStatusBadge online />
+            </Stack>
             <Stack gap={0} align="flex-end" style={{ minWidth: 0 }}>
               {data.osName && <Text size="xs" c="dimmed" ta="right" truncate maw="100%">{data.osName}</Text>}
-              {data.uptimeSeconds !== null && <Text size="xs" c="dimmed">가동 {formatUptime(data.uptimeSeconds)}</Text>}
+              {data.uptimeSeconds !== null && (
+                <Text size="xs" c="dimmed" className="icon-text"><ClockIcon size={12} />가동 {formatUptime(data.uptimeSeconds)}</Text>
+              )}
             </Stack>
           </Group>
           <SimpleGrid cols={gauges.length} spacing="xs">

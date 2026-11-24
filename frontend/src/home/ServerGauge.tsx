@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 // 계기판 모양 사용률 표시: 5칸 색 반원(왼쪽 초록 0% ~ 오른쪽 빨강 100%)과 검은 바늘, 아래 숫자와 이름
 // 바늘은 0%일 때 왼쪽, 100%일 때 오른쪽 (값이 바뀌면 부드럽게 움직임)
 
@@ -40,9 +42,11 @@ export interface ServerGaugeProps {
   percent: number | null;
   // 계기판 아래 작은 설명 (예: 7.4GB / 15.4GB)
   detail?: string;
+  // 이름 앞 작은 아이콘
+  icon?: ReactNode;
 }
 
-export function ServerGauge({ label, percent, detail }: ServerGaugeProps) {
+export function ServerGauge({ label, percent, detail, icon }: ServerGaugeProps) {
   const value = percent === null ? 0 : Math.max(0, Math.min(100, percent));
 
   return (
@@ -64,7 +68,7 @@ export function ServerGauge({ label, percent, detail }: ServerGaugeProps) {
         <circle cx={CENTER_X} cy={CENTER_Y} r="2" fill="#ffffff" />
       </svg>
       <div className="server-gauge-value">{percent === null ? "-" : `${Math.round(value)}%`}</div>
-      <div className="server-gauge-label">{label}</div>
+      <div className="server-gauge-label">{icon}{label}</div>
       {detail && <div className="server-gauge-detail">{detail}</div>}
     </div>
   );

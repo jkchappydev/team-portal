@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PointerEvent } from "react";
+import type { PointerEvent, ReactNode } from "react";
 import { Box, Paper, Text } from "@mantine/core";
 import { useElementSize } from "@mantine/hooks";
 
@@ -11,6 +11,8 @@ export interface ChartPoint {
 
 export interface MetricChartProps {
   title: string;
+  // 제목 앞 아이콘 (선 색으로 칠함)
+  icon?: ReactNode;
   // 선 색 (CSS 색 값)
   color: string;
   points: ChartPoint[];
@@ -118,7 +120,7 @@ function segments(points: ChartPoint[], bucketMs: number): ChartPoint[][] {
 }
 
 // 기간 동안의 값 하나를 선으로 (마우스를 올리면 가장 가까운 점의 시각과 값)
-export function MetricChart({ title, color, points, from, to, bucketMs, kind }: MetricChartProps) {
+export function MetricChart({ title, icon, color, points, from, to, bucketMs, kind }: MetricChartProps) {
   const { ref, width } = useElementSize();
   const [hover, setHover] = useState<ChartPoint | null>(null);
 
@@ -151,7 +153,7 @@ export function MetricChart({ title, color, points, from, to, bucketMs, kind }: 
 
   return (
     <Paper withBorder radius="md" p="md">
-      <Text size="sm" fw={600} mb="xs">{title}</Text>
+      <Text size="sm" fw={600} mb="xs" className="icon-text">{icon && <span className="metric-chart-icon" style={{ color }}>{icon}</span>}{title}</Text>
       <Box ref={ref} pos="relative" h={HEIGHT}>
         {width > 0 && (
           <svg width={width} height={HEIGHT} role="img" aria-label={summary} className="metric-chart">
