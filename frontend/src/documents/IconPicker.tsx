@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { ClipboardEvent, DragEvent, ReactNode } from "react";
+import { ImageLineIcon } from "./DefaultIcons";
 import { Alert, Box, Button, Group, Popover, Tabs, Text, UnstyledButton } from "@mantine/core";
 import { EmojiPicker } from "frimousse";
 import { ko } from "@blocknote/core/locales";
@@ -210,7 +211,10 @@ export function ImageUpload({ documentId, onDone, onCancel }: { documentId: numb
               style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6 }} />
           </Group>
         ) : (
-          <Text size="sm">{dragging ? "여기에 놓으세요" : "🖼️ 이미지 업로드"}</Text>
+          <Group justify="center" gap={6} wrap="nowrap">
+            {!dragging && <ImageLineIcon size={16} />}
+            <Text size="sm">{dragging ? "여기에 놓으세요" : "이미지 업로드"}</Text>
+          </Group>
         )}
       </UnstyledButton>
       <Text size="xs" c="dimmed" ta="center" mt="xs">이미지를 끌어다 놓거나 Ctrl+V 단축키로 이미지나 링크를 붙여넣으세요.</Text>

@@ -2,7 +2,7 @@ import { Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@mantine
 import type { LinkDto } from "../api/links";
 import { copyText } from "../documents/clipboard";
 import { showToast } from "../toast/toastStore";
-import { LinkIcon } from "./LinkDialog";
+import { ExternalLinkIcon, LinkIcon } from "./SidebarIcons";
 import { useLastValue } from "./useLastValue";
 
 interface Props {
@@ -40,9 +40,11 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
   };
   return (
     <>
-      <Text fw={600} fz="md" px="lg" pt="lg" pb="md" truncate>
-        <span aria-hidden>{link.icon ?? "🔗"}</span> {link.title}
-      </Text>
+      {/* 고른 아이콘이 없으면 사이드바와 같은 선 아이콘 */}
+      <Group gap={8} wrap="nowrap" px="lg" pt="lg" pb="md">
+        {link.icon ? <span aria-hidden>{link.icon}</span> : <LinkIcon />}
+        <Text fw={600} fz="md" truncate style={{ minWidth: 0 }}>{link.title}</Text>
+      </Group>
       <Stack gap="md" px="lg" pb="lg">
         <Stack gap={6}>
           <Text size="sm" fw={500}>링크 이동</Text>
@@ -57,9 +59,9 @@ function LinkInfoBody({ link, onClose }: { link: LinkDto; onClose: () => void })
             onClick={onClose}
           >
             <Group gap={8} wrap="nowrap">
-              <Box c="dimmed" style={{ display: "flex", flexShrink: 0 }}><LinkIcon /></Box>
+              <Box style={{ display: "flex", flexShrink: 0 }}><LinkIcon /></Box>
               <Text size="sm" c="blue" truncate style={{ flex: 1, minWidth: 0 }}>{link.url}</Text>
-              <Text size="sm" c="dimmed" aria-hidden>↗</Text>
+              <Box style={{ display: "flex", flexShrink: 0 }}><ExternalLinkIcon /></Box>
             </Group>
           </UnstyledButton>
         </Stack>

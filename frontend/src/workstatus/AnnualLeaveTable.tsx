@@ -10,6 +10,7 @@ import { CURRENT_HIGHLIGHT_BACKGROUND, currentMonthOf, currentWeekOf } from "./h
 import { useCurrentUser } from "../user/currentUser";
 import { useMemberReorder } from "../members/useMemberReorder";
 import { useReorderAnimation } from "../layout/reorderAnimation";
+import { ChevronLineIcon } from "../documents/DefaultIcons";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const WEEKS = [1, 2, 3, 4, 5];
@@ -208,7 +209,7 @@ function AnnualLeaveSummaryRow({ item, year }: { item: AnnualLeaveSummaryDto; ye
         <td style={{ ...summaryCell, textAlign: "left", paddingLeft: 8, fontWeight: 600 }}>
           <UnstyledButton onClick={() => setOpened((v) => !v)} aria-expanded={opened} aria-label={`${item.memberName} 연차 자세히`}
             fz={13} fw={600} c={item.editable ? undefined : "dimmed"} style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-            <Text span fz={9} c="dimmed" aria-hidden style={{ display: "inline-block", transform: opened ? "rotate(90deg)" : undefined }}>▶</Text>
+            <span aria-hidden style={{ display: "inline-flex", transition: "transform 120ms", transform: opened ? "rotate(90deg)" : undefined }}><ChevronLineIcon direction="right" size={14} /></span>
             {item.memberName}
           </UnstyledButton>
         </td>

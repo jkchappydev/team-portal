@@ -15,6 +15,7 @@ import { calculateWeekMinHeight } from "./calendarLayout";
 import { groupHolidaysByDate } from "./holidayCalendar";
 import { TYPE_COLORS, TYPE_LABELS, TYPE_ORDER, chipColors } from "./types";
 import { AnnualLeaveTable } from "./AnnualLeaveTable";
+import { ChevronLineIcon } from "../documents/DefaultIcons";
 import { WorkStatusForm } from "./WorkStatusForm";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "./highlight";
 import { MonthPicker } from "./MonthPicker";
@@ -195,7 +196,7 @@ export function WorkStatusPage() {
         : { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
         {!mobile && <span />}
         <Group gap="md" wrap="nowrap">
-          <ActionIcon variant="subtle" color="gray" size="lg" aria-label="이전 달" onClick={() => moveMonth(-1)}>◀</ActionIcon>
+          <ActionIcon variant="subtle" color="gray" size="lg" aria-label="이전 달" onClick={() => moveMonth(-1)}><ChevronLineIcon direction="left" size={18} /></ActionIcon>
           {/* 제목을 누르면 원하는 연월로 바로 이동 */}
           <MonthPicker
             year={year}
@@ -210,7 +211,7 @@ export function WorkStatusPage() {
               {year}년 {month}월
             </Title>
           </MonthPicker>
-          <ActionIcon variant="subtle" color="gray" size="lg" aria-label="다음 달" onClick={() => moveMonth(1)}>▶</ActionIcon>
+          <ActionIcon variant="subtle" color="gray" size="lg" aria-label="다음 달" onClick={() => moveMonth(1)}><ChevronLineIcon direction="right" size={18} /></ActionIcon>
         </Group>
         <Group gap={10} justify={mobile ? "center" : "flex-end"} aria-label="근무 상황 종류 범례">
           {TYPE_ORDER.map((type) => (

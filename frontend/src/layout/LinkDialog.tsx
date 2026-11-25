@@ -6,23 +6,13 @@ import { createLink, LINKS_KEY, updateLink } from "../api/links";
 import type { LinkDto } from "../api/links";
 import { ApiError } from "../api/client";
 import { markNewItem } from "./reorderAnimation";
+import { LinkIcon } from "./SidebarIcons";
 
 interface Props {
   opened: boolean;
   onClose: () => void;
   // 수정할 링크 (없으면 새 링크 추가)
   editing?: LinkDto | null;
-}
-
-// 노션처럼 얇은 선으로 그린 링크 아이콘
-export function LinkIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
-      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6.5 9.5a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4L7.6 4.4" />
-      <path d="M9.5 6.5a2.8 2.8 0 0 0-4 0L3.3 8.7a2.8 2.8 0 0 0 4 4l1.1-1.1" />
-    </svg>
-  );
 }
 
 // 아이콘을 고르지 않았을 때 제목 칸 앞에 보이는 웃는 얼굴 (누르면 이모지 선택)
@@ -104,7 +94,7 @@ function LinkBody({ onClose, editing }: { onClose: () => void; editing: LinkDto 
           label={<RequiredLabel>제목</RequiredLabel>}
           aria-label="링크 제목"
           placeholder="예: 팀 위키"
-          // 제목 앞 칸을 눌러 아이콘 선택 (선택값, 고르지 않으면 🔗)
+          // 제목 앞 칸을 눌러 아이콘 선택 (선택값, 고르지 않으면 링크 선 아이콘)
           leftSection={
             <IconPicker
               hasIcon={!!icon}

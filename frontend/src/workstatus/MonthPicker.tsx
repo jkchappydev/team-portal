@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { ChevronLineIcon } from "../documents/DefaultIcons";
 import { ActionIcon, Box, Button, Group, Popover, Text, UnstyledButton } from "@mantine/core";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -39,9 +40,9 @@ export function MonthPicker({ year, month, onSelect, children }: Props) {
       </Popover.Target>
       <Popover.Dropdown p="xs">
         <Group justify="space-between" mb="xs">
-          <ActionIcon variant="subtle" color="gray" aria-label="이전 해" onClick={() => setViewYear((y) => y - 1)}>◀</ActionIcon>
+          <ActionIcon variant="subtle" color="gray" aria-label="이전 해" onClick={() => setViewYear((y) => y - 1)}><ChevronLineIcon direction="left" size={16} /></ActionIcon>
           <Text fw={700}>{viewYear}년</Text>
-          <ActionIcon variant="subtle" color="gray" aria-label="다음 해" onClick={() => setViewYear((y) => y + 1)}>▶</ActionIcon>
+          <ActionIcon variant="subtle" color="gray" aria-label="다음 해" onClick={() => setViewYear((y) => y + 1)}><ChevronLineIcon direction="right" size={16} /></ActionIcon>
         </Group>
         <Box style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
           {MONTHS.map((m) => {

@@ -62,14 +62,17 @@ describe("SpaceNavItem", () => {
 
   it("아이콘이 없는 프로젝트는 폴더 아이콘을 보이고, 누르면 프로젝트 화면으로 간다", async () => {
     renderItem({ ...space, icon: null });
-    expect(screen.getByText("📁")).toBeTruthy();
+    // 메인 프로젝트 카드와 같은 폴더 그림
+    expect(document.querySelector(".tree-slot img.default-project-icon")?.getAttribute("src")).toBe("/folder.png");
+    expect(document.body.textContent).not.toContain("📁");
     fireEvent.click(screen.getByText("스쿨북스"));
     expect(await screen.findByText("프로젝트 화면")).toBeTruthy();
   });
 
   it("최상위 페이지는 아이콘이 없으면 페이지 아이콘, 메뉴·확인 창은 페이지 삭제로 보인다", async () => {
     renderItem({ ...space, kind: "PAGE", icon: null });
-    expect(screen.getByText("📄")).toBeTruthy();
+    expect(document.querySelector(".tree-slot svg.default-line-icon")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("📄");
     fireEvent.mouseEnter(screen.getByText("스쿨북스"));
     fireEvent.click(screen.getByLabelText("스쿨북스 메뉴"));
     fireEvent.click(await screen.findByText("페이지 삭제"));

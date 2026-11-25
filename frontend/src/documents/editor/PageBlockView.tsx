@@ -30,7 +30,7 @@ export function PageBlockView({ documentId }: { documentId: number }) {
 
   return (
     <Link to={itemPath(doc.kind, doc.id)} className="page-block" contentEditable={false} draggable={false}>
-      <span className="page-block-icon"><PageIcon icon={doc.icon ?? (doc.kind === "FILE" ? "📎" : null)} /></span>
+      <span className="page-block-icon"><PageIcon icon={doc.icon} fallback={doc.kind === "FILE" ? "file" : "page"} /></span>
       <span className="page-block-title">{doc.title}</span>
     </Link>
   );

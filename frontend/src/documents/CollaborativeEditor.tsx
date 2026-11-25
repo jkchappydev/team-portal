@@ -3,6 +3,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/blocknoteStyles.css";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, MouseEvent } from "react";
+import { CalloutLineIcon, ColumnsLineIcon, ScheduleLineIcon } from "./DefaultIcons";
 import { Alert, Badge, Box, Button, Group, Loader, Text, useComputedColorScheme } from "@mantine/core";
 import { ko } from "@blocknote/core/locales";
 import { withCollaboration } from "@blocknote/core/yjs";
@@ -345,7 +346,7 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     subtext: "이모지와 배경색으로 눈에 띄게 쓰기",
     aliases: ["콜아웃", "callout", "강조", "메모", "알림"],
     group: ko.slash_menu.quote.group,
-    icon: <span aria-hidden>💡</span>,
+    icon: <CalloutLineIcon size={18} />,
     onItemClick: () => {
       const callout = insertOrUpdateBlockForSlashMenu(editor, NEW_CALLOUT);
       if (callout.children[0]) editor.setTextCursorPosition(callout.children[0], "start");
@@ -358,7 +359,7 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     subtext: `블록을 ${count}개 열로 나란히 놓기`,
     aliases: [`${count}단`, `${count}열`, "열", "단", "columns", `${count}columns`],
     group: ko.slash_menu.quote.group,
-    icon: <span aria-hidden>{count === 2 ? "◫" : "▥"}</span>,
+    icon: <ColumnsLineIcon size={18} count={count as 2 | 3} />,
     onItemClick: () => insertColumns(editor as unknown as Parameters<typeof insertColumns>[0], count),
   }));
 
@@ -367,7 +368,7 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     subtext: "WBS 표와 간트 차트",
     aliases: ["일정", "wbs", "schedule", "간트", "gantt"],
     group: "기타",
-    icon: <span aria-hidden>📊</span>,
+    icon: <ScheduleLineIcon size={18} />,
     onItemClick: () => {
       if (spaceId === undefined) return;
       const block = editor.getTextCursorPosition().block;

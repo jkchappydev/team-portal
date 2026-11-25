@@ -177,6 +177,40 @@ body {
   color: var(--mantine-color-dimmed);
 }
 
+/* 아이콘을 고르지 않은 페이지·프로젝트 등의 기본 선 아이콘: 글자 크기에 맞춘 옅은 회색 (이모지 대신) */
+.default-line-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+  color: var(--mantine-color-dimmed);
+}
+
+/* 사이드바 줄에서는 고정 메뉴·링크 선 아이콘과 같은 16px, 보고 있는 줄은 글자색 */
+.tree-slot .default-line-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* 아이콘이 없는 프로젝트의 폴더 그림 (메인 프로젝트 카드와 같은 그림, 글자 크기, 사이드바는 16px) */
+.default-project-icon {
+  display: inline-block;
+  width: var(--icon-size, 1em);
+  height: var(--icon-size, 1em);
+  object-fit: contain;
+  vertical-align: -0.125em;
+}
+
+.tree-slot .default-project-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.mantine-NavLink-root[data-active] .tree-slot .default-line-icon {
+  color: inherit;
+}
+
 .sidebar-menu-link[data-active] .sidebar-menu-icon {
   color: inherit;
 }

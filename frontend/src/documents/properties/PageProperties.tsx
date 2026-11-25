@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
+import { ExternalLineIcon } from "../DefaultIcons";
 import { ActionIcon, Anchor, Box, Checkbox, Menu, MultiSelect, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../api/client";
@@ -81,7 +82,7 @@ function TextValue({ property, editable, onSave }: { property: PropertyDto; edit
         }}
       />
       {isLink && (
-        <Anchor href={property.value!} target="_blank" rel="noopener noreferrer" size="xs" aria-label={`${property.name} 열기`}>↗</Anchor>
+        <Anchor href={property.value!} target="_blank" rel="noopener noreferrer" size="xs" aria-label={`${property.name} 열기`} style={{ display: "inline-flex" }}><ExternalLineIcon size={14} /></Anchor>
       )}
     </Box>
   );

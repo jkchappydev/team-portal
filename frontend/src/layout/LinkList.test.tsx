@@ -133,6 +133,10 @@ describe("LinkList", () => {
     expect(await screen.findByRole("link", { name: "링크 이동" })).toBeTruthy();
     expect(screen.getByText("등록된 계정 정보가 없습니다.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "복사" })).toBeNull();
+    // 아이콘 없는 링크도 팝업 제목·이동 줄에 이모지·글자 화살표 대신 선 아이콘
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).not.toMatch(/🔗|↗/);
+    expect(dialog.querySelectorAll("svg.sidebar-menu-icon").length).toBe(3);
   });
 
   it("Ctrl을 누르고 클릭하면 팝업 없이 바로 새 탭으로 연다", async () => {

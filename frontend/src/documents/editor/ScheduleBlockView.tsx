@@ -35,7 +35,7 @@ export function ScheduleBlockView({ documentId }: { documentId: number }) {
 
   const title = (
     <Text fw={600} size="sm" truncate>
-      <span style={{ marginRight: 6 }}><PageIcon icon={doc?.icon ?? "📊"} /></span>
+      <span style={{ marginRight: 6 }}><PageIcon icon={doc?.icon} fallback="schedule" /></span>
       {doc?.title ?? "일정"}
     </Text>
   );

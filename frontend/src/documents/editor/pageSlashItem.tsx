@@ -1,6 +1,7 @@
 import type { DefaultReactSuggestionItem } from "@blocknote/react";
 import { ApiError } from "../../api/client";
 import { createDocument } from "../../api/documents";
+import { PageLineIcon } from "../DefaultIcons";
 import { placePageBlock } from "./pageCommand";
 import type { PageBlockNode, PageEditor } from "./pageCommand";
 
@@ -21,7 +22,7 @@ export function pageSlashItem({ editor, spaceId, documentId, onCreated, onError 
     subtext: "이 안에 새 페이지 만들기",
     aliases: ["페이지", "page", "문서", "하위"],
     group: "기타",
-    icon: <span aria-hidden>📄</span>,
+    icon: <PageLineIcon size={18} />,
     onItemClick: () => {
       const block = editor.getTextCursorPosition().block;
       createDocument(spaceId, documentId)

@@ -5,7 +5,7 @@ export interface LinkDto {
   id: number;
   title: string;
   url: string;
-  // 이모지 아이콘 (없으면 null, 화면에서 기본 🔗)
+  // 이모지 아이콘 (없으면 null, 화면에서 기본 링크 선 아이콘)
   icon: string | null;
   // 계정 정보 (없으면 null, 있으면 링크를 눌렀을 때 팝업으로 보여줌)
   accountInfo: string | null;

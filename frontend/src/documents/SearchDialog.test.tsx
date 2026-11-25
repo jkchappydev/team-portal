@@ -66,9 +66,10 @@ describe("SearchDialog", () => {
     expect(screen.getByText(titleText("배포 체크리스트"))).toBeTruthy();
     // 제목 안 검색어를 강조
     expect(screen.getAllByText("배포", { selector: "mark" })).toHaveLength(2);
-    // 아이콘이 있으면 그 아이콘, 없으면 기본 아이콘
+    // 아이콘이 있으면 그 아이콘, 없으면 이모지 대신 선 아이콘
     expect(screen.getByText("🚀", { exact: false })).toBeTruthy();
-    expect(screen.getByText("📄", { exact: false })).toBeTruthy();
+    expect(document.querySelector("svg.default-line-icon")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("📄");
   });
 
   it("방향키로 고르고 Enter로 문서를 연다", async () => {
