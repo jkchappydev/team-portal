@@ -48,8 +48,8 @@ function ProjectCards({ title, projects }: { title: string; projects: SpaceDto[]
   return (
     <section aria-label={title}>
       <Text size="xs" c="dimmed" mb={8}>{title}</Text>
-      {/* 넓은 화면 한 줄 3개, 좁은 화면 2개 */}
-      <SimpleGrid cols={{ base: 2, md: 3 }} spacing="xs">
+      {/* 칸 폭에 따라 한 줄 2~5개 (넓은 화면에서 카드가 지나치게 길어지지 않게) */}
+      <SimpleGrid type="container" cols={{ base: 2, "640px": 3, "960px": 4, "1280px": 5 }} spacing="xs">
         {projects.slice(0, GALLERY_LIMIT).map((space) => (
           <Link key={space.id} to={`/spaces/${space.id}`} className="project-card" draggable={false}>
             <CardPreview space={space} />

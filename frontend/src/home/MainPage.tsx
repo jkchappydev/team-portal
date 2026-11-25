@@ -154,12 +154,12 @@ function NewCsList() {
 }
 
 // 메인 화면: 프로젝트, 이번 주 근무 현황·최근 수정된 게시글·신규 CS, 서버 모니터링·이번 주 주간보고(추후 구현)
-// 본문은 가운데 정렬해 넓은 화면에서도 좌우 여백을 같게 둠
+// 다른 메뉴 화면처럼 본문 폭을 다 쓰고(좌우 여백은 AppLayout 24px), 열 수는 화면 폭이 아닌 본문 폭으로 정함
 export function MainPage() {
   return (
-    <Stack maw={1120} mx="auto" gap="md">
+    <Stack gap="md">
       <ProjectGallery />
-      <Grid gap="md">
+      <Grid gap="md" type="container" breakpoints={{ xs: "400px", sm: "600px", md: "760px", lg: "900px", xl: "1200px" }}>
         <Grid.Col span={{ base: 12, lg: 4 }}><WeekStatuses /></Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}><RecentPosts /></Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}><NewCsList /></Grid.Col>
