@@ -56,6 +56,7 @@ describe("MainPage", () => {
             <Routes>
               <Route path="/main" element={<MainPage />} />
               <Route path="/documents/:id" element={<div>문서 화면</div>} />
+              <Route path="/monitoring" element={<div>모니터링 화면</div>} />
             </Routes>
           </MemoryRouter>
         </QueryClientProvider>
@@ -153,69 +154,69 @@ describe("MainPage", () => {
     expect(within(screen.getByRole("region", { name: "이번 주 주간보고" })).getByText("준비 중입니다.")).toBeTruthy();
   });
 
-  it("모니터링에 서버 CPU·메모리·디스크 사용률을 계기판으로, 가동 시간과 함께 보여준다", async () => {
+  it("모니터링은 서버마다 한 줄에 CPU·메모리·디스크 사용률 막대를 보여주고, 코어 수·용량은 마우스를 올리면 보인다", async () => {
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
     expect(await within(panel).findByText("포털 서버")).toBeTruthy();
-    expect(within(panel).getByText("가동 3일 2시간")).toBeTruthy();
-    expect(within(panel).getByText("Rocky Linux 8.10 (Green Obsidian)")).toBeTruthy();
-    // CPU·메모리·디스크 계기판이 한 줄로, 바늘 값은 사용률
-    const gauges = within(panel).getAllByRole("meter");
-    expect(gauges.map((g) => g.getAttribute("aria-label"))).toEqual(["CPU 사용률", "MEMORY 사용률", "DISK 사용률"]);
-    expect(gauges.map((g) => g.getAttribute("aria-valuenow"))).toEqual(["12", "50", "95"]);
-    expect(within(panel).getByText("4코어")).toBeTruthy();
-    expect(within(panel).getByText("8.0GB / 16.0GB")).toBeTruthy();
-    expect(within(panel).getByText("95.0GB / 100GB")).toBeTruthy();
+    const meters = within(panel).getAllByRole("meter");
+    expect(meters.map((m) => m.getAttribute("aria-label"))).toEqual(["포털 서버 CPU 사용률", "포털 서버 MEMORY 사용률", "포털 서버 DISK 사용률"]);
+    expect(meters.map((m) => m.getAttribute("aria-valuenow"))).toEqual(["12", "50", "95"]);
+    // 90% 이상은 빨간 막대
+    expect(meters[2].querySelector("[data-level]")?.getAttribute("data-level")).toBe("danger");
+    expect(meters[0].parentElement?.getAttribute("title")).toBe("4코어");
+    expect(meters[1].parentElement?.getAttribute("title")).toBe("8.0GB / 16.0GB");
+    expect(meters[2].parentElement?.getAttribute("title")).toBe("95.0GB / 100GB");
   });
 
-  it("디스크가 여럿이면 계기판 이름에 서버 마운트 위치를 붙인다", async () => {
+  it("디스크가 여럿이면 가장 많이 쓴 디스크의 사용률을 보이고, 디스크별 용량은 마우스를 올리면 보인다", async () => {
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: 12, cpuCores: 4,
       memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
-      disks: [{ name: "/", usedBytes: 1, totalBytes: 2 }, { name: "/var", usedBytes: 1, totalBytes: 4 }],
+      disks: [{ name: "/", usedBytes: 1 * 1024 ** 3, totalBytes: 4 * 1024 ** 3 }, { name: "/var", usedBytes: 3 * 1024 ** 3, totalBytes: 4 * 1024 ** 3 }],
       networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
-    expect(await within(panel).findByText("DISK (/)")).toBeTruthy();
-    expect(within(panel).getByText("DISK (/var)")).toBeTruthy();
+    const disk = await within(panel).findByRole("meter", { name: "포털 서버 DISK 사용률" });
+    expect(disk.getAttribute("aria-valuenow")).toBe("75");
+    expect(disk.parentElement?.getAttribute("title")).toBe("/ 1.0GB / 4.0GB, /var 3.0GB / 4.0GB");
+    // 메모리를 읽지 못하면 -
+    expect(within(panel).getByRole("meter", { name: "포털 서버 MEMORY 사용률" }).getAttribute("aria-valuenow")).toBeNull();
   });
 
-  it("서버가 여럿이면 서버 버튼으로 골라 그 서버의 계기판을 보여준다", async () => {
+  it("서버를 고르지 않고 모든 서버를 한 줄씩 보이며, 연결 안 된 서버는 안내하고 IP는 마우스를 올리면 보인다", async () => {
     const base = { osName: null, kernel: null, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
       disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
     vi.mocked(getServerStatuses).mockResolvedValue([
-      { ...base, available: true, serverName: "10.0.0.1", cpuPercent: 10 },
-      { ...base, available: true, serverName: "10.0.0.2", cpuPercent: 80 },
-      { ...base, available: false, serverName: "10.0.0.3", cpuPercent: null },
+      { ...base, available: true, serverName: "10.0.0.1 (개발서버)", cpuPercent: 10 },
+      { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)", cpuPercent: 85 },
+      { ...base, available: false, serverName: "10.0.0.3 (바로비)", cpuPercent: null },
     ]);
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
-    expect((await within(panel).findAllByRole("meter"))[0].getAttribute("aria-valuenow")).toBe("10");
-    fireEvent.click(within(panel).getByText("10.0.0.2"));
-    expect(within(panel).getAllByRole("meter")[0].getAttribute("aria-valuenow")).toBe("80");
-    fireEvent.click(within(panel).getByText("10.0.0.3"));
-    expect(within(panel).getByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
+    expect((await within(panel).findByRole("meter", { name: "개발서버 CPU 사용률" })).getAttribute("aria-valuenow")).toBe("10");
+    const school = within(panel).getByRole("meter", { name: "스쿨북스 CPU 사용률" });
+    expect(school.getAttribute("aria-valuenow")).toBe("85");
+    expect(school.querySelector("[data-level]")?.getAttribute("data-level")).toBe("warn");
+    const offline = within(panel).getByRole("button", { name: "10.0.0.3 (바로비) Offline 자세히" });
+    expect(within(offline).getByText("연결 안 됨")).toBeTruthy();
+    expect(within(panel).queryByText("10.0.0.2")).toBeNull();
+    expect(within(panel).getByText("스쿨북스").parentElement?.getAttribute("title")).toBe("스쿨북스 (10.0.0.2)");
+    // 서버 고르기 버튼은 없음
+    expect(within(panel).queryByRole("group", { name: "서버 선택" })).toBeNull();
   });
 
-  it("메인 서버 고르기는 한 줄 작은 칸에 이름만 보이고 IP는 마우스를 올리면 보인다", async () => {
-    const base = { osName: null, kernel: null, cpuPercent: 1, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
+  it("서버 줄을 누르면 그 서버를 고른 채로 모니터링 상세 화면으로 간다", async () => {
+    const base = { osName: null, kernel: null, cpuCores: 4, memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
       disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() };
     vi.mocked(getServerStatuses).mockResolvedValue([
-      { ...base, available: true, serverName: "10.0.0.1 (개발서버)" },
-      { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)" },
+      { ...base, available: true, serverName: "10.0.0.1 (개발서버)", cpuPercent: 10 },
+      { ...base, available: true, serverName: "10.0.0.2 (스쿨북스)", cpuPercent: 20 },
     ]);
+    localStorage.removeItem("monitor-selected-server");
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
-    const picker = await within(panel).findByRole("group", { name: "서버 선택" });
-    expect(picker.classList.contains("is-compact")).toBe(true);
-    expect(within(picker).queryByText("10.0.0.2")).toBeNull();
-    expect(within(picker).getByRole("button", { name: "10.0.0.2 (스쿨북스) Online" }).getAttribute("title")).toBe("스쿨북스 (10.0.0.2)");
-  });
-
-  it("서버 정보를 읽을 수 없으면 안내한다", async () => {
-    vi.mocked(getServerStatuses).mockResolvedValue([{ available: false, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: null, cpuCores: 4,
-      memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null, disks: [], networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
-    renderPage();
-    expect(await within(screen.getByRole("region", { name: "모니터링" })).findByText("서버 정보를 읽을 수 없습니다.")).toBeTruthy();
+    fireEvent.click(await within(panel).findByRole("button", { name: "10.0.0.2 (스쿨북스) Online 자세히" }));
+    expect(await screen.findByText("모니터링 화면")).toBeTruthy();
+    expect(localStorage.getItem("monitor-selected-server")).toBe("10.0.0.2 (스쿨북스)");
   });
 
   it("좁은 화면은 근무 현황을 요일별 한 줄로 보이고 준비 중 칸도 그대로 보인다", async () => {

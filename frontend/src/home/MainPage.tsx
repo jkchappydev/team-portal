@@ -10,7 +10,7 @@ import { PageIcon } from "../documents/PageIconView";
 import { formatRelative, isProjectHome, updatePath } from "../notifications/updateFormat";
 import { Panel } from "./Panel";
 import { ProjectGallery } from "./ProjectGallery";
-import { ServerMonitor } from "./ServerMonitor";
+import { ServerMonitor } from "./ServerTable";
 import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "../workstatus/highlight";

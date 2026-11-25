@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { Anchor, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
-import { Link } from "react-router-dom";
+import { Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getServerStatuses, SERVERS_STREAM_URL } from "../api/monitor";
 import type { ServerStatusDto } from "../api/monitor";
-import { Panel } from "./Panel";
 import { ClockIcon, ServerStatusBadge } from "../monitoring/MonitorIcons";
 import { ServerGauge } from "./ServerGauge";
 import type { ServerGaugeProps } from "./ServerGauge";
@@ -133,8 +131,9 @@ export function useServerSelection(): ServerSelection {
 // 운영 서버들의 CPU·메모리·디스크 사용률을 계기판으로 한 줄에
 // 서버가 여럿이면 위의 서버 버튼으로 하나씩 봄, 메인 화면 칸과 모니터링 상세 화면이 같이 씀
 // 선택을 넘겨받으면 그 연결을 쓰고, 아니면 직접 연결 (한 화면에 실시간 연결이 둘 생기지 않게)
-// picker: 서버 고르기 모양 (cards: 이름·IP 두 줄 칸, compact: 한 줄 작은 칸, none: 따로 그리는 화면용)
-export type ServerPickerVariant = "cards" | "compact";
+// picker: 서버 고르기 모양 (cards: 이름·IP 두 줄 칸, none: 따로 그리는 화면용)
+// 메인 화면 칸은 서버를 고르지 않고 모든 서버를 표로 보여 줌 (home/ServerTable)
+export type ServerPickerVariant = "cards";
 
 export function ServerOverview({ selection, picker = "cards" }: { selection?: ServerSelection; picker?: ServerPickerVariant | "none" }) {
   return selection ? <ServerOverviewView selection={selection} picker={picker} /> : <OwnServerOverview picker={picker} />;
@@ -157,15 +156,13 @@ function ServerOverviewView({ selection, picker }: { selection: ServerSelection;
 }
 
 // 서버 고르기 (서버가 하나뿐이면 그리지 않음)
-// cards: 같은 폭 칸을 화면 폭에 맞춰 나란히 (좁으면 여러 줄), 칸마다 상태 점·이름·IP
-// compact: 한 줄에 상태 점·이름만 (IP는 마우스를 올리면 보임, 칸이 너무 좁아지면 옆으로 넘김)
-export function ServerPicker({ selection, variant = "cards" }: { selection: ServerSelection; variant?: ServerPickerVariant }) {
+// 같은 폭 칸을 화면 폭에 맞춰 나란히 (좁으면 여러 줄), 칸마다 상태 점·이름·IP
+export function ServerPicker({ selection }: { selection: ServerSelection; variant?: ServerPickerVariant }) {
   const { list, current, select } = selection;
   if (list.length <= 1 || !current) return null;
-  const compact = variant === "compact";
 
   return (
-    <div className={compact ? "server-picker is-compact" : "server-picker"} role="group" aria-label="서버 선택">
+    <div className="server-picker" role="group" aria-label="서버 선택">
       {list.map((s) => {
         const { title, address } = splitServerName(s.serverName);
         const active = s.serverName === current.serverName;
@@ -174,7 +171,6 @@ export function ServerPicker({ selection, variant = "cards" }: { selection: Serv
             key={s.serverName}
             className="server-pick"
             data-active={active || undefined}
-            title={compact && address ? `${title} (${address})` : undefined}
             aria-label={`${s.serverName} ${s.available ? "Online" : "Offline"}`}
             aria-pressed={active}
             onClick={() => select(s.serverName)}
@@ -182,7 +178,7 @@ export function ServerPicker({ selection, variant = "cards" }: { selection: Serv
             <span className={`server-dot ${s.available ? "is-online" : "is-offline"}`} aria-hidden />
             <span className="server-pick-text">
               <span className="server-pick-title">{title}</span>
-              {!compact && address && <span className="server-pick-address">{address}</span>}
+              {address && <span className="server-pick-address">{address}</span>}
             </span>
           </UnstyledButton>
         );
@@ -250,14 +246,5 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
         </Stack>
       )}
     </>
-  );
-}
-
-// 메인 화면 모니터링 칸 (자세히 누르면 애플리케이션·DB 상태가 있는 상세 화면)
-export function ServerMonitor() {
-  return (
-    <Panel title="모니터링" action={<Anchor component={Link} to="/monitoring" size="sm">자세히</Anchor>}>
-      <ServerOverview picker="compact" />
-    </Panel>
   );
 }
