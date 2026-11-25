@@ -2051,7 +2051,11 @@ body.bn-column-resizing {
   margin-top: 8px;
   border-radius: 3px;
   overflow: hidden;
-  background: var(--mantine-color-default-hover);
+  /* 흰 칸 위에서도 막대 끝이 보이도록 테두리보다 조금 진한 회색 */
+  background: var(--mantine-color-gray-2);
+}
+[data-mantine-color-scheme="dark"] .server-gauge-track {
+  background: var(--mantine-color-dark-4);
 }
 /* 표(home/ServerTable)에서는 span이라 막대가 그려지도록 블록으로 */
 .server-gauge-bar {
