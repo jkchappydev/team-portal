@@ -1,11 +1,11 @@
 ﻿import { useEffect, useLayoutEffect, useRef } from "react";
-import { ActionIcon, AppShell, Box, Group, Overlay, Text, Transition } from "@mantine/core";
+import { AppShell, Box, Overlay, Transition } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { Link as RouterLink, Outlet, useLocation } from "react-router-dom";
-import { DocumentUpdatesBell } from "../notifications/DocumentUpdatesBell";
+import { Outlet, useLocation } from "react-router-dom";
 import { ImageLightbox } from "../documents/editor/ImageLightbox";
 import { useCurrentUser } from "../user/currentUser";
 import { Sidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
 import { NewCsToasts } from "../home/NewCsToasts";
 import { prefersReducedMotion } from "./reorderAnimation";
 
@@ -21,7 +21,7 @@ export function AppLayout() {
   const mainRef = useRef<HTMLDivElement>(null);
   // 좁은 화면(sm 미만)은 사이드바를 닫아 두고 위쪽 메뉴 버튼으로 열고 닫음
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
-  // 알림 종은 좁은 화면이면 위쪽 줄, 넓은 화면이면 사이드바 머리글에 하나만 그림 (주기 조회가 겹치지 않게)
+  // 좁은 화면은 사이드바를 서랍처럼 열고 닫고, 위쪽 줄에 메뉴 버튼을 둠
   const mobile = useMediaQuery("(max-width: 47.99em)") ?? false;
   // 다른 화면으로 옮기면 열린 사이드바를 닫아 본문이 보이게 함
   useEffect(() => {
@@ -44,25 +44,12 @@ export function AppLayout() {
     main.animate([{ opacity: 0 }, { opacity: 1 }], { duration: PAGE_FADE_MS, easing: "ease-out" });
   }, [pathname]);
   return <AppShell
-    header={{ height: { base: 48, sm: 0 } }}
+    header={{ height: { base: 48, sm: 56 } }}
     navbar={{ width: 260, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
     padding="md">
-    {/* 좁은 화면 전용 위쪽 줄 (넓은 화면은 높이 0으로 숨김) */}
-    <AppShell.Header hiddenFrom="sm">
-      <Group h="100%" px="md" gap="sm" wrap="nowrap">
-        {/* 닫힘 ☰, 열림 « (모양 전환 애니메이션 없이 바로 바뀜, 사이드바 펼침 애니메이션은 AppShell 기본 그대로) */}
-        <ActionIcon variant="subtle" color="gray" size="lg" onClick={toggleNav} aria-label={navOpened ? "메뉴 닫기" : "메뉴 열기"}>
-          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.6}
-            strokeLinecap="round" strokeLinejoin="round">
-            <path d={navOpened ? "M10 5 5 10l5 5 M15 5l-5 5 5 5" : "M3.5 5.5h13 M3.5 10h13 M3.5 14.5h13"} />
-          </svg>
-        </ActionIcon>
-        {/* 사이드바 머리글과 같이 포털 이름을 누르면 메인으로, 오른쪽 끝에 수정 알림 */}
-        <Text fw={700} truncate component={RouterLink} to="/" style={{ flex: 1, color: "inherit", textDecoration: "none" }}>
-          개발팀
-        </Text>
-        {user && mobile && <DocumentUpdatesBell />}
-      </Group>
+    {/* 화면 맨 위 한 줄: 포털 이름·검색·알림·내 정보 (좁은 화면은 사이드바 여는 메뉴 버튼 포함) */}
+    <AppShell.Header>
+      <TopBar user={user} mobile={mobile} navOpened={navOpened} onToggleNav={toggleNav} />
     </AppShell.Header>
     <AppShell.Navbar><Sidebar user={user} /></AppShell.Navbar>
     {/* 좁은 화면: 사이드바(80%, index.css)가 열리면 남은 본문을 어둡게 덮고, 누르면 닫음 (사이드바 z-index 101 바로 아래) */}
@@ -73,7 +60,8 @@ export function AppLayout() {
           style={{ ...styles, top: "var(--app-shell-header-height, 0px)", touchAction: "none" }} />
       )}
     </Transition>
-    <AppShell.Main>
+    {/* 메뉴 화면은 회색 바탕 위에 흰 칸, 페이지·파일·일정 편집 화면은 흰 바탕 */}
+    <AppShell.Main className={ownPadding ? undefined : "app-main-muted"}>
       {/* 메뉴 화면은 위쪽도 왼쪽과 같은 여백, 아래쪽도 위쪽과 같은 여백 (모든 화면 공통, 사이드바 제외) */}
       {user && (
         <Box ref={mainRef} px={ownPadding ? 0 : { base: 0, sm: 24 }} pt={ownPadding ? 0 : { base: 0, sm: 24 }}

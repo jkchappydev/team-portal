@@ -63,13 +63,13 @@ describe("MainPage", () => {
     );
   }
 
-  it("이번 주 월~금 칸에 연차·출장 등 근무 상황을 보여주고, 빈 날은 없음으로 표시한다", async () => {
+  it("이번 주 월~금을 요일별 한 줄로 연차·출장 등 근무 상황과 함께 보여주고, 빈 날은 비워 둔다", async () => {
     renderPage();
     const days = thisWeekDays();
     const tuesday = await screen.findByLabelText(`${days[1].month}/${days[1].day} (화)`);
     expect(await within(tuesday).findByText("홍길동 연차")).toBeTruthy();
     expect(within(tuesday).getByText("김철수 출장(부산)")).toBeTruthy();
-    expect(within(screen.getByLabelText(`${days[0].month}/${days[0].day} (월)`)).getByText("없음")).toBeTruthy();
+    expect(within(screen.getByLabelText(`${days[0].month}/${days[0].day} (월)`)).queryByText("없음")).toBeNull();
   });
 
   it("최근 수정된 게시글을 마지막 수정자와 함께 보여주고 누르면 그 페이지로 간다", async () => {

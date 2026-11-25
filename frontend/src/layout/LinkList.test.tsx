@@ -60,13 +60,15 @@ describe("LinkList", () => {
     await waitFor(() => expect(screen.queryByLabelText("링크 주소")).toBeNull());
   });
 
-  it("아이콘을 고른 링크는 그 아이콘, 없으면 기본 🔗로 보인다", async () => {
+  it("아이콘을 고른 링크는 그 아이콘, 없으면 이모지가 아닌 기본 선 아이콘으로 보인다", async () => {
     vi.mocked(listLinks).mockResolvedValue([wiki, { id: 2, title: "디자인 시안", url: "https://figma.com", icon: "🎨", accountInfo: null }]);
     renderList();
     const designRow = (await screen.findByText("디자인 시안")).closest("a")!;
     const wikiRow = screen.getByText("사내 위키").closest("a")!;
     expect(designRow.textContent).toContain("🎨");
-    expect(wikiRow.textContent).toContain("🔗");
+    expect(designRow.querySelector("svg.sidebar-menu-icon")).toBeNull();
+    expect(wikiRow.textContent).not.toContain("🔗");
+    expect(wikiRow.querySelector("svg.sidebar-menu-icon")).toBeTruthy();
   });
 
   it("링크 추가 창 제목 칸 앞에서 아이콘을 고를 수 있다 (선택값)", async () => {

@@ -1,6 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SpaceDto } from "../api/spaces";
@@ -48,7 +48,7 @@ describe("ProjectGallery", () => {
     expect(screen.queryByText(/새 프로젝트/)).toBeNull();
   });
 
-  it("커버와 상관없이 사이드바와 같은 프로젝트 아이콘을 크게 보이고, 누르면 프로젝트 화면으로 간다", async () => {
+  it("커버와 상관없이 사이드바와 같은 프로젝트 아이콘을 이름 옆에 보이고, 누르면 프로젝트 화면으로 간다", async () => {
     spaces.listSpaces.mockResolvedValue([project(3, { icon: "🏫", cover: "att:9" })]);
     renderGallery();
 
@@ -88,6 +88,16 @@ describe("ProjectGallery", () => {
     await Promise.resolve();
     expect(screen.queryByRole("region", { name: "내부 프로젝트" })).toBeNull();
     expect(screen.queryByRole("region", { name: "외부 프로젝트" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "프로젝트" })).toBeNull();
+  });
+
+  it("내부·외부 프로젝트 칸을 프로젝트 칸 하나에 함께 담는다", async () => {
+    spaces.listSpaces.mockResolvedValue([project(1), project(2, { section: "EXTERNAL" })]);
+    renderGallery();
+
+    const panel = await screen.findByRole("region", { name: "프로젝트" });
+    expect(within(panel).getByRole("region", { name: "내부 프로젝트" })).toBeTruthy();
+    expect(within(panel).getByRole("region", { name: "외부 프로젝트" })).toBeTruthy();
   });
 
   it("사이드바처럼 내부·외부 프로젝트 칸을 나눠 보이고, 비어 있는 칸은 그리지 않는다", async () => {

@@ -11,6 +11,7 @@ import { LinkDialog } from "./LinkDialog";
 import { LinkInfoDialog } from "./LinkInfoDialog";
 import { isNewItem, useReorderAnimation } from "./reorderAnimation";
 import { useLastValue } from "./useLastValue";
+import { LinkIcon } from "./SidebarIcons";
 
 const DRAG_TYPE = "application/x-portal-link";
 
@@ -169,7 +170,7 @@ function LinkRow({ link, dropLine, onEdit, onShowInfo, onDragStart, onDragEnd }:
             onDragStart();
           }}
           onDragEnd={onDragEnd}
-          leftSection={<Box className="tree-slot" w={22} h={22}><span aria-hidden>{link.icon ?? "🔗"}</span></Box>}
+          leftSection={<Box className="tree-slot" w={22} h={22}>{/* 고른 아이콘이 없으면 사이드바 고정 메뉴와 같은 선 아이콘 */}{link.icon ? <span aria-hidden>{link.icon}</span> : <LinkIcon />}</Box>}
           rightSection={hovered || menuOpened ? (
             <Menu position="bottom-start" withinPortal opened={menuOpened} onChange={setMenuOpened}>
               <Menu.Target>

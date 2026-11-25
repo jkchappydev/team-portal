@@ -36,15 +36,15 @@ function saveSeen(userId: number | undefined, keys: string[]): void {
   }
 }
 
-// 노션처럼 얇은 선으로 그린 종 아이콘 (글자색을 따라감)
+// 상단 바 다른 아이콘과 같은 lucide 모양·굵기의 종 아이콘 (글자색을 따라감)
 // ring: 새 알림이 왔을 때 한 번 흔들리는 효과
 function BellIcon({ ring, onRingEnd }: { ring: boolean; onRingEnd: () => void }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor"
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor"
       className="bell-icon" data-ring={ring || undefined} onAnimationEnd={onRingEnd}
-      strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6.5a4 4 0 0 1 8 0c0 3 1.25 4.25 1.25 4.25H2.75S4 9.5 4 6.5z" />
-      <path d="M6.5 13a1.6 1.6 0 0 0 3 0" />
+      strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+      <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
     </svg>
   );
 }
@@ -101,7 +101,7 @@ export function DocumentUpdatesBell() {
       <Popover.Target>
         {/* 숫자 없이 빨간 점만, 종을 열면 사라짐 */}
         <Indicator disabled={!unseen} size={6} offset={4} color="red" data-testid="bell-dot">
-          <ActionIcon variant="subtle" color="gray" aria-label="수정 알림" onClick={toggle}>
+          <ActionIcon variant="subtle" color="gray" size="lg" aria-label="수정 알림" onClick={toggle}>
             <BellIcon ring={ring} onRingEnd={() => setRing(false)} />
           </ActionIcon>
         </Indicator>

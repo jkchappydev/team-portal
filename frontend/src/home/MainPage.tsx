@@ -1,4 +1,4 @@
-import { Anchor, Badge, Box, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Anchor, Box, Grid, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { listNewCs } from "../api/cs";
@@ -15,9 +15,6 @@ import { TYPE_COLORS, chipColors } from "../workstatus/types";
 import { statusesByDay, monthsOf, thisWeekDays, weekDayLabel } from "./thisWeek";
 import { CURRENT_HIGHLIGHT_BACKGROUND } from "../workstatus/highlight";
 import { DayLabel } from "../workstatus/DayLabel";
-import { useMediaQuery } from "@mantine/hooks";
-
-const MOBILE_QUERY = "(max-width: 47.99em)";
 
 // 아직 기능이 없는 칸 (영역만 잡아 둠)
 function Upcoming({ message }: { message: string }) {
@@ -55,72 +52,38 @@ function WeekStatuses() {
   const byDay = statusesByDay(days, statusQueries.flatMap((q) => q.data ?? []));
   const holidays = new Map(holidayQueries.flatMap((q) => q.data ?? []).map((h) => [h.date, h.name]));
   const failed = statusQueries.some((q) => q.isError);
-  const mobile = useMediaQuery(MOBILE_QUERY) ?? false;
 
   return (
     <Panel title="이번 주 근무 현황" action={<Anchor component={Link} to="/work-status" size="sm">근무 상황표</Anchor>}>
       {failed && <Text size="sm" c="red" mb="xs">근무 현황을 불러오지 못했습니다.</Text>}
-      {mobile ? (
-        // 좁은 화면: 근무 상황표 날짜 목록처럼 요일마다 한 줄 (요일 | 칩), 오늘은 배경 강조
-        <Box style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8, overflow: "hidden" }}>
-          {days.map((day, index) => {
-            const items = byDay.get(day.date) ?? [];
-            const holiday = holidays.get(day.date);
-            const isToday = day.date === today;
-            return (
-              // 근무 상황표 좁은 화면 목록과 같은 줄 모양 (날짜 숫자 | 요일, 세로 가운데 정렬)
-              <Group key={day.date} gap={12} wrap="nowrap" px={12} py={8} mih={44} data-today={isToday || undefined}
-                aria-label={weekDayLabel(day)}
-                style={{
-                  borderTop: index > 0 ? "1px solid var(--mantine-color-default-border)" : undefined,
-                  background: isToday ? CURRENT_HIGHLIGHT_BACKGROUND : undefined,
-                }}>
-                <DayLabel date={day.date} holiday={!!holiday} today={isToday} />
-                <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  {holiday && <Text size="xs" c="red" fw={600} lh={1.2}>{holiday}</Text>}
-                  {items.map((item) => (
-                    <Text key={item.id} size="xs" px={6} py={2} title={item.label}
-                      style={{ borderRadius: 4, overflowWrap: "anywhere", ...chipColors(TYPE_COLORS[item.type]) }}>
-                      {item.label}
-                    </Text>
-                  ))}
-                </Stack>
-              </Group>
-            );
-          })}
-        </Box>
-      ) : (
-      <SimpleGrid cols={5} spacing="xs">
-        {days.map((day) => {
+      {/* 근무 상황표 날짜 목록처럼 요일마다 한 줄 (요일 | 칩), 오늘은 배경 강조 */}
+      <Box style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8, overflow: "hidden" }}>
+        {days.map((day, index) => {
           const items = byDay.get(day.date) ?? [];
           const holiday = holidays.get(day.date);
           const isToday = day.date === today;
           return (
-            <Box key={day.date} p="xs" data-today={isToday || undefined} aria-label={weekDayLabel(day)}
+            // 근무 상황표 좁은 화면 목록과 같은 줄 모양 (날짜 숫자 | 요일, 세로 가운데 정렬)
+            <Group key={day.date} gap={12} wrap="nowrap" px={12} py={8} mih={44} data-today={isToday || undefined}
+              aria-label={weekDayLabel(day)}
               style={{
-                borderRadius: 8,
-                border: `1px solid ${isToday ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-default-border)"}`,
-                minHeight: 96,
+                borderTop: index > 0 ? "1px solid var(--mantine-color-default-border)" : undefined,
+                background: isToday ? CURRENT_HIGHLIGHT_BACKGROUND : undefined,
               }}>
-              <Group gap={6} mb={6} wrap="nowrap">
-                <Text size="sm" fw={600} c={holiday ? "red" : undefined}>{weekDayLabel(day)}</Text>
-                {isToday && <Badge size="xs" variant="light">오늘</Badge>}
-              </Group>
-              {holiday && <Text size="xs" c="red" mb={4}>{holiday}</Text>}
-              <Stack gap={4}>
+              <DayLabel date={day.date} holiday={!!holiday} today={isToday} />
+              <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                {holiday && <Text size="xs" c="red" fw={600} lh={1.2}>{holiday}</Text>}
                 {items.map((item) => (
                   <Text key={item.id} size="xs" px={6} py={2} title={item.label}
                     style={{ borderRadius: 4, overflowWrap: "anywhere", ...chipColors(TYPE_COLORS[item.type]) }}>
                     {item.label}
                   </Text>
                 ))}
-                {items.length === 0 && !holiday && <Text size="xs" c="dimmed">없음</Text>}
               </Stack>
-            </Box>
+            </Group>
           );
         })}
-      </SimpleGrid>
-      )}
+      </Box>
     </Panel>
   );
 }
@@ -190,18 +153,19 @@ function NewCsList() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황, 프로젝트 카드, 최근 수정된 게시글, 신규 CS, 이번 주 주간보고(추후 구현), 서버 모니터링
+// 메인 화면: 프로젝트, 이번 주 근무 현황·최근 수정된 게시글·신규 CS, 서버 모니터링·이번 주 주간보고(추후 구현)
+// 본문은 가운데 정렬해 넓은 화면에서도 좌우 여백을 같게 둠
 export function MainPage() {
   return (
-    <Stack maw={1300} gap="md">
-      <WeekStatuses />
+    <Stack maw={1120} mx="auto" gap="md">
       <ProjectGallery />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <RecentPosts />
-        <NewCsList />
-        <Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel>
-        <ServerMonitor />
-      </SimpleGrid>
+      <Grid gap="md">
+        <Grid.Col span={{ base: 12, lg: 4 }}><WeekStatuses /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}><RecentPosts /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}><NewCsList /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 8 }}><ServerMonitor /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}><Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel></Grid.Col>
+      </Grid>
     </Stack>
   );
 }
