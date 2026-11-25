@@ -130,7 +130,7 @@ vi.mock("@blocknote/react", async () => {
 // 일정 블록 스키마는 실제 편집기 없이 확인하므로 빈 값
 vi.mock("./editor/schema", () => ({ editorSchema: {} }));
 vi.mock("./editor/NotionDragHandleMenu", () => ({ NotionDragHandleMenu: () => null }));
-vi.mock("./editor/formattingToolbar", () => ({ NotionFormattingToolbar: () => null, formattingToolbarFloatingOptions: {} }));
+vi.mock("./editor/FormattingToolbarPosition", () => ({ NotionFormattingToolbarController: () => null }));
 vi.mock("./editor/formatShortcuts", () => ({ FORMAT_SHORTCUTS: { code: "Mod+E" }, formatShortcutsExtension: {} }));
 vi.mock("./editor/activeTableCell", () => ({ activeTableCellExtension: {} }));
 vi.mock("./editor/tableHandleDrag", () => ({ tableHandleDragExtension: {} }));
