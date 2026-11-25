@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getServerStatuses, SERVERS_STREAM_URL } from "../api/monitor";
 import type { ServerStatusDto } from "../api/monitor";
 import { Panel } from "./Panel";
-import { ClockIcon, CpuIcon, DiskIcon, MemoryIcon, ServerStatusBadge } from "../monitoring/MonitorIcons";
+import { ClockIcon, ServerStatusBadge } from "../monitoring/MonitorIcons";
 import { ServerGauge } from "./ServerGauge";
 import type { ServerGaugeProps } from "./ServerGauge";
 
@@ -195,12 +195,11 @@ export function ServerPicker({ selection, variant = "cards" }: { selection: Serv
 function ServerDetail({ data }: { data: ServerStatusDto }) {
   const gauges: (ServerGaugeProps & { key: string })[] = [];
   if (data.available) {
-    gauges.push({ key: "cpu", label: "CPU", icon: <CpuIcon size={13} />, percent: data.cpuPercent, detail: data.cpuCores ? `${data.cpuCores}코어` : undefined });
+    gauges.push({ key: "cpu", label: "CPU", percent: data.cpuPercent, detail: data.cpuCores ? `${data.cpuCores}코어` : undefined });
     if (data.memoryUsedBytes !== null && data.memoryTotalBytes !== null && data.memoryTotalBytes > 0) {
       gauges.push({
         key: "memory",
         label: "MEMORY",
-        icon: <MemoryIcon size={13} />,
         percent: (data.memoryUsedBytes / data.memoryTotalBytes) * 100,
         detail: `${formatBytes(data.memoryUsedBytes)} / ${formatBytes(data.memoryTotalBytes)}`,
       });
@@ -210,7 +209,6 @@ function ServerDetail({ data }: { data: ServerStatusDto }) {
       gauges.push({
         key: `disk-${disk.name}`,
         label: data.disks.length > 1 ? `DISK (${disk.name})` : "DISK",
-        icon: <DiskIcon size={13} />,
         percent: (disk.usedBytes / disk.totalBytes) * 100,
         detail: `${formatBytes(disk.usedBytes)} / ${formatBytes(disk.totalBytes)}`,
       });

@@ -2013,70 +2013,63 @@ body.bn-column-resizing {
   background: var(--mantine-color-default-hover);
 }
 
-/* 메인 모니터링 계기판 (home/ServerGauge): 칸 폭에 맞춰 줄되 너무 커지지 않게 */
+/* 모니터링 사용률 칸 (home/ServerGauge, 메인·모니터링 상세 공통): 이름·퍼센트 한 줄 + 얇은 막대 */
 .server-gauge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
 }
-.server-gauge > svg {
-  width: 100%;
-  max-width: 120px;
-  height: auto;
-  display: block;
-}
-.server-gauge-needle {
-  transition: transform 1.2s ease-in-out;
-}
-.server-gauge-value {
-  margin-top: 2px;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.2;
+.server-gauge-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 .server-gauge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
+  color: var(--mantine-color-dimmed);
+}
+.server-gauge-value {
+  flex-shrink: 0;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 1px;
+}
+.server-gauge-track {
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+}
+.server-gauge-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--mantine-primary-color-filled);
+  transition: width 1.2s ease-in-out;
+}
+.server-gauge-bar[data-level="warn"] { background: var(--mantine-color-orange-6); }
+.server-gauge-bar[data-level="danger"] { background: var(--mantine-color-red-6); }
+@media (prefers-reduced-motion: reduce) {
+  .server-gauge-bar { transition: none; }
 }
 .server-gauge-detail {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 11px;
   line-height: 1.3;
   color: var(--mantine-color-dimmed);
-  text-align: center;
-  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-/* 모니터링 상세 (monitoring/MonitoringPage): 줄 사이 구분선 */
-.monitor-row + .monitor-row {
-  border-top: 1px solid var(--mantine-color-default-border);
-}
-
-/* 모니터링 사용 기록 그래프: 옅은 점선 격자, 흐린 눈금 글자, 마우스 위치 세로선과 값 상자 */
-.metric-chart { display: block; overflow: visible; }
-.metric-chart-grid { stroke: var(--mantine-color-default-border); stroke-dasharray: 3 3; stroke-width: 1; }
-.metric-chart-label { fill: var(--mantine-color-dimmed); font-size: 10px; }
-.metric-chart-crosshair { stroke: var(--mantine-color-dimmed); stroke-width: 1; }
-.metric-chart-dot { stroke: var(--mantine-color-body); stroke-width: 2; }
-.metric-chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.metric-chart-tooltip {
-  position: absolute; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
-  padding: 4px 8px; border-radius: var(--mantine-radius-sm); font-size: 12px;
-  background: var(--mantine-color-body); border: 1px solid var(--mantine-color-default-border);
-  box-shadow: var(--mantine-shadow-xs);
-}
-.metric-chart-tooltip-time { color: var(--mantine-color-dimmed); }
-.metric-chart-tooltip-value { font-weight: 600; }
-/* 네트워크 상태 칸: 다운로드·업로드 한 줄씩 옅은 배경 */
-.network-rate { background: var(--mantine-color-default-hover); border-radius: var(--mantine-radius-sm); padding: 10px 14px; }
 
 /* 모니터링 아이콘: 글자 앞 아이콘과 글자를 한 줄로 */
 .icon-text { display: inline-flex; align-items: center; gap: 6px; }
 .icon-text svg { flex-shrink: 0; }
-.server-gauge-label { display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; }
-.server-gauge-label svg { flex-shrink: 0; }
 .metric-chart-icon { display: inline-flex; }
 /* 서버 상태 알약: 초록 Online, 빨강 Offline (아이콘과 글자를 함께 써 색만으로 구분하지 않음) */
 .server-status-badge {
