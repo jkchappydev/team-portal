@@ -2080,6 +2080,29 @@ body.bn-column-resizing {
   white-space: nowrap;
 }
 
+/* 모니터링 상세 (monitoring/MonitoringPage): 줄 사이 구분선 */
+.monitor-row + .monitor-row {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+/* 모니터링 사용 기록 그래프: 옅은 점선 격자, 흐린 눈금 글자, 마우스 위치 세로선과 값 상자 */
+.metric-chart { display: block; overflow: visible; }
+.metric-chart-grid { stroke: var(--mantine-color-default-border); stroke-dasharray: 3 3; stroke-width: 1; }
+.metric-chart-label { fill: var(--mantine-color-dimmed); font-size: 10px; }
+.metric-chart-crosshair { stroke: var(--mantine-color-dimmed); stroke-width: 1; }
+.metric-chart-dot { stroke: var(--mantine-color-body); stroke-width: 2; }
+.metric-chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.metric-chart-tooltip {
+  position: absolute; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
+  padding: 4px 8px; border-radius: var(--mantine-radius-sm); font-size: 12px;
+  background: var(--mantine-color-body); border: 1px solid var(--mantine-color-default-border);
+  box-shadow: var(--mantine-shadow-xs);
+}
+.metric-chart-tooltip-time { color: var(--mantine-color-dimmed); }
+.metric-chart-tooltip-value { font-weight: 600; }
+/* 네트워크 상태 칸: 다운로드·업로드 한 줄씩 옅은 배경 */
+.network-rate { background: var(--mantine-color-default-hover); border-radius: var(--mantine-radius-sm); padding: 10px 14px; }
+
 /* 모니터링 아이콘: 글자 앞 아이콘과 글자를 한 줄로 */
 .icon-text { display: inline-flex; align-items: center; gap: 6px; }
 .icon-text svg { flex-shrink: 0; }
