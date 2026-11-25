@@ -103,7 +103,7 @@ export function XCircleIcon(props: IconProps) {
 export function ServerStatusBadge({ online }: { online: boolean }) {
   return (
     <span className={`server-status-badge ${online ? "is-online" : "is-offline"}`}>
-      {online ? <CheckCircleIcon size={14} /> : <XCircleIcon size={14} />}
+      {online ? <CheckCircleIcon size={12} /> : <XCircleIcon size={12} />}
       {online ? "Online" : "Offline"}
     </span>
   );

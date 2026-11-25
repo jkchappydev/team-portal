@@ -48,7 +48,7 @@ describe("ProjectGallery", () => {
     expect(screen.queryByText(/새 프로젝트/)).toBeNull();
   });
 
-  it("커버와 상관없이 사이드바와 같은 프로젝트 아이콘을 이름 옆에 보이고, 누르면 프로젝트 화면으로 간다", async () => {
+  it("커버와 상관없이 사이드바와 같은 프로젝트 아이콘을 카드 위 가운데에 보이고, 누르면 프로젝트 화면으로 간다", async () => {
     spaces.listSpaces.mockResolvedValue([project(3, { icon: "🏫", cover: "att:9" })]);
     renderGallery();
 

@@ -18,6 +18,8 @@ import { DayLabel } from "../workstatus/DayLabel";
 import { useMediaQuery } from "@mantine/hooks";
 
 const MOBILE_QUERY = "(max-width: 47.99em)";
+// 최근 수정된 게시글·신규 CS는 최근 것부터 이 개수만
+const LIST_LIMIT = 5;
 
 // 아직 기능이 없는 칸 (영역만 잡아 둠)
 function Upcoming({ message }: { message: string }) {
@@ -136,7 +138,7 @@ function RecentPosts() {
       {isError && <Text size="sm" c="red">최근 수정된 게시글을 불러오지 못했습니다.</Text>}
       {!isLoading && !isError && posts.length === 0 && <Text size="sm" c="dimmed">최근 수정된 게시글이 없습니다.</Text>}
       <Stack gap={0}>
-        {posts.map((post) => (
+        {posts.slice(0, LIST_LIMIT).map((post) => (
           <UnstyledButton key={post.id} className="update-item" px="xs" py={6} onClick={() => navigate(updatePath(post, spaces))}>
             <Text size="sm" truncate><PageIcon icon={post.icon} project={isProjectHome(post, spaces)} /> {post.title}</Text>
             <Text size="xs" c="dimmed" truncate>
@@ -163,7 +165,7 @@ function NewCsList() {
       {data && !data.configured && <Upcoming message="CS 시스템 연동 설정이 없습니다." />}
       {!isLoading && data?.configured && items.length === 0 && <Text size="sm" c="dimmed">등록된 CS가 없습니다.</Text>}
       <Stack gap={0}>
-        {items.map((cs) => (
+        {items.slice(0, LIST_LIMIT).map((cs) => (
           <UnstyledButton key={cs.id} component="a" href={cs.detailUrl} target="_blank" rel="noopener noreferrer"
             className="update-item" px="xs" py={6} style={{ color: "inherit", textDecoration: "none" }}>
             <Group gap={6} wrap="nowrap">
@@ -190,7 +192,7 @@ function NewCsList() {
   );
 }
 
-// 메인 화면(시안 A): 이번 주 근무 현황 → 최근 수정된 게시글·신규 CS → 프로젝트 → 서버 모니터링·이번 주 주간보고(추후 구현)
+// 메인 화면: 이번 주 근무 현황 → 프로젝트 → 최근 수정된 게시글·신규 CS(각 최근 5개) → 서버 모니터링·이번 주 주간보고(추후 구현)
 // 다른 메뉴 화면처럼 본문 폭을 다 쓰고(좌우 여백은 AppLayout 24px), 열 배치는 화면 폭이 아닌 본문 폭으로 정함
 const GRID_BREAKPOINTS = { xs: "400px", sm: "600px", md: "760px", lg: "900px", xl: "1200px" };
 
@@ -198,11 +200,11 @@ export function MainPage() {
   return (
     <Stack gap="md">
       <WeekStatuses />
+      <ProjectGallery />
       <Grid gap="md" type="container" breakpoints={GRID_BREAKPOINTS}>
         <Grid.Col span={{ base: 12, lg: 7 }}><RecentPosts /></Grid.Col>
         <Grid.Col span={{ base: 12, lg: 5 }}><NewCsList /></Grid.Col>
       </Grid>
-      <ProjectGallery />
       <Grid gap="md" type="container" breakpoints={GRID_BREAKPOINTS}>
         <Grid.Col span={{ base: 12, lg: 7 }}><ServerMonitor /></Grid.Col>
         <Grid.Col span={{ base: 12, lg: 5 }}><Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel></Grid.Col>

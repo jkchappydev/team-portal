@@ -101,6 +101,22 @@ describe("MainPage", () => {
     expect(within(done).getByText("김영희 · 방금 전")).toBeTruthy();
   });
 
+  it("최근 수정된 게시글과 신규 CS는 최근 5개만 보여준다", async () => {
+    const now = new Date().toISOString();
+    vi.mocked(listRecentDocuments).mockResolvedValue(Array.from({ length: 7 }, (_, i) => (
+      { id: 100 + i, spaceId: 3, spaceName: "개발", title: `게시글 ${i + 1}`, icon: null, kind: "PAGE" as const, updatedByName: "이영희", updatedAt: now })));
+    vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: Array.from({ length: 7 }, (_, i) => (
+      { id: 200 + i, title: `CS ${i + 1}`, groupName: "A기관", requesterName: "홍길동", managerName: null, status: "PROG", statusName: "진행",
+        createdAt: now, detailUrl: `https://cs.example.com/detail?boardKey=${200 + i}` })) });
+    renderPage();
+    const posts = screen.getByRole("region", { name: "최근 수정된 게시글" });
+    expect(await within(posts).findByText("게시글 5")).toBeTruthy();
+    expect(within(posts).queryByText("게시글 6")).toBeNull();
+    const cs = screen.getByRole("region", { name: "신규 CS" });
+    expect(await within(cs).findByText("CS 5")).toBeTruthy();
+    expect(within(cs).queryByText("CS 6")).toBeNull();
+  });
+
   it("요청 상태(새로 접수된) CS에만 N 표시를 붙인다", async () => {
     const now = new Date().toISOString();
     vi.mocked(listNewCs).mockResolvedValue({ configured: true, items: [

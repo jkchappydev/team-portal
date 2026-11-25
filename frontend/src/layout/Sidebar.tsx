@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { Button, Group, ScrollArea, Stack, Text } from "@mantine/core";
+import { Group, ScrollArea, Stack, Text } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createSpace, listSpaces, moveSpace } from "../api/spaces";
@@ -9,6 +9,7 @@ import { CreateSpaceModal } from "./CreateSpaceModal";
 import type { MemberDto } from "../api/members";
 import { focusTitleState } from "../documents/titleFocus";
 import { SidebarMenuLink } from "./SidebarMenuLink";
+import { SidebarAddButton } from "./SidebarAddButton";
 import { ActivityIcon, ArchiveIcon, CalendarIcon, ContactBookIcon, HomeIcon, StarIcon, TrashIcon, UserCogIcon, UsersIcon } from "./SidebarIcons";
 import { SpaceList } from "./SpaceList";
 import { LinkList } from "./LinkList";
@@ -83,9 +84,9 @@ export function Sidebar({ user }: Props) {
             <Fragment key={value}>
               <Group justify="space-between" mt="sm">
                 <Text size="xs" c="dimmed">{label}</Text>
-                <Button size="compact-xs" variant="subtle" aria-label={`${label} 새로 만들기`}
+                <SidebarAddButton label={`${label} 새로 만들기`}
                   loading={create.isPending && create.variables?.section === value}
-                  onClick={() => { create.reset(); setCreatingIn(value); }}>+ 새로 만들기</Button>
+                  onClick={() => { create.reset(); setCreatingIn(value); }} />
               </Group>
               <SpaceList spaces={spaces.filter((space) => sectionOf(space) === value)}
                 onMove={(id, index) => reorder.mutate({ id, index, section: value })} />

@@ -47,7 +47,7 @@ describe("LinkList", () => {
   it("링크 추가 팝업에서 제목과 주소를 넣고 Enter를 누르면 추가된다", async () => {
     vi.mocked(createLink).mockResolvedValue({ id: 2, title: "디자인 시안", url: "https://figma.com", icon: null, accountInfo: null });
     renderList();
-    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.click(await screen.findByRole("button", { name: "링크 추가" }));
     const title = await screen.findByLabelText("링크 제목");
     fireEvent.change(title, { target: { value: " 디자인 시안 " } });
     fireEvent.keyDown(title, { key: "Enter" });
@@ -73,13 +73,13 @@ describe("LinkList", () => {
 
   it("링크 추가 창 제목 칸 앞에서 아이콘을 고를 수 있다 (선택값)", async () => {
     renderList();
-    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.click(await screen.findByRole("button", { name: "링크 추가" }));
     expect(await screen.findByRole("button", { name: "링크 아이콘 선택" })).toBeTruthy();
   });
 
   it("제목을 비워 두면 추가하지 않는다", async () => {
     renderList();
-    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.click(await screen.findByRole("button", { name: "링크 추가" }));
     const input = await screen.findByLabelText("링크 주소");
     fireEvent.change(input, { target: { value: "https://figma.com" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -90,7 +90,7 @@ describe("LinkList", () => {
   it("웹 주소가 아니면 팝업에 안내를 보여준다", async () => {
     vi.mocked(createLink).mockRejectedValue(new ApiError("INVALID_INPUT", "", 400));
     renderList();
-    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.click(await screen.findByRole("button", { name: "링크 추가" }));
     fireEvent.change(await screen.findByLabelText("링크 제목"), { target: { value: "스크립트" } });
     const input = screen.getByLabelText("링크 주소");
     fireEvent.change(input, { target: { value: "javascript:alert(1)" } });
@@ -101,7 +101,7 @@ describe("LinkList", () => {
   it("링크 추가 창 주소 아래에 계정 정보를 넣을 수 있고, 비워 두면 없음으로 저장한다", async () => {
     vi.mocked(createLink).mockResolvedValue({ id: 2, title: "젠킨스", url: "https://ci.example.com", icon: null, accountInfo: null });
     renderList();
-    fireEvent.click(await screen.findByRole("button", { name: "+ 링크 추가" }));
+    fireEvent.click(await screen.findByRole("button", { name: "링크 추가" }));
     fireEvent.change(await screen.findByLabelText("링크 제목"), { target: { value: "젠킨스" } });
     fireEvent.change(screen.getByLabelText("링크 주소"), { target: { value: "https://ci.example.com" } });
     const account = screen.getByLabelText("계정 정보");

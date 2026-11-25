@@ -16,7 +16,7 @@ interface Props {
   onCreate: (kind: SpaceKind) => void;
 }
 
-// 사이드바 "+ 새로 만들기": 프로젝트(메인 화면 갤러리에 보임)와 페이지 중 골라 최상위에 만듦
+// 사이드바 칸 머리글의 + 버튼(새로 만들기): 프로젝트(메인 화면 갤러리에 보임)와 페이지 중 골라 최상위에 만듦
 export function CreateSpaceModal({ opened, pending, error, title = "새로 만들기", onClose, onCreate }: Props) {
   const [kind, setKind] = useState<SpaceKind>("PROJECT");
   return (

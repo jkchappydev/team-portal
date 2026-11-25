@@ -13,7 +13,7 @@ import { ContactsPage } from "./contacts/ContactsPage";
 import { FormsPage } from "./forms/FormsPage";
 import { MainPage } from "./home/MainPage";
 import { MonitoringPage } from "./monitoring/MonitoringPage";
-import { colorSchemeManager } from "./theme";
+import { appTheme, colorSchemeManager } from "./theme";
 import { Toaster } from "./toast/Toaster";
 import { AuthGate, LoginRoute } from "./user/AuthGate";
 import { ProfileSetupPreview } from "./user/ProfileSetup";
@@ -23,7 +23,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false 
 
 export default function App() {
   return (
-    <MantineProvider defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
+    <MantineProvider theme={appTheme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>

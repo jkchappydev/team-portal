@@ -12,6 +12,7 @@ import { LinkInfoDialog } from "./LinkInfoDialog";
 import { isNewItem, useReorderAnimation } from "./reorderAnimation";
 import { useLastValue } from "./useLastValue";
 import { LinkIcon } from "./SidebarIcons";
+import { SidebarAddButton } from "./SidebarAddButton";
 
 const DRAG_TYPE = "application/x-portal-link";
 
@@ -65,7 +66,7 @@ export function LinkList() {
     <>
       <Group justify="space-between" mt="sm">
         <Text size="xs" c="dimmed">링크</Text>
-        <Button size="compact-xs" variant="subtle" onClick={() => setDialog({ editing: null })}>+ 링크 추가</Button>
+        <SidebarAddButton label="링크 추가" onClick={() => setDialog({ editing: null })} />
       </Group>
       <Box
         data-testid="link-list"

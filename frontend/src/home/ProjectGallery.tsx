@@ -8,7 +8,7 @@ import type { SpaceDto } from "../api/spaces";
 import { Panel } from "./Panel";
 import { DEFAULT_PROJECT_COVER, GALLERY_LIMIT, projectPreview } from "./projectPreview";
 
-// 카드 아이콘: 사이드바와 같은 프로젝트 아이콘, 아이콘이 없거나 그림을 불러오지 못하면 폴더 그림
+// 카드 윗부분: 사이드바와 같은 프로젝트 아이콘을 가운데에, 아이콘이 없거나 그림을 불러오지 못하면 폴더 그림
 function CardPreview({ space }: { space: SpaceDto }) {
   const preview = projectPreview(space);
   const [broken, setBroken] = useState(false);
@@ -48,13 +48,13 @@ function ProjectCards({ title, projects }: { title: string; projects: SpaceDto[]
   return (
     <section aria-label={title}>
       <Text size="xs" c="dimmed" mb={8}>{title}</Text>
-      {/* 칸 폭에 따라 한 줄 2~5개 (넓은 화면에서 카드가 지나치게 길어지지 않게) */}
-      <SimpleGrid type="container" cols={{ base: 2, "640px": 3, "960px": 4, "1280px": 5 }} spacing="xs">
+      {/* 시안처럼 작은 카드: 칸 폭에 따라 한 줄 2~7개 */}
+      <SimpleGrid type="container" cols={{ base: 2, "420px": 3, "600px": 4, "780px": 5, "960px": 6, "1140px": 7 }} spacing="xs">
         {projects.slice(0, GALLERY_LIMIT).map((space) => (
           <Link key={space.id} to={`/spaces/${space.id}`} className="project-card" draggable={false}>
             <CardPreview space={space} />
             <div className="project-card-name">
-              <Text size="sm" fw={500} truncate>{space.name}</Text>
+              <Text size="13px" fw={500} truncate>{space.name}</Text>
             </div>
           </Link>
         ))}
