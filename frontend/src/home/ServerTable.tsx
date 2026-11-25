@@ -32,15 +32,13 @@ function UsageCell({ label, server, usage, name }: { label: string; server: stri
   const value = usage.percent === null ? null : Math.round(Math.max(0, Math.min(100, usage.percent)));
   return (
     <span className="server-table-usage" title={usage.detail}>
+      {/* 디스크 이름은 막대 앞 고정 폭 칸 (숫자 칸은 모든 열이 좁은 같은 폭이라 막대와 숫자가 붙음) */}
+      {name !== undefined && <span className="server-table-disk">{name}</span>}
       <span className="server-gauge-track" role="meter" aria-label={`${server} ${label} 사용률`}
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={value ?? undefined}>
         <span className="server-gauge-bar" data-level={gaugeLevel(usage.percent)} style={{ width: `${value ?? 0}%` }} />
       </span>
-      {/* 숫자 칸은 모든 열이 같은 폭이라 막대 길이가 같음, 디스크 이름은 숫자 앞에 (길면 줄임) */}
-      <span className="server-table-value">
-        {name !== undefined && <span className="server-table-disk">{name}</span>}
-        <span>{value === null ? "-" : `${value}%`}</span>
-      </span>
+      <span className="server-table-value">{value === null ? "-" : `${value}%`}</span>
     </span>
   );
 }

@@ -2185,24 +2185,29 @@ body.bn-column-resizing {
 .server-table-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .server-table-usage { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .server-table-usage .server-gauge-track { flex: 1; min-width: 16px; margin-top: 0; }
-/* 숫자 칸: 디스크 이름까지 들어가도록 모든 열을 같은 폭으로 (막대 길이를 맞춤) */
+/* 숫자 칸: "100%"가 들어가는 좁은 같은 폭 (막대 바로 옆에 붙음) */
 .server-table-value {
-  flex: 0 0 84px; display: flex; justify-content: flex-end; align-items: baseline; gap: 6px; min-width: 0;
+  grid-area: value; flex: 0 0 34px; text-align: right;
   font-size: 12px; font-weight: 600; white-space: nowrap;
 }
 .server-table-disks { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 0; }
-/* 디스크 이름: 숫자 앞에 옅게, 길면 줄임 (전체 이름·용량은 마우스를 올리면) */
+/* 디스크 이름: 막대 앞 고정 폭 칸에 옅게, 길면 줄임 (디스크 막대끼리 길이가 같음, 전체 이름·용량은 마우스를 올리면) */
 .server-table-disk {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  font-size: 11px; font-weight: 400; color: var(--mantine-color-dimmed);
+  grid-area: name; flex: 0 0 40px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
+  font-size: 11px; color: var(--mantine-color-dimmed);
 }
+.server-table-usage .server-gauge-track { grid-area: bar; }
 .server-table-offline { grid-column: span 3; font-size: 12px; color: var(--mantine-color-red-7); }
 /* 칸이 좁으면(화면 폭이 아니라 모니터링 칸 폭 기준) 숫자 아래에 짧은 막대를 둠 (숫자 칸이 막대를 밀어내지 않게) */
 .server-table { container-type: inline-size; }
 @container (max-width: 640px) {
   .server-table-row { column-gap: 20px; padding: 6px 4px; }
-  .server-table-usage { flex-direction: column-reverse; align-items: stretch; gap: 4px; }
-  .server-table-usage .server-gauge-track { flex: none; width: 100%; height: 4px; }
-  .server-table-value { flex: none; justify-content: flex-start; }
+  /* 좁은 칸: 디스크 이름·숫자를 한 줄에, 그 아래에 막대 */
+  .server-table-usage {
+    display: grid; grid-template-columns: auto 1fr; grid-template-areas: "name value" "bar bar";
+    align-items: baseline; column-gap: 4px; row-gap: 4px;
+  }
+  .server-table-usage .server-gauge-track { width: 100%; height: 4px; }
+  .server-table-value, .server-table-disk { text-align: left; }
   .server-table-disks { padding: 0; gap: 6px; }
 }
