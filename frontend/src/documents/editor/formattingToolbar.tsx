@@ -1,5 +1,7 @@
 import { isValidElement } from "react";
 import type { ReactElement } from "react";
+import { flip, offset, shift } from "@floating-ui/react";
+import type { FloatingUIOptions } from "@blocknote/react";
 import {
   BasicTextStyleButton, FormattingToolbar, getFormattingToolbarItems, useBlockNoteEditor, useComponentsContext,
   useDictionary, useEditorState, usePortalElement,
@@ -226,6 +228,15 @@ export function formattingToolbarItems(): ReactElement[] {
     .sort((a, b) => rank(a.item) - rank(b.item) || a.index - b.index)
     .map(({ item }) => item);
 }
+
+// 서식 도구 막대와 선택한 글 사이 간격 (기본 10px은 막대가 글에 거의 붙어 보여 조금 띄움)
+export const TOOLBAR_GAP = 18;
+
+// 서식 도구 막대 위치 옵션: 간격만 넓히고 화면 끝 밀어내기·위아래 뒤집기는 기본과 같게 둠
+// 렌더마다 새 객체를 넘기면 위치 계산이 매번 다시 돌므로 모듈 상수로 둠
+export const formattingToolbarFloatingOptions: FloatingUIOptions = {
+  useFloatingOptions: { middleware: [offset(TOOLBAR_GAP), shift(), flip()] },
+};
 
 // 코드·서식 지우기 버튼을 더한 서식 도구 막대
 export function NotionFormattingToolbar() {

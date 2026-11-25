@@ -16,7 +16,7 @@ import { editorPasteHandler, keepLineTypeOnPasteExtension } from "./editor/paste
 import { autolinkFilterExtension } from "./editor/autolink";
 import { yUndoPluginKey } from "y-prosemirror";
 import { reviveUndoManager } from "./editor/undoRevive";
-import { NotionFormattingToolbar } from "./editor/formattingToolbar";
+import { formattingToolbarFloatingOptions, NotionFormattingToolbar } from "./editor/formattingToolbar";
 import { FORMAT_SHORTCUTS, formatShortcutsExtension } from "./editor/formatShortcuts";
 import { activeTableCellExtension } from "./editor/activeTableCell";
 import { tableHandleDragExtension } from "./editor/tableHandleDrag";
@@ -522,7 +522,8 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       <BlockNoteView editor={editor} theme={colorScheme} sideMenu={false} tableHandles={false} slashMenu={false}
         formattingToolbar={false}>
         {/* 서식 도구 막대: 기본 버튼 + 노션처럼 코드(Ctrl+E)·서식 지우기 */}
-        <FormattingToolbarController formattingToolbar={NotionFormattingToolbar} />
+        <FormattingToolbarController formattingToolbar={NotionFormattingToolbar}
+          floatingUIOptions={formattingToolbarFloatingOptions} />
         <PageCopyContext.Provider value={pageCopy}>
           <AlignedSideMenuController sideMenu={NotionSideMenu} />
         </PageCopyContext.Provider>
