@@ -2124,11 +2124,21 @@ body.bn-column-resizing {
 .server-table-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .server-table-usage { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .server-table-usage .server-gauge-track { flex: 1; min-width: 16px; margin-top: 0; }
-.server-table-value { flex-shrink: 0; width: 34px; text-align: right; font-size: 12px; font-weight: 600; }
+/* 숫자 칸: 디스크 이름까지 들어가도록 모든 열을 같은 폭으로 (막대 길이를 맞춤) */
+.server-table-value {
+  flex: 0 0 84px; display: flex; justify-content: flex-end; align-items: baseline; gap: 6px; min-width: 0;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.server-table-disks { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 0; }
+/* 디스크 이름: 숫자 앞에 옅게, 길면 줄임 (전체 이름·용량은 마우스를 올리면) */
+.server-table-disk {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  font-size: 11px; font-weight: 400; color: var(--mantine-color-dimmed);
+}
 .server-table-offline { grid-column: span 3; font-size: 12px; color: var(--mantine-color-red-7); }
 /* 좁은 화면: 막대를 줄이고 숫자만 남김 */
 @media (max-width: 30em) {
   .server-table-row { gap: 8px; padding: 0 4px; }
   .server-table-usage .server-gauge-track { display: none; }
-  .server-table-value { width: auto; }
+  .server-table-value { flex-basis: auto; }
 }

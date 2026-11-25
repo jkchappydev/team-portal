@@ -192,7 +192,7 @@ function NewCsList() {
   );
 }
 
-// 메인 화면: 이번 주 근무 현황 → 프로젝트 → 최근 수정된 게시글·신규 CS(각 최근 5개) → 서버 모니터링·이번 주 주간보고(추후 구현)
+// 메인 화면: 이번 주 근무 현황 → 프로젝트 → 최근 수정된 게시글·신규 CS(각 최근 5개) → 서버 모니터링·이번 주 주간보고(추후 구현), 두 칸 줄은 5:5
 // 다른 메뉴 화면처럼 본문 폭을 다 쓰고(좌우 여백은 AppLayout 24px), 열 배치는 화면 폭이 아닌 본문 폭으로 정함
 const GRID_BREAKPOINTS = { xs: "400px", sm: "600px", md: "760px", lg: "900px", xl: "1200px" };
 
@@ -202,12 +202,12 @@ export function MainPage() {
       <WeekStatuses />
       <ProjectGallery />
       <Grid gap="md" type="container" breakpoints={GRID_BREAKPOINTS}>
-        <Grid.Col span={{ base: 12, lg: 7 }}><RecentPosts /></Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 5 }}><NewCsList /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><RecentPosts /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><NewCsList /></Grid.Col>
       </Grid>
       <Grid gap="md" type="container" breakpoints={GRID_BREAKPOINTS}>
-        <Grid.Col span={{ base: 12, lg: 7 }}><ServerMonitor /></Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 5 }}><Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><ServerMonitor /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><Panel title="이번 주 주간보고"><Upcoming message="준비 중입니다." /></Panel></Grid.Col>
       </Grid>
     </Stack>
   );

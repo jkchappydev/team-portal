@@ -159,25 +159,30 @@ describe("MainPage", () => {
     const panel = screen.getByRole("region", { name: "모니터링" });
     expect(await within(panel).findByText("포털 서버")).toBeTruthy();
     const meters = within(panel).getAllByRole("meter");
-    expect(meters.map((m) => m.getAttribute("aria-label"))).toEqual(["포털 서버 CPU 사용률", "포털 서버 MEMORY 사용률", "포털 서버 DISK 사용률"]);
+    expect(meters.map((m) => m.getAttribute("aria-label"))).toEqual(["포털 서버 CPU 사용률", "포털 서버 MEMORY 사용률", "포털 서버 DISK (시스템) 사용률"]);
     expect(meters.map((m) => m.getAttribute("aria-valuenow"))).toEqual(["12", "50", "95"]);
     // 90% 이상은 빨간 막대
     expect(meters[2].querySelector("[data-level]")?.getAttribute("data-level")).toBe("danger");
     expect(meters[0].parentElement?.getAttribute("title")).toBe("4코어");
     expect(meters[1].parentElement?.getAttribute("title")).toBe("8.0GB / 16.0GB");
-    expect(meters[2].parentElement?.getAttribute("title")).toBe("95.0GB / 100GB");
+    // 디스크는 이름을 같이 보여 줌
+    expect(meters[2].parentElement?.getAttribute("title")).toBe("시스템 95.0GB / 100GB");
+    expect(within(meters[2].parentElement!).getByText("시스템")).toBeTruthy();
   });
 
-  it("디스크가 여럿이면 가장 많이 쓴 디스크의 사용률을 보이고, 디스크별 용량은 마우스를 올리면 보인다", async () => {
+  it("디스크가 여럿이면 디스크마다 이름과 사용률 막대를 한 줄씩 보여준다", async () => {
     vi.mocked(getServerStatuses).mockResolvedValue([{ available: true, serverName: "포털 서버", osName: null, kernel: null, cpuPercent: 12, cpuCores: 4,
       memoryUsedBytes: null, memoryTotalBytes: null, uptimeSeconds: null,
       disks: [{ name: "/", usedBytes: 1 * 1024 ** 3, totalBytes: 4 * 1024 ** 3 }, { name: "/var", usedBytes: 3 * 1024 ** 3, totalBytes: 4 * 1024 ** 3 }],
       networkRxBytesPerSec: null, networkTxBytesPerSec: null, checkedAt: new Date().toISOString() }]);
     renderPage();
     const panel = screen.getByRole("region", { name: "모니터링" });
-    const disk = await within(panel).findByRole("meter", { name: "포털 서버 DISK 사용률" });
-    expect(disk.getAttribute("aria-valuenow")).toBe("75");
-    expect(disk.parentElement?.getAttribute("title")).toBe("/ 1.0GB / 4.0GB, /var 3.0GB / 4.0GB");
+    const root = await within(panel).findByRole("meter", { name: "포털 서버 DISK (/) 사용률" });
+    const varDisk = within(panel).getByRole("meter", { name: "포털 서버 DISK (/var) 사용률" });
+    expect(root.getAttribute("aria-valuenow")).toBe("25");
+    expect(varDisk.getAttribute("aria-valuenow")).toBe("75");
+    expect(varDisk.parentElement?.getAttribute("title")).toBe("/var 3.0GB / 4.0GB");
+    expect(within(varDisk.parentElement!).getByText("/var")).toBeTruthy();
     // 메모리를 읽지 못하면 -
     expect(within(panel).getByRole("meter", { name: "포털 서버 MEMORY 사용률" }).getAttribute("aria-valuenow")).toBeNull();
   });

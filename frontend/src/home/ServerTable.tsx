@@ -11,23 +11,24 @@ interface Usage {
   detail?: string;
 }
 
-// 서버 하나의 CPU·메모리·디스크 사용률 (디스크가 여럿이면 가장 많이 쓴 디스크)
-export function serverUsages(server: ServerStatusDto): { cpu: Usage; memory: Usage; disk: Usage } {
+interface DiskUsage extends Usage {
+  name: string;
+}
+
+// 서버 하나의 CPU·메모리 사용률과 디스크별 사용률 (디스크는 서버가 알려 준 이름·순서 그대로)
+export function serverUsages(server: ServerStatusDto): { cpu: Usage; memory: Usage; disks: DiskUsage[] } {
   const memory = server.memoryUsedBytes !== null && server.memoryTotalBytes !== null && server.memoryTotalBytes > 0
     ? { percent: (server.memoryUsedBytes / server.memoryTotalBytes) * 100, detail: `${formatBytes(server.memoryUsedBytes)} / ${formatBytes(server.memoryTotalBytes)}` }
     : { percent: null };
-  const disks = server.disks.filter((d) => d.totalBytes > 0).map((d) => ({ ...d, percent: (d.usedBytes / d.totalBytes) * 100 }));
-  const fullest = disks.reduce<(typeof disks)[number] | null>((max, d) => (!max || d.percent > max.percent ? d : max), null);
-  const disk = fullest
-    ? {
-      percent: fullest.percent,
-      detail: disks.map((d) => `${disks.length > 1 ? `${d.name} ` : ""}${formatBytes(d.usedBytes)} / ${formatBytes(d.totalBytes)}`).join(", "),
-    }
-    : { percent: null };
-  return { cpu: { percent: server.cpuPercent, detail: server.cpuCores ? `${server.cpuCores}코어` : undefined }, memory, disk };
+  const disks = server.disks.filter((d) => d.totalBytes > 0).map((d) => ({
+    name: d.name,
+    percent: (d.usedBytes / d.totalBytes) * 100,
+    detail: `${d.name} ${formatBytes(d.usedBytes)} / ${formatBytes(d.totalBytes)}`,
+  }));
+  return { cpu: { percent: server.cpuPercent, detail: server.cpuCores ? `${server.cpuCores}코어` : undefined }, memory, disks };
 }
 
-function UsageCell({ label, server, usage }: { label: string; server: string; usage: Usage }) {
+function UsageCell({ label, server, usage, name }: { label: string; server: string; usage: Usage; name?: string }) {
   const value = usage.percent === null ? null : Math.round(Math.max(0, Math.min(100, usage.percent)));
   return (
     <span className="server-table-usage" title={usage.detail}>
@@ -35,7 +36,11 @@ function UsageCell({ label, server, usage }: { label: string; server: string; us
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={value ?? undefined}>
         <span className="server-gauge-bar" data-level={gaugeLevel(usage.percent)} style={{ width: `${value ?? 0}%` }} />
       </span>
-      <span className="server-table-value">{value === null ? "-" : `${value}%`}</span>
+      {/* 숫자 칸은 모든 열이 같은 폭이라 막대 길이가 같음, 디스크 이름은 숫자 앞에 (길면 줄임) */}
+      <span className="server-table-value">
+        {name !== undefined && <span className="server-table-disk">{name}</span>}
+        <span>{value === null ? "-" : `${value}%`}</span>
+      </span>
     </span>
   );
 }
@@ -72,7 +77,13 @@ export function ServerTable() {
               <>
                 <UsageCell label="CPU" server={title} usage={usages.cpu} />
                 <UsageCell label="MEMORY" server={title} usage={usages.memory} />
-                <UsageCell label="DISK" server={title} usage={usages.disk} />
+                {/* 디스크가 여럿이면 디스크마다 이름과 막대를 한 줄씩 */}
+                <span className="server-table-disks">
+                  {usages.disks.length === 0 && <span className="server-table-value">-</span>}
+                  {usages.disks.map((disk) => (
+                    <UsageCell key={disk.name} label={`DISK (${disk.name})`} server={title} usage={disk} name={disk.name} />
+                  ))}
+                </span>
               </>
             ) : (
               <span className="server-table-offline">연결 안 됨</span>
