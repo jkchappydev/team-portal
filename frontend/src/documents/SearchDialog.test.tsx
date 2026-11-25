@@ -8,8 +8,12 @@ import { SearchDialog } from "./SearchDialog";
 
 vi.mock("../api/documents", () => ({
   searchDocuments: vi.fn((q: string) => Promise.resolve(q === "배포" ? [
-    { id: 7, spaceId: 1, spaceName: "team_portal", title: "배포 절차", icon: "🚀", updatedByName: "홍길동", updatedAt: "2026-11-04T10:00:00Z" },
-    { id: 8, spaceId: 1, spaceName: "team_portal", title: "배포 체크리스트", icon: null, updatedByName: "홍길동", updatedAt: "2026-11-03T10:00:00Z" },
+    { id: 7, spaceId: 1, spaceName: "team_portal", title: "배포 절차", icon: "🚀", updatedByName: "홍길동", updatedAt: "2026-11-04T10:00:00Z", kind: "PAGE" },
+    { id: 8, spaceId: 1, spaceName: "team_portal", title: "배포 체크리스트", icon: null, updatedByName: "홍길동", updatedAt: "2026-11-03T10:00:00Z", kind: "PAGE" },
+  ] : q === "자료" ? [
+    { id: 7, spaceId: 1, spaceName: "team_portal", title: "자료 정리", icon: null, updatedByName: "홍길동", updatedAt: "2026-11-04T10:00:00Z", kind: "PAGE" },
+    { id: 8, spaceId: 1, spaceName: "team_portal", title: "자료 모음", icon: null, updatedByName: "홍길동", updatedAt: "2026-11-03T10:00:00Z", kind: "PAGE" },
+    { id: 9, spaceId: 1, spaceName: "team_portal", title: "자료 파일", icon: null, updatedByName: "홍길동", updatedAt: "2026-11-02T10:00:00Z", kind: "FILE" },
   ] : [])),
 }));
 
@@ -112,5 +116,37 @@ describe("SearchDialog", () => {
     await waitFor(() => expect(screen.queryByPlaceholderText("문서 제목이나 내용으로 검색")).toBeNull());
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("고르기 모드는 페이지만, 고를 수 없는 페이지는 빼고 보여 주며 Enter로 고른 페이지를 돌려준다", async () => {
+    const onPick = vi.fn();
+    const onClose = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MantineProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/"]}>
+            <Routes>
+              <Route path="/" element={<SearchDialog opened onClose={onClose}
+                pick={{ placeholder: "옮길 페이지 검색", actionLabel: "옮기기", exclude: (doc) => doc.id === 7, onPick }} />} />
+              <Route path="/documents/:id" element={<div>문서 화면</div>} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
+    const input = screen.getByLabelText("옮길 페이지 검색");
+    fireEvent.change(input, { target: { value: "자료" } });
+    expect(await screen.findByText(titleText("자료 모음"))).toBeTruthy();
+    // 지금 페이지(7)와 파일 항목(9)은 고를 수 없음
+    expect(screen.queryByText(titleText("자료 정리"))).toBeNull();
+    expect(screen.queryByText(titleText("자료 파일"))).toBeNull();
+    expect(screen.getByText("옮기기")).toBeTruthy();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 8 }));
+    expect(onClose).toHaveBeenCalled();
+    // 문서를 열지 않음
+    expect(screen.queryByText("문서 화면")).toBeNull();
   });
 });

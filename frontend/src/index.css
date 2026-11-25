@@ -332,7 +332,9 @@ body {
   cursor: text;
 }
 
-/* 사이드바에서 끌고 있는 페이지를 넣을 줄 강조 */
+/* 사이드바에서 끌고 있는 페이지를 넣을 줄 강조, 본문에서 끄는 블록을 넣을 페이지 블록 줄 강조 (같은 모양) */
+.bn-block[data-drop-into] > .bn-block-content,
+.bn-block[data-drop-into] > .react-renderer > .bn-block-content,
 .mantine-NavLink-root[data-drop-target] {
   background: var(--mantine-primary-color-light);
   outline: 1px solid var(--mantine-primary-color-filled);

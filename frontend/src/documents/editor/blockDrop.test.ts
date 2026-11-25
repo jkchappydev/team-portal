@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { afterEach } from "vitest";
 import { BlockNoteEditor } from "@blocknote/core";
-import { collectDropRows, moveBlocks, pickDropTarget, pickDropTargetAt, withMarqueeBlocks } from "./blockDrop";
+import { collectDropRows, markDropInto, moveBlocks, pickDropTarget, pickDropTargetAt, withMarqueeBlocks } from "./blockDrop";
 import { editorSchema } from "./schema";
 import type { DropRow } from "./blockDrop";
 
@@ -221,5 +221,38 @@ describe("withMarqueeBlocks", () => {
     expect(withMarqueeBlocks(["d"], ["a", "b", "c"])).toEqual(["d"]);
     expect(withMarqueeBlocks(["a"], ["a"])).toEqual(["a"]);
     expect(withMarqueeBlocks(["a"], [])).toEqual(["a"]);
+  });
+});
+
+describe("페이지 블록 안으로 놓기", () => {
+  // 0~40 페이지 블록, 40~70 글
+  const rows = [row("page", 0, 40, { page: true, left: 0, right: 600, sideAllowed: true }), row("text", 40, 70, { left: 0, right: 600, sideAllowed: true })];
+
+  it("페이지 블록 줄 가운데에 놓으면 그 페이지 안, 위·아래 끝 1/4은 기존처럼 앞·뒤", () => {
+    expect(pickDropTargetAt(rows, 300, 20)).toEqual({ blockId: "page", placement: "intoPage" });
+    expect(pickDropTargetAt(rows, 300, 5)).toEqual({ blockId: "page", placement: "before" });
+    expect(pickDropTargetAt(rows, 300, 36)).toEqual({ blockId: "page", placement: "after" });
+  });
+
+  it("글 줄은 가운데에 놓아도 안으로 넣지 않고, 페이지 줄 옆 가장자리는 옆 놓기가 우선", () => {
+    expect(pickDropTargetAt(rows, 300, 50)).toEqual({ blockId: "text", placement: "before" });
+    expect(pickDropTargetAt(rows, 590, 20)).toEqual({ blockId: "page", placement: "right" });
+  });
+
+  it("놓을 페이지 줄은 줄 강조 표시를 하고, 다른 곳으로 가면 지운다", () => {
+    document.body.innerHTML = `<div id="root"><div class="bn-block" data-id="page"></div><div class="bn-block" data-id="text"></div></div>`;
+    const root = document.getElementById("root")!;
+    markDropInto(root, "page");
+    expect(root.querySelector("[data-drop-into]")?.getAttribute("data-id")).toBe("page");
+    markDropInto(root, null);
+    expect(root.querySelector("[data-drop-into]")).toBeNull();
+  });
+
+  it("편집기 안 블록 옮기기는 페이지 안으로 넣는 자리를 무시한다 (다른 본문으로 옮기는 일은 편집기 쪽에서)", () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema, initialContent: [
+      { id: "page", type: "page", props: { documentId: 5 } }, { id: "text", type: "paragraph", content: "글" },
+    ] as never });
+    moveBlocks(editor, ["text"], { blockId: "page", placement: "intoPage" });
+    expect(editor.document.map((b) => b.id)).toEqual(["page", "text"]);
   });
 });

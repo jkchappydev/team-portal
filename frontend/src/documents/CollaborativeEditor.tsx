@@ -36,6 +36,11 @@ import { ApiError } from "../api/client";
 import { claimPageBlockBackfill, createDocument, deleteDocument, duplicateDocument, moveDocument, restoreDocument } from "../api/documents";
 import { adoptPastedPages, BLOCKS_CUT_EVENT, clearPageCut, isPageCut, pageIdsIn, recordPageCut } from "./editor/pagePaste";
 import { createPageRemovalTracker } from "./editor/pageRemoval";
+import { appendBlocksToDocument, isPageMoved, moveBlocksToPage, MOVE_INTO_PAGE_EVENT, OPEN_MOVE_PICKER_EVENT } from "./editor/blockMove";
+import type { MoveIntoPageDetail } from "./editor/blockMove";
+import { SearchDialog } from "./SearchDialog";
+import { showToast } from "../toast/toastStore";
+import type { QueryClient } from "@tanstack/react-query";
 import { PageCopyContext } from "./editor/pageCopyContext";
 import type { PageCopyActions } from "./editor/pageCopyContext";
 import { appendMissingPageBlocks } from "./editor/pageCommand";
@@ -223,6 +228,14 @@ function presenceUser(user: Pick<MemberDto, "id" | "name" | "profileColor" | "pr
 // 표 칸을 누르면 모서리에 뜨는 칸 메뉴 버튼을 그리지 않음 (행·열 색칠은 행·열 손잡이 메뉴로)
 function HiddenCellButton() {
   return null;
+}
+
+// 페이지를 옮기거나 지운 뒤 화면 목록(사이드바·하위 페이지·휴지통 등)을 다시 받음
+function refreshPageQueries(queryClient: QueryClient, pageId: number): void {
+  void queryClient.invalidateQueries({ queryKey: ["document", pageId] });
+  void queryClient.invalidateQueries({ queryKey: ["documents"] });
+  void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+  void queryClient.invalidateQueries({ queryKey: ["trash"] });
 }
 
 // BlockNote 편집기는 외부 가변 객체이고 isEditable 세터가 공식 잠금 API
@@ -413,16 +426,12 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
     dom.addEventListener("cut", onCut, true);
     dom.addEventListener("copy", clearPageCut, true);
     dom.addEventListener(BLOCKS_CUT_EVENT, onMarqueeCut);
-    const refresh = (pageId: number) => {
-      void queryClient.invalidateQueries({ queryKey: ["document", pageId] });
-      void queryClient.invalidateQueries({ queryKey: ["documents"] });
-      void queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      void queryClient.invalidateQueries({ queryKey: ["trash"] });
-    };
+    const refresh = (pageId: number) => refreshPageQueries(queryClient, pageId);
     // 지운 페이지 블록의 페이지는 휴지통으로, 되돌리기로 돌아온 블록의 페이지는 복원 (editor/pageRemoval)
     const removal = createPageRemovalTracker(documentId, {
       referencedIds: () => new Set(pageIdsIn(editor.document as never)),
-      isCut: isPageCut,
+      // 잘라내 붙여넣기를 기다리거나 다른 페이지로 옮겨 간 페이지는 휴지통으로 보내지 않음
+      isCut: (pageId) => isPageCut(pageId) || isPageMoved(pageId),
       trashPage: (pageId) => deleteDocument(pageId).then(() => refresh(pageId)),
       restorePage: (pageId) => restoreDocument(pageId).then(() => refresh(pageId)),
       onError: setScheduleError,
@@ -459,6 +468,47 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       removal.dispose();
     };
   }, [editor, editable, documentId, queryClient]);
+
+  // 블록을 다른 페이지로 옮기기 (블록 메뉴 "옮기기"로 고른 페이지, 페이지 블록 위에 끌어 놓은 페이지)
+  // 대상 본문 맨 아래에 붙이고 이 본문에서는 지움, 블록 안의 페이지는 대상 페이지 아래로 (editor/blockMove)
+  const [movingBlockIds, setMovingBlockIds] = useState<string[] | null>(null);
+  const moveToPage = (blockIds: string[], target: { id: number; title?: string }) => {
+    const pick = () => blockIds.map((id) => editor.getBlock(id)).filter((b) => b !== undefined);
+    setScheduleError(null);
+    moveBlocksToPage({ blocks: pick() as never, sourceDocumentId: documentId, targetDocumentId: target.id }, {
+      movePage: (pageId, parentId) => moveDocument(pageId, parentId).then(() => refreshPageQueries(queryClient, pageId)),
+      appendBlocks: appendBlocksToDocument,
+      removeBlocks: () => editor.removeBlocks(pick()),
+    })
+      .then(() => {
+        refreshPageQueries(queryClient, target.id);
+        showToast(target.title ? `'${target.title}' 페이지로 옮겼습니다` : "페이지로 옮겼습니다");
+      })
+      .catch((error: unknown) =>
+        setScheduleError(error instanceof Error && error.message ? error.message : "블록을 옮기지 못했습니다."));
+  };
+  const moveToPageRef = useRef(moveToPage);
+  moveToPageRef.current = moveToPage;
+  useEffect(() => {
+    if (!editable) return;
+    const dom = editor.prosemirrorView?.dom;
+    if (!dom) return;
+    const onOpenPicker = (event: Event) => setMovingBlockIds((event as CustomEvent<string[]>).detail);
+    const onMoveInto = (event: Event) => {
+      const { blockIds, targetDocumentId } = (event as CustomEvent<MoveIntoPageDetail>).detail;
+      moveToPageRef.current(blockIds, { id: targetDocumentId });
+    };
+    dom.addEventListener(OPEN_MOVE_PICKER_EVENT, onOpenPicker);
+    dom.addEventListener(MOVE_INTO_PAGE_EVENT, onMoveInto);
+    return () => {
+      dom.removeEventListener(OPEN_MOVE_PICKER_EVENT, onOpenPicker);
+      dom.removeEventListener(MOVE_INTO_PAGE_EVENT, onMoveInto);
+    };
+  }, [editor, editable]);
+  // 옮기는 블록 안의 페이지와 지금 페이지는 고를 수 없음
+  const movingPageIds = new Set(movingBlockIds
+    ? pageIdsIn(movingBlockIds.map((id) => editor.getBlock(id)).filter((b) => b !== undefined) as never)
+    : []);
 
   // 예전 하위 페이지 트리의 항목을 본문 맨 끝에 페이지 블록으로 한 번만 붙임 (서버 목록은 처음 가져간 한 명만 받음)
   // 읽기 전용이면 가져가지 않아 다음에 편집 가능한 사람이 열 때 붙음
@@ -556,6 +606,17 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
           }))}
         />
       </BlockNoteView>
+      {/* 블록 메뉴 "옮기기": 검색 창과 같은 모양으로 옮길 페이지를 고름 */}
+      <SearchDialog
+        opened={movingBlockIds !== null}
+        onClose={() => setMovingBlockIds(null)}
+        pick={movingBlockIds === null ? undefined : {
+          placeholder: "옮길 페이지 검색",
+          actionLabel: "옮기기",
+          exclude: (doc) => doc.id === documentId || movingPageIds.has(doc.id),
+          onPick: (doc) => moveToPage(movingBlockIds, { id: doc.id, title: doc.title }),
+        }}
+      />
       {/* 본문 아래 빈 곳 (누르면 위 onMouseDownCapture가 마지막 빈 줄로 커서 이동) */}
       {editable && <div className="editor-end-filler" aria-hidden />}
     </Box>

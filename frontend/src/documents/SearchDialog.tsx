@@ -14,9 +14,20 @@ import { PageIcon } from "./PageIconView";
 // 서버 검색은 두 글자 이상부터 동작
 const MIN_QUERY_LENGTH = 2;
 
+// 고르기 모드: 문서를 여는 대신 고른 페이지를 돌려줌 (블록 "옮기기"의 대상 페이지 고르기)
+export interface SearchPick {
+  placeholder: string;
+  // Enter 안내 문구 (예: 옮기기)
+  actionLabel: string;
+  // 고를 수 없는 페이지 (지금 페이지 등)
+  exclude: (doc: DocumentSummaryDto) => boolean;
+  onPick: (doc: DocumentSummaryDto) => void;
+}
+
 interface Props {
   opened: boolean;
   onClose: () => void;
+  pick?: SearchPick;
 }
 
 // 노션처럼 얇은 선으로 그린 돋보기 아이콘
@@ -30,7 +41,7 @@ function SearchIcon() {
   );
 }
 
-export function SearchDialog({ opened, onClose }: Props) {
+export function SearchDialog({ opened, onClose, pick }: Props) {
   return (
     <Modal
       opened={opened}
@@ -45,12 +56,12 @@ export function SearchDialog({ opened, onClose }: Props) {
       returnFocus={false}
     >
       {/* 열 때마다 검색어와 선택을 초기화 */}
-      {opened && <SearchBody onClose={onClose} />}
+      {opened && <SearchBody onClose={onClose} pick={pick} />}
     </Modal>
   );
 }
 
-function SearchBody({ onClose }: { onClose: () => void }) {
+function SearchBody({ onClose, pick }: { onClose: () => void; pick?: SearchPick }) {
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [selected, setSelected] = useState(0);
@@ -58,11 +69,13 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   const [debounced] = useDebouncedValue(input.trim(), 200);
   const query = input.trim().length >= MIN_QUERY_LENGTH ? debounced : "";
 
-  const { data: results = [], error, isFetching } = useQuery({
+  const { data: found = [], error, isFetching } = useQuery({
     queryKey: ["search", query],
     queryFn: () => searchDocuments(query),
     enabled: query.length >= MIN_QUERY_LENGTH,
   });
+  // 고르기 모드는 블록을 담을 수 있는 페이지만
+  const results = pick ? found.filter((doc) => doc.kind === "PAGE" && !pick.exclude(doc)) : found;
 
   // 프로젝트 본문 결과는 아이콘이 없으면 사이드바처럼 폴더 아이콘
   const { data: spaces = [] } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
@@ -75,7 +88,8 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   // 페이지는 편집 화면, 파일 항목은 미리보기 화면으로 이동
   const open = (doc: DocumentSummaryDto) => {
     onClose();
-    navigate(itemPath(doc.kind, doc.id));
+    if (pick) pick.onPick(doc);
+    else navigate(itemPath(doc.kind, doc.id));
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -108,8 +122,8 @@ function SearchBody({ onClose }: { onClose: () => void }) {
         <Box c="dimmed" style={{ display: "flex", flexShrink: 0 }}><SearchIcon /></Box>
         <input
           className="search-dialog-input"
-          aria-label="문서 검색"
-          placeholder="문서 제목이나 내용으로 검색"
+          aria-label={pick ? pick.placeholder : "문서 검색"}
+          placeholder={pick ? pick.placeholder : "문서 제목이나 내용으로 검색"}
           value={input}
           onChange={(e) => {
             setInput(e.currentTarget.value);
@@ -184,7 +198,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
           style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
         >
           <Text fz="xs" c="dimmed"><Kbd size="xs">↑</Kbd> <Kbd size="xs">↓</Kbd> 이동</Text>
-          <Text fz="xs" c="dimmed"><Kbd size="xs">Enter</Kbd> 열기</Text>
+          <Text fz="xs" c="dimmed"><Kbd size="xs">Enter</Kbd> {pick ? pick.actionLabel : "열기"}</Text>
           <Text fz="xs" c="dimmed"><Kbd size="xs">Esc</Kbd> 닫기</Text>
         </Group>
       )}

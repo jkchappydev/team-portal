@@ -8,7 +8,12 @@ import { ApiError } from "../../api/client";
 import { colorTableCells, tableColor, withoutIds } from "./blockMenu";
 import { copyBlockWithPages, referencedPageIds } from "./pageCommand";
 import { usePageCopy } from "./pageCopyContext";
-import { copyBlocks } from "./blockMarquee";
+import { copyBlocks, marqueeSelection } from "./blockMarquee";
+import { withMarqueeBlocks } from "./blockDrop";
+import { OPEN_MOVE_PICKER_EVENT } from "./blockMove";
+import { canTurnInto, currentTurnIntoKey, turnIntoChange } from "./blockTurnInto";
+import type { TurnIntoBlock, TurnIntoKey } from "./blockTurnInto";
+import { TurnIntoSubmenu } from "./TurnIntoSubmenu";
 import { clearPageCut } from "./pagePaste";
 import { ColorSubmenu } from "./ColorSubmenu";
 import { MenuIcon } from "./MenuIcon";
@@ -65,7 +70,7 @@ function MenuBlockSelection({ blockId, onDelete }: { blockId: string; onDelete: 
   return null;
 }
 
-// 노션처럼 블록 손잡이(⠿)를 누르면 나오는 메뉴: 표 제목 행·열, 색, 위·아래 삽입, 복제, 삭제
+// 노션처럼 블록 손잡이(⠿)를 누르면 나오는 메뉴: 표 제목 행·열, 전환, 색, 위·아래 삽입, 복사, 복제, 옮기기, 삭제
 // 열려 있는 동안 블록 전체를 선택 표시하고 Delete로 삭제
 export function NotionDragHandleMenu() {
   const Components = useComponentsContext()!;
@@ -125,6 +130,19 @@ export function NotionDragHandleMenu() {
 
   const remove = () => editor.removeBlocks([block]);
 
+  // 글 블록을 다른 글 종류로 (콜아웃은 글을 상자 안으로 담아 블록째 바꿈)
+  const turnInto = (key: TurnIntoKey) => {
+    const change = turnIntoChange(block as unknown as TurnIntoBlock, key);
+    if (change.kind === "update") editor.updateBlock(block, change.update as never);
+    else editor.replaceBlocks([block], change.blocks as never);
+  };
+
+  // 다른 페이지로 옮기기: 페이지 고르는 창은 편집기(CollaborativeEditor)가 엶 (여러 블록을 골랐으면 고른 블록 전체)
+  const move = () => {
+    const ids = withMarqueeBlocks([block.id], marqueeSelection(editor));
+    editor.prosemirrorView?.dom.dispatchEvent(new CustomEvent<string[]>(OPEN_MOVE_PICKER_EVENT, { detail: ids }));
+  };
+
   return (
     <DragHandleMenu>
       <MenuBlockSelection blockId={block.id} onDelete={remove} />
@@ -145,6 +163,7 @@ export function NotionDragHandleMenu() {
           />
         </>
       )}
+      {canTurnInto(block) && <TurnIntoSubmenu current={currentTurnIntoKey(block as unknown as TurnIntoBlock)} onSelect={turnInto} />}
       <ColorSubmenu
         kinds={(["textColor", "backgroundColor"] as const).filter(supports)}
         current={currentColor}
@@ -162,6 +181,9 @@ export function NotionDragHandleMenu() {
       </Components.Generic.Menu.Item>
       <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.copy} />} onClick={duplicate}>
         복제
+      </Components.Generic.Menu.Item>
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.move} />} onClick={move}>
+        옮기기
       </Components.Generic.Menu.Item>
       <Components.Generic.Menu.Item className="bn-menu-item" icon={<MenuIcon d={MENU_ICONS.trash} />} onClick={remove}>
         <span className="menu-item-with-shortcut">삭제<span className="menu-item-shortcut">Del</span></span>

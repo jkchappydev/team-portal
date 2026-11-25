@@ -3,6 +3,10 @@ export const MENU_ICONS = {
   headerRow: "M2.5 3.5h11v9h-11zM2.5 6.5h11",
   headerColumn: "M2.5 3.5h11v9h-11zM6 3.5v9",
   color: "M8 2.5 3.5 13.5M8 2.5l4.5 11M5 10h6",
+  // 전환: 서로 도는 두 화살표
+  turnInto: "M2.75 7A5 5 0 0 1 12 4.5M13.25 9A5 5 0 0 1 4 11.5M12.25 2v2.75H9.5M3.75 14v-2.75H6.5",
+  // 옮기기: 아래에서 꺾여 오른쪽으로 나가는 화살표
+  move: "M3 3v5a2 2 0 0 0 2 2h8.5M10.5 7l3 3-3 3",
   above: "M8 13V3M4 7l4-4 4 4",
   below: "M8 3v10M4 9l4 4 4-4",
   copy: "M5.5 5.5h8v8h-8zM2.5 10.5v-8h8",

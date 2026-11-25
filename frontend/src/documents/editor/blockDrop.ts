@@ -5,6 +5,8 @@ import type { Fragment, Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { marqueeSelection } from "./blockMarquee";
+import { MOVE_INTO_PAGE_EVENT } from "./blockMove";
+import type { MoveIntoPageDetail } from "./blockMove";
 
 // 화면에 보이는 블록 한 줄 (문서 순서대로)
 export interface DropRow {
@@ -28,9 +30,11 @@ export interface DropRow {
   columnId?: string | null;
   // 옆에 놓아 열을 만들 수 있는 줄 (최상위 블록 또는 열 바로 안의 블록)
   sideAllowed?: boolean;
+  // 페이지 블록 줄 (가운데에 놓으면 그 페이지 안으로 옮김)
+  page?: boolean;
 }
 
-export type DropPlacement = "before" | "after" | "firstChild" | "left" | "right";
+export type DropPlacement = "before" | "after" | "firstChild" | "left" | "right" | "intoPage";
 export interface DropTarget {
   blockId: string;
   placement: DropPlacement;
@@ -74,10 +78,27 @@ const LEFT_SIDE_ZONE_MAX = 24;
 // 열 사이 간격의 절반: 열 경계 근처도 그 열로 봄
 const COLUMN_GAP_HALF = 12;
 
+// 페이지 블록 줄 위·아래 끝 중 앞·뒤 놓기로 보는 비율 (나머지 가운데는 그 페이지 안으로)
+const PAGE_EDGE_RATIO = 0.25;
+
 // 노션처럼 마우스 가로·세로 위치로 놓을 자리를 정함
 // 열 안의 줄은 마우스가 있는 열의 줄만 대상으로 하고, 블록 줄 안쪽 좌우 가장자리면 그 블록 옆(새 열)에 놓음
+// 페이지 블록 줄 가운데면 그 페이지 안으로 옮김 (옆 놓기 자리가 우선)
 // 손잡이로 끌 때 마우스는 블록 글 왼쪽 바깥에 있으므로 줄 바깥 왼쪽은 옆 놓기로 보지 않음
 export function pickDropTargetAt(rows: DropRow[], x: number, y: number, allowSide = true): DropTarget | null {
+  const target = pickLineTargetAt(rows, x, y, allowSide);
+  if (target?.placement === "left" || target?.placement === "right") return target;
+  const into = rows.find((row) => {
+    if (!row.page) return false;
+    if (row.columnId && row.left !== undefined && row.right !== undefined
+      && (x < row.left - COLUMN_GAP_HALF || x > row.right + COLUMN_GAP_HALF)) return false;
+    const edge = (row.bottom - row.top) * PAGE_EDGE_RATIO;
+    return y >= row.top + edge && y <= row.bottom - edge;
+  });
+  return into ? { blockId: into.id, placement: "intoPage" } : target;
+}
+
+function pickLineTargetAt(rows: DropRow[], x: number, y: number, allowSide: boolean): DropTarget | null {
   const visible = rows.filter((row) => !row.columnId || row.left === undefined || row.right === undefined
     || (x >= row.left - COLUMN_GAP_HALF && x <= row.right + COLUMN_GAP_HALF));
   const target = pickDropTarget(visible, y);
@@ -134,6 +155,7 @@ export function collectDropRows(root: Element, excludedIds: ReadonlySet<string>)
       right: span.right,
       columnId: inColumn ? column!.dataset.id! : null,
       sideAllowed: inColumn || !parent || !root.contains(parent),
+      page: own.getAttribute("data-content-type") === "page",
     });
   }
   return rows;
@@ -159,7 +181,7 @@ function blockPositions(doc: PMNode, id: string): Record<DropPlacement, number> 
       // 첫 하위 블록 앞: 하위 묶음이 있으면 그 안 맨 앞, 없으면 블록 내용 바로 뒤 (BlockNote 하위 넣기 표시와 같은 자리)
       const contentEnd = pos + 1 + (content?.nodeSize ?? 0);
       const firstChild = node.childCount > 1 ? contentEnd + 1 : contentEnd;
-      found = { before: pos, after: pos + node.nodeSize, firstChild, left: pos, right: pos };
+      found = { before: pos, after: pos + node.nodeSize, firstChild, left: pos, right: pos, intoPage: pos };
       return false;
     }
     return true;
@@ -197,12 +219,26 @@ function dropTargetAt(editor: BlockNoteEditor<any, any, any>, view: EditorView, 
   return pickDropTargetAt(collectDropRows(view.dom, new Set(ids)), x, y, allowSide);
 }
 
+// 페이지 블록 안으로 넣을 때는 놓기선 대신 그 줄을 강조 (index.css [data-drop-into])
+const DROP_INTO_ATTR = "data-drop-into";
+export function markDropInto(root: Element, blockId: string | null): void {
+  root.querySelectorAll(`[${DROP_INTO_ATTR}]`).forEach((el) => {
+    if ((el as HTMLElement).dataset.id !== blockId) el.removeAttribute(DROP_INTO_ATTR);
+  });
+  if (blockId) root.querySelector(`${BLOCK_SELECTOR}[data-id="${CSS.escape(blockId)}"]`)?.setAttribute(DROP_INTO_ATTR, "");
+}
+
 // 놓기선 위치: 실제 놓는 자리(drop 처리)와 같은 계산을 씀
 export const notionDropCursor: DropCursorOptions["hooks"] = {
   computeDropPosition: ({ editor, event, view, defaultPosition }) => {
     const ids = internalDrag(editor, view, event);
-    if (!ids) return defaultPosition;
+    if (!ids) {
+      markDropInto(view.dom, null);
+      return defaultPosition;
+    }
     const target = dropTargetAt(editor, view, ids, event.clientX, event.clientY);
+    markDropInto(view.dom, target?.placement === "intoPage" ? target.blockId : null);
+    if (target?.placement === "intoPage") return null;
     const positions = target && blockPositions(view.state.doc, target.blockId);
     if (!positions) return null;
     // 옆에 놓을 때는 블록 왼쪽·오른쪽 세로선, 그 밖은 가로선
@@ -213,16 +249,19 @@ export const notionDropCursor: DropCursorOptions["hooks"] = {
 
 // 블록을 놓은 자리로 옮김 (끄는 블록을 지우고 같은 id 그대로 다시 넣음)
 export function moveBlocks(editor: BlockNoteEditor<any, any, any>, ids: string[], target: DropTarget): void {
+  // 페이지 안으로 넣기는 다른 본문으로 옮기는 일이라 편집기 쪽(MOVE_INTO_PAGE_EVENT)에서 처리
+  const placement = target.placement;
+  if (placement === "intoPage") return;
   const blocks = ids.map((id) => editor.getBlock(id)).filter((b) => b !== undefined);
   if (blocks.length === 0) return;
   editor.transact(() => {
     editor.removeBlocks(blocks);
     const reference = editor.getBlock(target.blockId);
     if (!reference) return;
-    if (target.placement === "left" || target.placement === "right") {
-      placeBeside(editor, blocks, reference, target.placement);
-    } else if (target.placement !== "firstChild") {
-      editor.insertBlocks(blocks, reference, target.placement);
+    if (placement === "left" || placement === "right") {
+      placeBeside(editor, blocks, reference, placement);
+    } else if (placement !== "firstChild") {
+      editor.insertBlocks(blocks, reference, placement);
     } else if (reference.children.length > 0) {
       editor.insertBlocks(blocks, reference.children[0], "before");
     } else {
@@ -265,6 +304,13 @@ export function releaseAfterDrop(view: EditorView): void {
   setTimeout(release, 300);
 }
 
+// 페이지 블록 위에 놓은 블록을 그 페이지로 옮겨 달라고 편집기에 알림 (페이지 문서가 없는 블록이면 그대로)
+function requestMoveIntoPage(editor: BlockNoteEditor<any, any, any>, view: EditorView, ids: string[], pageBlockId: string): void {
+  const documentId = editor.getBlock(pageBlockId)?.props?.documentId;
+  if (typeof documentId !== "number" || documentId <= 0) return;
+  view.dom.dispatchEvent(new CustomEvent<MoveIntoPageDetail>(MOVE_INTO_PAGE_EVENT, { detail: { blockIds: ids, targetDocumentId: documentId } }));
+}
+
 // 블록 손잡이로 끌어 놓을 때 놓기선이 보인 자리 그대로 옮김
 // 기본 처리는 선 표시와 다른 방식(글자 위치 기준)으로 놓을 자리를 다시 계산해 선과 다른 곳에 들어가는 경우가 있음
 export const blockDropExtension = createExtension(({ editor }) => ({
@@ -272,6 +318,12 @@ export const blockDropExtension = createExtension(({ editor }) => ({
   prosemirrorPlugins: [
     new Plugin({
       key: new PluginKey("notionBlockDrop"),
+      // 끌기를 편집기 밖에서 끝내도 페이지 줄 강조를 지움
+      view: (view) => {
+        const clear = () => markDropInto(view.dom, null);
+        window.addEventListener("dragend", clear);
+        return { destroy: () => window.removeEventListener("dragend", clear) };
+      },
       props: {
         handleDOMEvents: {
           drop: (view, event) => {
@@ -279,7 +331,12 @@ export const blockDropExtension = createExtension(({ editor }) => ({
             if (!ids) return false;
             event.preventDefault();
             const target = dropTargetAt(editor, view, ids, event.clientX, event.clientY);
-            if (target) moveBlocks(editor, ids, target);
+            markDropInto(view.dom, null);
+            if (target?.placement === "intoPage") {
+              requestMoveIntoPage(editor, view, ids, target.blockId);
+            } else if (target) {
+              moveBlocks(editor, ids, target);
+            }
             releaseAfterDrop(view);
             return true;
           },
