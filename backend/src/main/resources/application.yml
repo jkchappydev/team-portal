@@ -2,9 +2,10 @@ spring:
   application:
     name: portal
   config:
+    # properties 파일은 기본 ISO-8859-1로 읽혀 한글 값(서버 이름 등)이 깨지므로 UTF-8로 읽음
     import:
-      - optional:file:./.env-develop[.properties]
-      - optional:file:../.env-develop[.properties]
+      - optional:file:./.env-develop[extension=.properties][encoding=utf-8]
+      - optional:file:../.env-develop[extension=.properties][encoding=utf-8]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/portal}
     username: ${DB_USERNAME:portal}
