@@ -2053,7 +2053,9 @@ body.bn-column-resizing {
   overflow: hidden;
   background: var(--mantine-color-default-hover);
 }
+/* 표(home/ServerTable)에서는 span이라 막대가 그려지도록 블록으로 */
 .server-gauge-bar {
+  display: block;
   height: 100%;
   border-radius: 3px;
   background: var(--mantine-primary-color-filled);
@@ -2108,7 +2110,7 @@ body.bn-column-resizing {
 
 /* 메인 모니터링 칸 서버 표 (home/ServerTable): 서버 이름 | CPU | MEMORY | DISK 막대, 줄을 누르면 상세 화면 */
 .server-table-row {
-  display: grid; grid-template-columns: minmax(72px, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 12px; align-items: center;
+  display: grid; grid-template-columns: minmax(72px, 140px) repeat(3, minmax(0, 1fr)); gap: 16px; align-items: center;
   width: 100%; min-height: 38px; padding: 0 8px; border-top: 1px solid var(--mantine-color-default-border);
   border-radius: 6px; font-size: 13px;
 }
