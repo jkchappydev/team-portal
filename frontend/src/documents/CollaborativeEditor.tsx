@@ -177,7 +177,8 @@ export default function CollaborativeEditor({ documentId, user, spaceId, onViewe
       {authFailed && (
         <Alert color="red" variant="light" mb="sm" title="문서에 접속하지 못했습니다">
           <Text size="sm" mb="xs">서버가 잠시 응답하지 않았을 수 있습니다. 잠시 후 새로고침하세요.</Text>
-          <Button size="xs" variant="light" color="red" onClick={() => window.location.reload()}>새로고침</Button>
+          {/* 안내 상자와 같은 연한 빨강 배경(light)이면 버튼 경계가 안 보여 테두리 버튼 사용 */}
+          <Button size="xs" variant="outline" color="red" onClick={() => window.location.reload()}>새로고침</Button>
         </Alert>
       )}
       {session ? (
