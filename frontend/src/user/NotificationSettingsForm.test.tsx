@@ -1,8 +1,9 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { NotificationSettingsForm } from "./NotificationSettingsForm";
+import type { NotificationLevel } from "../api/notificationSettings";
 
 const api = vi.hoisted(() => ({
   listNotificationSettings: vi.fn(),
@@ -16,16 +17,16 @@ vi.mock("../api/spaces", () => ({
   ]),
 }));
 
-function renderForm() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+function renderForm(draft: Record<number, NotificationLevel> = {}, onChange = vi.fn()) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <MantineProvider>
       <QueryClientProvider client={client}>
-        <NotificationSettingsForm />
+        <NotificationSettingsForm draft={draft} onChange={onChange} />
       </QueryClientProvider>
     </MantineProvider>,
   );
-  return client;
+  return onChange;
 }
 
 const radio = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
@@ -52,26 +53,21 @@ describe("NotificationSettingsForm", () => {
     expect(radio("회의 메모 담당 언급").checked).toBe(true);
   });
 
-  it("고르면 바로 저장하고 화면에 반영한다", async () => {
-    // 저장 뒤 다시 불러오면 서버에 저장된 값이 옴
-    api.listNotificationSettings.mockResolvedValueOnce([]).mockResolvedValue([{ spaceId: 1, level: "OFF" }]);
-    api.changeNotificationSetting.mockResolvedValue({ spaceId: 1, level: "OFF" });
-    renderForm();
+  it("저장 전에 고른 값이 있으면 저장된 값 대신 보여 준다", async () => {
+    api.listNotificationSettings.mockResolvedValue([{ spaceId: 2, level: "MENTION" }]);
+    renderForm({ 2: "OFF" });
+
+    expect(await screen.findByText(/회의 메모/)).toBeTruthy();
+    expect(radio("회의 메모 끄기").checked).toBe(true);
+  });
+
+  it("고르면 저장하지 않고 고른 값만 알려 준다", async () => {
+    api.listNotificationSettings.mockResolvedValue([]);
+    const onChange = renderForm();
 
     fireEvent.click(await screen.findByLabelText("스쿨북스 끄기"));
 
-    await waitFor(() => expect(api.changeNotificationSetting).toHaveBeenCalledWith(1, "OFF"));
-    await waitFor(() => expect(radio("스쿨북스 끄기").checked).toBe(true));
-  });
-
-  it("저장에 실패하면 원래 값으로 돌리고 오류를 보인다", async () => {
-    api.listNotificationSettings.mockResolvedValue([]);
-    api.changeNotificationSetting.mockRejectedValue(new Error("실패"));
-    renderForm();
-
-    fireEvent.click(await screen.findByLabelText("스쿨북스 담당 언급"));
-
-    expect(await screen.findByText("알림 설정을 저장하지 못했습니다.")).toBeTruthy();
-    await waitFor(() => expect(radio("스쿨북스 모든 게시글").checked).toBe(true));
+    expect(onChange).toHaveBeenCalledWith(1, "OFF");
+    expect(api.changeNotificationSetting).not.toHaveBeenCalled();
   });
 });

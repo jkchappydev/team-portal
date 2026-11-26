@@ -2217,3 +2217,13 @@ body.bn-column-resizing {
 .trash-table .mantine-Checkbox-input { cursor: pointer; }
 /* Mantine이 --button-color를 인라인으로 넣어 변수 대신 글자색을 직접 지정 */
 button.trash-danger:not(:disabled) { color: var(--mantine-color-red-filled); }
+
+/* 설정 창 탭 내용: 넘치면 스크롤은 되지만 스크롤바는 보이지 않음 */
+.settings-panel-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.settings-panel-scroll::-webkit-scrollbar {
+  display: none;
+}

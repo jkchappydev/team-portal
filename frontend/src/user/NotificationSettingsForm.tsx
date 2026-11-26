@@ -1,12 +1,10 @@
-import { Alert, Box, Group, Radio, Stack, Text } from "@mantine/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { changeNotificationSetting, listNotificationSettings } from "../api/notificationSettings";
-import type { NotificationLevel, NotificationSettingDto } from "../api/notificationSettings";
+import { Box, Group, Radio, Stack, Text } from "@mantine/core";
+import { useQuery } from "@tanstack/react-query";
+import { listNotificationSettings } from "../api/notificationSettings";
+import type { NotificationLevel } from "../api/notificationSettings";
 import { listSpaces } from "../api/spaces";
 import { PageIcon } from "../documents/PageIconView";
-import { DOCUMENT_UPDATES_KEY } from "../notifications/useMarkDocumentRead";
-
-const NOTIFICATION_SETTINGS_KEY = ["me", "notification-settings"];
+import { NOTIFICATION_SETTINGS_KEY } from "./notificationSettingsKey";
 
 // 표 머리글 순서와 같은 선택지
 const NOTIFICATION_LEVELS: { value: NotificationLevel; label: string }[] = [
@@ -18,37 +16,20 @@ const NOTIFICATION_LEVELS: { value: NotificationLevel; label: string }[] = [
 // 선택지 한 칸 너비 (머리글과 줄의 동그라미를 같은 세로선에 맞춤)
 const LEVEL_WIDTH = 76;
 
-// 내 설정의 알림 탭: 사이드바 순서대로 프로젝트·페이지마다 받을 알림을 고르면 바로 저장
-export function NotificationSettingsForm() {
-  const queryClient = useQueryClient();
+interface Props {
+  // 저장 전에 고른 값 (프로젝트 id → 알림), 없으면 저장된 값
+  draft: Record<number, NotificationLevel>;
+  onChange: (spaceId: number, level: NotificationLevel) => void;
+}
+
+// 설정 창의 알림 탭: 사이드바 순서대로 프로젝트·페이지마다 받을 알림을 고름 (설정 창 저장 버튼으로 저장)
+export function NotificationSettingsForm({ draft, onChange }: Props) {
   const { data: spaces = [], isLoading: spacesLoading } = useQuery({ queryKey: ["spaces"], queryFn: listSpaces });
   const { data: settings = [], isLoading: settingsLoading } = useQuery({
     queryKey: NOTIFICATION_SETTINGS_KEY,
     queryFn: listNotificationSettings,
   });
   const levelOf = new Map(settings.map((setting) => [setting.spaceId, setting.level]));
-
-  // 고른 값을 바로 화면에 보이고, 실패하면 저장된 값으로 되돌림
-  const change = useMutation({
-    mutationFn: ({ spaceId, level }: NotificationSettingDto) => changeNotificationSetting(spaceId, level),
-    onMutate: async ({ spaceId, level }) => {
-      await queryClient.cancelQueries({ queryKey: NOTIFICATION_SETTINGS_KEY });
-      const previous = queryClient.getQueryData<NotificationSettingDto[]>(NOTIFICATION_SETTINGS_KEY);
-      queryClient.setQueryData<NotificationSettingDto[]>(NOTIFICATION_SETTINGS_KEY, (current = []) =>
-        current.some((setting) => setting.spaceId === spaceId)
-          ? current.map((setting) => (setting.spaceId === spaceId ? { spaceId, level } : setting))
-          : [...current, { spaceId, level }]);
-      return { previous };
-    },
-    onError: (_error, _variables, context) => {
-      queryClient.setQueryData(NOTIFICATION_SETTINGS_KEY, context?.previous);
-    },
-    // 종 알림 목록도 새 설정으로 다시 조회
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: NOTIFICATION_SETTINGS_KEY });
-      void queryClient.invalidateQueries({ queryKey: DOCUMENT_UPDATES_KEY });
-    },
-  });
 
   if (spacesLoading || settingsLoading) {
     return <Text size="xs" c="dimmed">알림 설정을 불러오는 중...</Text>;
@@ -59,7 +40,6 @@ export function NotificationSettingsForm() {
       <Text size="xs" c="dimmed">
         담당 언급은 다른 팀원이 본문에서 @로 나를 언급한 페이지만 알려 줍니다.
       </Text>
-      {change.isError && <Alert color="red" py={6}>알림 설정을 저장하지 못했습니다.</Alert>}
       {spaces.length === 0 ? (
         <Text size="sm" c="dimmed" ta="center" py="md">프로젝트가 없습니다.</Text>
       ) : (
@@ -76,8 +56,8 @@ export function NotificationSettingsForm() {
           {spaces.map((space) => (
             <Radio.Group
               key={space.id}
-              value={levelOf.get(space.id) ?? "ALL"}
-              onChange={(value) => change.mutate({ spaceId: space.id, level: value as NotificationLevel })}
+              value={draft[space.id] ?? levelOf.get(space.id) ?? "ALL"}
+              onChange={(value) => onChange(space.id, value as NotificationLevel)}
               aria-label={`${space.name} 알림`}
             >
               <Group gap={0} wrap="nowrap" py={6} role="row">
