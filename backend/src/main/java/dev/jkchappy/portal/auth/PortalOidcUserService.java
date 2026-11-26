@@ -26,13 +26,24 @@ public class PortalOidcUserService implements OAuth2UserService<OidcUserRequest,
   OidcUser verifyAndRegister(OidcUser user) {
     String email = user.getEmail();
     String hd = user.getIdToken().getClaimAsString("hd");
-    if (!Boolean.TRUE.equals(user.getEmailVerified()) || !isAllowedEmail(email) ||
-      hd == null || properties.allowedHostedDomains().stream().noneMatch(domain -> domain.equalsIgnoreCase(hd))) {
+    if (!Boolean.TRUE.equals(user.getEmailVerified()) || !(isExplicitlyAllowed(email) || isCompanyAccount(email, hd))) {
       throw new OAuth2AuthenticationException(new OAuth2Error("domain_not_allowed"));
     }
     String name = user.getFullName();
     accounts.registerLogin(new GoogleProfile(user.getSubject(), email, name == null || name.isBlank() ? email : name));
     return user;
+  }
+
+  // 개별 허용 목록에 있는 이메일인지 확인
+  private boolean isExplicitlyAllowed(String email) {
+    if (email == null) return false;
+    return properties.allowedEmails().stream().anyMatch(allowed -> allowed.trim().equalsIgnoreCase(email));
+  }
+
+  // 회사 Workspace 계정인지 이메일 도메인과 hd 클레임으로 확인
+  private boolean isCompanyAccount(String email, String hd) {
+    return isAllowedEmail(email) && hd != null &&
+      properties.allowedHostedDomains().stream().anyMatch(domain -> domain.equalsIgnoreCase(hd));
   }
 
   // 이메일 @ 뒤 도메인이 허용 목록 중 하나와 정확히 일치하는지 확인

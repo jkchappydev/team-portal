@@ -17,7 +17,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 class PortalOidcUserServiceTest {
   private final AccountService accounts = mock(AccountService.class);
   private final PortalOidcUserService service = new PortalOidcUserService(accounts,
-    new AuthProperties(List.of("example.com", "example.org"),List.of("example.org", "example.com")));
+    new AuthProperties(List.of("example.com", "example.org"), List.of("example.org", "example.com"), List.of("dev@gmail.com")));
 
   private OidcUser user(String email, boolean verified, String hd) {
     var builder = OidcIdToken.withTokenValue("token").subject("subject")
@@ -54,5 +54,28 @@ class PortalOidcUserServiceTest {
     service.verifyAndRegister(user("a@example.com", true, "example.org"));
     service.verifyAndRegister(user("b@example.org", true, "example.org"));
     verify(accounts, times(2)).registerLogin(any());
+  }
+
+  @Test
+  void acceptsAllowedEmailWithoutHostedDomain() {
+    service.verifyAndRegister(user("dev@gmail.com", true, null));
+    service.verifyAndRegister(user("DEV@gmail.com", true, null));
+    verify(accounts, times(2)).registerLogin(any());
+  }
+
+  @Test
+  void rejectsAllowedEmailWhenUnverified() {
+    assertThatThrownBy(() -> service.verifyAndRegister(user("dev@gmail.com", false, null)))
+      .isInstanceOf(OAuth2AuthenticationException.class);
+    verifyNoInteractions(accounts);
+  }
+
+  @Test
+  void rejectsPersonalAccountsWhenAllowedEmailsIsEmpty() {
+    var strict = new PortalOidcUserService(accounts,
+      new AuthProperties(List.of("example.com"), List.of("example.com"), null));
+    assertThatThrownBy(() -> strict.verifyAndRegister(user("dev@gmail.com", true, null)))
+      .isInstanceOf(OAuth2AuthenticationException.class);
+    verifyNoInteractions(accounts);
   }
 }

@@ -49,6 +49,7 @@ app:
   auth:
     allowed-email-domains: ${ALLOWED_EMAIL_DOMAINS:example.com,example.org}
     allowed-hosted-domains: ${ALLOWED_HOSTED_DOMAINS:example.org,example.com}
+    allowed-emails: ${ALLOWED_EMAILS:}
   storage:
     path: ${STORAGE_PATH:./storage}
   internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
