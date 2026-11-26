@@ -1,4 +1,4 @@
-import { Select, type MantineColorScheme } from "@mantine/core";
+import { SegmentedControl, type MantineColorScheme } from "@mantine/core";
 
 const OPTIONS: { label: string; value: MantineColorScheme }[] = [
   { label: "라이트", value: "light" },
@@ -11,17 +11,15 @@ interface Props {
   onChange: (value: MantineColorScheme) => void;
 }
 
-// 화면 테마 선택 칸 (고른 값은 부모가 저장할 때 적용)
+// 화면 테마 고르기 버튼 묶음 (고른 값은 부모가 저장할 때 적용)
 export function ColorSchemeToggle({ value, onChange }: Props) {
   return (
-    <Select
-      size="sm"
-      w={160}
+    <SegmentedControl
+      size="xs"
       aria-label="화면 테마"
       data={OPTIONS}
       value={value}
-      allowDeselect={false}
-      onChange={(next) => { if (next) onChange(next as MantineColorScheme); }}
+      onChange={(next) => onChange(next as MantineColorScheme)}
     />
   );
 }

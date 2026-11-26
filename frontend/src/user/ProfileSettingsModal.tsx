@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import type { DragEvent } from "react";
-import { Alert, Avatar, Button, CheckIcon, ColorSwatch, Box, Group, Modal, NavLink, SimpleGrid, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import type { DragEvent, RefObject } from "react";
+import { ActionIcon, Anchor, Avatar, Box, Button, CheckIcon, ColorSwatch, Group, Modal, Stack, Tabs, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import { ColorSchemeToggle } from "../layout/ColorSchemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
-import { listMembers } from "../api/members";
+import { JOB_RANKS, listMembers } from "../api/members";
 import type { MemberDto } from "../api/members";
 import { MemberInfoForm } from "../members/MemberInfoForm";
 import { NotificationSettingsForm } from "./NotificationSettingsForm";
@@ -12,6 +12,7 @@ import { changeProfileColor, removeProfileImage, uploadProfileImage } from "../a
 import type { ProfileDto } from "../api/profile";
 import { shortName } from "../documents/presence";
 import { PROFILE_COLORS, userColor } from "../documents/userColor";
+import { CameraLineIcon, UploadLineIcon } from "../documents/DefaultIcons";
 
 interface Props {
   user: MemberDto;
@@ -30,12 +31,8 @@ export function randomColor(current: string, random: () => number = Math.random)
 }
 
 type SettingsTab = "info" | "profile" | "notifications";
-// 알림은 내 설정 아래 탭
-const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
-  { value: "info", label: "개인정보 수정" }, { value: "profile", label: "내 설정" }, { value: "notifications", label: "알림" },
-];
 
-// 설정 창: 왼쪽 탭으로 개인정보 수정, 내 설정(프로필 모양), 알림(프로젝트별 알림 받기)을 나눔
+// 설정 창: 위쪽에 내 프로필(누르면 이미지 바꾸기), 아래 가로 탭으로 내 정보·프로필 모양·알림을 나눔
 export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const queryClient = useQueryClient();
   // 내 부서·직책·연락처는 팀원 목록에서 가져옴
@@ -43,32 +40,46 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
   const myInfo = members?.find((member) => member.id === user.id);
   const [infoSaved, setInfoSaved] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("info");
+  const appearance = useProfileAppearance();
+  const rank = JOB_RANKS.find((item) => item.value === myInfo?.jobRank)?.label;
+  const subtitle = [rank, myInfo?.department].filter(Boolean).join(" · ");
 
   return (
     <Modal opened={opened} onClose={onClose} title="설정" centered size="lg">
-      {/* 왼쪽 메뉴는 사이드바 고정 메뉴(NavLink)와 같은 모양에서 아이콘만 뺌 */}
-      {/* 탭마다 내용 길이가 달라도 창 크기는 그대로 두고, 넘치는 내용은 오른쪽 칸 안에서 스크롤 */}
-      <Group align="stretch" gap={0} wrap="nowrap" h="min(440px, 70vh)">
-        <Stack gap={0} w={140} pr="xs" role="tablist" aria-orientation="vertical"
-          style={{ flexShrink: 0, borderRight: "1px solid var(--mantine-color-default-border)" }}>
-          {SETTINGS_TABS.map((item) => (
-            <NavLink
-              key={item.value}
-              component="button"
-              type="button"
-              role="tab"
-              aria-selected={tab === item.value}
-              label={item.label}
-              py={4}
-              pl={6}
-              active={tab === item.value}
-              onClick={() => setTab(item.value)}
-            />
-          ))}
+      {/* 프로필 띠: 큰 동그라미 오른쪽 아래 카메라 버튼으로 이미지를 바로 바꿈 */}
+      <Group gap="md" wrap="nowrap" pb="md">
+        <Box pos="relative" style={{ flexShrink: 0 }}>
+          <ProfileAvatar user={user} size={60} fontSize={20} />
+          <Tooltip label="프로필 이미지 바꾸기" withArrow>
+            <ActionIcon variant="default" radius="xl" size={24} aria-label="프로필 이미지 바꾸기"
+              loading={appearance.save.isPending} onClick={() => appearance.fileRef.current?.click()}
+              style={{ position: "absolute", right: -2, bottom: -2 }}>
+              <CameraLineIcon size={13} />
+            </ActionIcon>
+          </Tooltip>
+        </Box>
+        <Stack gap={0} style={{ minWidth: 0 }}>
+          <Text fw={600} size="lg" truncate>{user.name}</Text>
+          {subtitle && <Text size="xs" c="dimmed">{subtitle}</Text>}
+          {user.email && <Text size="xs" c="dimmed" truncate>{user.email}</Text>}
         </Stack>
+        {/* 이미지·색 저장 실패만 프로필 옆에 알림 (저장했습니다는 내 정보 저장 버튼을 눌렀을 때만) */}
+        <Box ml="auto" maw={220} ta="right" style={{ flexShrink: 0 }}>
+          {appearance.error && <Text size="xs" c="red">{appearance.error}</Text>}
+        </Box>
+        <ProfileImageInput appearance={appearance} />
+      </Group>
 
-        {/* 탭을 바꿔도 저장 전 입력이 남도록 두 내용을 모두 그려 두고 숨김만 바꿈 */}
-        <Box role="tabpanel" aria-label="개인정보 수정" hidden={tab !== "info"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+      {/* 탭을 바꿔도 저장 전 입력이 남도록 내용은 그려 둔 채 숨김만 바꿈 */}
+      <Tabs value={tab} onChange={(value) => value && setTab(value as SettingsTab)} keepMounted>
+        <Tabs.List>
+          <Tabs.Tab value="info">내 정보</Tabs.Tab>
+          <Tabs.Tab value="profile">프로필 모양</Tabs.Tab>
+          <Tabs.Tab value="notifications">알림</Tabs.Tab>
+        </Tabs.List>
+
+        {/* 탭마다 내용 길이가 달라도 창 크기는 그대로 두고, 넘치는 내용은 탭 안에서 스크롤 */}
+        <Tabs.Panel value="info" pt="md" h="min(400px, 55vh)" style={{ overflowY: "auto" }}>
           {/* 가입 때 입력한 부서·직책·연락처 (최초 가입 정보 입력 화면과 같은 양식) */}
           <Stack gap="xs">
             {myInfo ? (
@@ -88,60 +99,98 @@ export function ProfileSettingsModal({ user, opened, onClose }: Props) {
             )}
             {infoSaved && <Text size="xs" c="teal" ta="right">저장했습니다.</Text>}
           </Stack>
-        </Box>
+        </Tabs.Panel>
 
-        <Box role="tabpanel" aria-label="내 설정" hidden={tab !== "profile"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-          <ProfileAppearanceForm user={user} />
-        </Box>
+        <Tabs.Panel value="profile" pt="md" h="min(400px, 55vh)" style={{ overflowY: "auto" }}>
+          <ProfileAppearanceForm user={user} appearance={appearance} />
+        </Tabs.Panel>
 
-        <Box role="tabpanel" aria-label="알림" hidden={tab !== "notifications"} pl="lg" pr="xs" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+        <Tabs.Panel value="notifications" pt="md" h="min(400px, 55vh)" style={{ overflowY: "auto" }}>
           {tab === "notifications" && <NotificationSettingsForm />}
-        </Box>
-      </Group>
+        </Tabs.Panel>
+      </Tabs>
     </Modal>
   );
 }
 
-// 페이지를 볼 때 다른 사람에게 보이는 내 동그라미의 색과 이미지, 화면 테마
-// 저장 버튼 없이 고르는 즉시 저장 (개인정보 수정 탭만 저장 버튼 사용)
-function ProfileAppearanceForm({ user }: { user: MemberDto }) {
+// 이미지가 없으면 이름 두 글자를 내 색 동그라미에
+function ProfileAvatar({ user, size, fontSize }: { user: MemberDto; size: number; fontSize: number }) {
+  return (
+    <Avatar
+      size={size}
+      radius="xl"
+      src={user.profileImageUrl}
+      aria-label="내 프로필 미리 보기"
+      styles={{ placeholder: {
+        background: user.profileColor ?? userColor(user.id), color: "white", fontSize, fontWeight: 400,
+        letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
+      } }}
+    >
+      {shortName(user.name)}
+    </Avatar>
+  );
+}
+
+type Appearance = ReturnType<typeof useProfileAppearance>;
+
+// 프로필 이미지·색 저장 (고르는 즉시 저장, 프로필 띠의 카메라 버튼과 프로필 모양 탭이 같이 씀)
+function useProfileAppearance() {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  // 이미지 파일을 끌고 프로필 이미지 칸 위에 올라와 있는 동안 놓을 자리 표시
-  const [dragging, setDragging] = useState(false);
-  // 화면 테마는 이 브라우저에만 저장되며 고르면 바로 적용
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
-
-  const color = user.profileColor ?? userColor(user.id);
-  const hasImage = !!user.profileImageUrl;
 
   // 바꾼 결과를 로그인 정보에 반영해 화면 전체가 새 색·이미지를 씀
   const save = useMutation({
     mutationFn: (change: () => Promise<ProfileDto>) => change(),
-    onMutate: () => { setSaved(false); setError(null); },
+    onMutate: () => setError(null),
     onSuccess: (profile) => {
       queryClient.setQueryData(["auth", "me"], (me: object | undefined) => me && { ...me, ...profile });
-      setSaved(true);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : "저장하지 못했습니다."),
   });
 
-  const onPickFile = (file: File | undefined) => {
+  const pickFile = (file: File | undefined) => {
     if (!file) return;
     if (!IMAGE_TYPES.split(",").includes(file.type)) {
-      setSaved(false);
       setError("PNG, JPG, GIF, WEBP 이미지만 올릴 수 있습니다.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setSaved(false);
       setError("프로필 이미지는 2MB까지 올릴 수 있습니다.");
       return;
     }
     save.mutate(() => uploadProfileImage(file));
   };
+
+  return { fileRef: fileRef as RefObject<HTMLInputElement>, save, error, pickFile };
+}
+
+function ProfileImageInput({ appearance }: { appearance: Appearance }) {
+  return (
+    <input
+      ref={appearance.fileRef}
+      type="file"
+      accept={IMAGE_TYPES}
+      hidden
+      data-testid="profile-image-input"
+      onChange={(e) => {
+        appearance.pickFile(e.currentTarget.files?.[0]);
+        e.currentTarget.value = "";
+      }}
+    />
+  );
+}
+
+// 페이지를 볼 때 다른 사람에게 보이는 내 동그라미의 이미지와 색, 화면 테마
+// 저장 버튼 없이 고르는 즉시 저장 (내 정보 탭만 저장 버튼 사용)
+function ProfileAppearanceForm({ user, appearance }: { user: MemberDto; appearance: Appearance }) {
+  const { save, fileRef, pickFile } = appearance;
+  // 이미지 파일을 끌고 놓는 칸 위에 올라와 있는 동안 놓을 자리 표시
+  const [dragging, setDragging] = useState(false);
+  // 화면 테마는 이 브라우저에만 저장되며 고르면 바로 적용
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const color = user.profileColor ?? userColor(user.id);
+  const hasImage = !!user.profileImageUrl;
 
   // 탐색기에서 끌어 온 이미지 파일을 놓으면 고른 것과 같이 바로 올림
   const dragOver = (e: DragEvent) => {
@@ -158,43 +207,35 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
     e.preventDefault();
     setDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    onPickFile(files.find((f) => f.type.startsWith("image/")) ?? files[0]);
+    pickFile(files.find((f) => f.type.startsWith("image/")) ?? files[0]);
   };
 
   return (
     <Stack gap="lg">
-      <Group gap="md" wrap="nowrap">
-        <Avatar
-          size={64}
-          radius="xl"
-          src={user.profileImageUrl}
-          aria-label="내 프로필 미리 보기"
-          styles={{ placeholder: {
-            background: color, color: "white", fontSize: 20, fontWeight: 400,
-            letterSpacing: "-0.02em", WebkitFontSmoothing: "antialiased",
-          } }}
-        >
-          {shortName(user.name)}
-        </Avatar>
-        <Stack gap={4}>
-          <Text fw={600}>{user.name}</Text>
-          {user.email && <Text size="xs" c="dimmed">{user.email}</Text>}
-        </Stack>
-      </Group>
-
-      {/* 이미지 파일을 이 칸에 끌어다 놓아도 올라감 (끄는 동안 점선 테두리) */}
-      <Stack gap="xs" aria-label="프로필 이미지 놓는 곳" onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}
-        p={6} m={-6} style={{
-          borderRadius: 8,
-          background: dragging ? "var(--mantine-primary-color-light)" : undefined,
-          outline: dragging ? "2px dashed var(--mantine-primary-color-filled)" : "2px dashed transparent",
-          outlineOffset: -2,
-        }}>
+      <Stack gap={6}>
         <Text size="sm" fw={500}>프로필 이미지</Text>
-        <Group gap="xs">
-          <Button size="xs" variant="light" loading={save.isPending} onClick={() => fileRef.current?.click()}>
-            {hasImage ? "이미지 바꾸기" : "이미지 올리기"}
-          </Button>
+        {/* 점선 칸에 끌어다 놓거나 파일 고르기 (끄는 동안 칸 강조) */}
+        <Group gap="sm" wrap="nowrap" px="md" py="sm" aria-label="프로필 이미지 놓는 곳"
+          onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}
+          style={{
+            borderRadius: 8,
+            border: `1px dashed ${dragging ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-default-border)"}`,
+            background: dragging ? "var(--mantine-primary-color-light)" : undefined,
+          }}>
+          <Box c="dimmed" style={{ display: "flex" }}><UploadLineIcon size={20} /></Box>
+          <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+            <Text size="sm">
+              {dragging ? "여기에 놓으면 바로 올라갑니다." : (
+                <>이미지를 끌어다 놓거나{" "}
+                  <Anchor component="button" type="button" size="sm" fw={600} disabled={save.isPending}
+                    onClick={() => fileRef.current?.click()}>
+                    파일 고르기
+                  </Anchor>
+                </>
+              )}
+            </Text>
+            <Text size="xs" c="dimmed">2MB 이하 PNG, JPG, GIF, WEBP. 이미지가 없으면 이름과 색으로 보입니다.</Text>
+          </Stack>
           {hasImage && (
             <Button size="xs" variant="subtle" color="gray" disabled={save.isPending}
               onClick={() => save.mutate(removeProfileImage)}>
@@ -202,39 +243,27 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
             </Button>
           )}
         </Group>
-        <Text size="xs" c="dimmed">{dragging ? "여기에 놓으면 바로 올라갑니다." : "2MB 이하 PNG, JPG, GIF, WEBP. 끌어다 놓아도 됩니다. 이미지가 없으면 이름과 색으로 보입니다."}</Text>
-        <input
-          ref={fileRef}
-          type="file"
-          accept={IMAGE_TYPES}
-          hidden
-          data-testid="profile-image-input"
-          onChange={(e) => {
-            onPickFile(e.currentTarget.files?.[0]);
-            e.currentTarget.value = "";
-          }}
-        />
       </Stack>
 
-      <Stack gap="xs">
-        {/* 자동 버튼(무작위로 한 색 고름)은 제목 오른쪽 */}
-        <Group gap="xs">
+      <Stack gap={6}>
+        {/* 자동 버튼(무작위로 한 색 고름)은 제목 오른쪽 끝 */}
+        <Group justify="space-between">
           <Text size="sm" fw={500}>색</Text>
           <Tooltip label="아래 색 중 하나를 자동으로 골라 바꿈" withArrow>
-            <Button size="compact-xs" variant="light" color="gray" disabled={save.isPending}
+            <Button size="compact-xs" variant="light" disabled={save.isPending}
               onClick={() => { const next = randomColor(color); save.mutate(() => changeProfileColor(next)); }}>
               자동
             </Button>
           </Tooltip>
         </Group>
-        <SimpleGrid cols={6} spacing={8} verticalSpacing={8} w="fit-content">
+        <Group gap={10}>
           {PROFILE_COLORS.map((swatch) => (
             <ColorSwatch
               key={swatch}
               component="button"
               type="button"
               color={swatch}
-              size={28}
+              size={26}
               aria-label={`색 ${swatch}`}
               aria-pressed={user.profileColor === swatch}
               disabled={save.isPending}
@@ -244,16 +273,14 @@ function ProfileAppearanceForm({ user }: { user: MemberDto }) {
               {user.profileColor === swatch && <CheckIcon size={12} />}
             </ColorSwatch>
           ))}
-        </SimpleGrid>
+        </Group>
       </Stack>
 
-      <Stack gap="xs">
+      <Stack gap={6} align="flex-start">
         <Text size="sm" fw={500}>화면 테마</Text>
-        <ColorSchemeToggle value={colorScheme} onChange={(value) => { setColorScheme(value); setError(null); setSaved(true); }} />
+        <ColorSchemeToggle value={colorScheme} onChange={setColorScheme} />
       </Stack>
 
-      {error && <Alert color="red" p="xs">{error}</Alert>}
-      {saved && !error && <Text size="xs" c="teal" ta="right">저장했습니다.</Text>}
     </Stack>
   );
 }

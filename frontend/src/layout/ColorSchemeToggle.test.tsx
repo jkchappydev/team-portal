@@ -3,10 +3,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 
-// 선택 칸을 열고 항목을 고름
+// 버튼 묶음에서 항목을 고름
 function choose(label: string) {
-  fireEvent.click(screen.getByLabelText("화면 테마", { selector: "input" }));
-  fireEvent.click(screen.getByRole("option", { name: label }));
+  fireEvent.click(screen.getByRole("radio", { name: label }));
 }
 
 describe("ColorSchemeToggle", () => {
@@ -32,9 +31,9 @@ describe("ColorSchemeToggle", () => {
 
   afterEach(() => cleanup());
 
-  it("받은 값을 선택 칸에 보여 준다", () => {
+  it("받은 값이 골라진 상태로 보인다", () => {
     render(<MantineProvider><ColorSchemeToggle value="dark" onChange={vi.fn()} /></MantineProvider>);
-    expect((screen.getByLabelText("화면 테마", { selector: "input" }) as HTMLInputElement).value).toBe("다크");
+    expect((screen.getByRole("radio", { name: "다크" }) as HTMLInputElement).checked).toBe(true);
   });
 
   it("고르면 고른 값만 알려 주고 화면 테마는 바꾸지 않는다", () => {

@@ -336,8 +336,8 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
   if (mode === "manage" && me && !user?.admin) return <Navigate to="/team" replace />;
 
   return (
-    // 가입 요청 상자도 같은 폭 (표 열 폭 합 + 상자 안쪽 여백)
-    <Stack maw={mode === "manage" ? 860 : 770} gap="xl">
+    // 가입 요청 상자도 같은 폭 (표 열 폭 합 + 상자 안쪽 여백), 팀원 목록은 오른쪽에 전화기 사용법을 나란히 두어 더 넓게
+    <Stack maw={mode === "manage" ? 860 : 770 + 32 + 320} gap="xl">
       <Title order={3}>{mode === "manage" ? "팀원 관리" : "팀원 목록"}</Title>
 
       {admin && <Stack gap="sm">
@@ -352,7 +352,9 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
         )}
       </Stack>}
 
-      <Stack gap="sm">
+      {/* 팀원 표 옆에 전화기 사용법 (칸이 좁으면 아래로 내려감) */}
+      <Group align="flex-start" gap="xl" wrap="wrap">
+      <Stack gap="sm" style={{ flex: "1 1 520px", maxWidth: mode === "manage" ? undefined : 770, minWidth: 0 }}>
         <Group justify="space-between">
           <Group gap="xs">
             <Title order={5}>팀원</Title>
@@ -401,14 +403,14 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
 
       {/* 팀원 목록에서만: 사무실 전화기 사용법 */}
       {mode === "list" && (
-        <Stack gap="sm">
+        <Stack gap="sm" style={{ flex: "1 1 260px", maxWidth: 320 }}>
           <Title order={5}>전화기 사용법</Title>
           <Paper withBorder radius="md" px="md" py="xs">
             <Table verticalSpacing="sm">
               <Table.Tbody>
                 {PHONE_GUIDE.map(([action, keys]) => (
                   <Table.Tr key={action}>
-                    <Table.Td w={200}>{action}</Table.Td>
+                    <Table.Td w={90} c="dimmed">{action}</Table.Td>
                     <Table.Td>{keys}</Table.Td>
                   </Table.Tr>
                 ))}
@@ -417,6 +419,7 @@ export function MembersPage({ mode = "manage" }: { mode?: "manage" | "list" }) {
           </Paper>
         </Stack>
       )}
+      </Group>
     </Stack>
   );
 }

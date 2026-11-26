@@ -41,8 +41,6 @@ function renderModal(client = new QueryClient()) {
 describe("ProfileSettingsModal", () => {
   beforeAll(() => {
     globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-    // 화면 테마 선택 목록이 고른 항목으로 스크롤할 때 쓰는 함수 (jsdom에 없음)
-    Element.prototype.scrollIntoView ??= () => {};
     window.matchMedia ??= ((query: string) => ({
       matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {},
       addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
@@ -53,18 +51,18 @@ describe("ProfileSettingsModal", () => {
     vi.clearAllMocks();
   });
 
-  it("창 제목은 설정이고, 개인정보 수정 탭이 먼저 열리며 내 설정 탭에는 저장 버튼이 없다", () => {
+  it("창 제목은 설정이고, 내 정보 탭이 먼저 열리며 프로필 모양 탭에는 저장 버튼이 없다", () => {
     renderModal();
     expect(screen.getByText("설정", { selector: "h2" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "개인정보 수정" }).getAttribute("aria-selected")).toBe("true");
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
-    expect(within(screen.getByRole("tabpanel", { name: "내 설정" })).queryByRole("button", { name: "저장" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "내 정보" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: "프로필 모양" }));
+    expect(within(screen.getByRole("tabpanel", { name: "프로필 모양" })).queryByRole("button", { name: "저장" })).toBeNull();
   });
 
-  it("내 설정 아래에 알림 탭이 있다", () => {
+  it("가로 탭은 내 정보, 프로필 모양, 알림 순서다", () => {
     renderModal();
     const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
-    expect(tabs).toEqual(["개인정보 수정", "내 설정", "알림"]);
+    expect(tabs).toEqual(["내 정보", "프로필 모양", "알림"]);
     fireEvent.click(screen.getByRole("tab", { name: "알림" }));
     expect(screen.getByRole("tab", { name: "알림" }).getAttribute("aria-selected")).toBe("true");
   });
@@ -81,10 +79,9 @@ describe("ProfileSettingsModal", () => {
         </QueryClientProvider>
       </MantineProvider>,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
+    fireEvent.click(screen.getByRole("tab", { name: "프로필 모양" }));
 
-    fireEvent.click(screen.getByLabelText("화면 테마", { selector: "input" }));
-    fireEvent.click(screen.getByRole("option", { name: "다크" }));
+    fireEvent.click(screen.getByRole("radio", { name: "다크" }));
     await waitFor(() => expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("dark"));
     expect(localStorage.getItem(COLOR_SCHEME_STORAGE_KEY)).toBe("dark");
     expect(api.changeProfileColor).not.toHaveBeenCalled();
@@ -96,22 +93,31 @@ describe("ProfileSettingsModal", () => {
     expect(screen.getByText("hong@example.com")).toBeTruthy();
   });
 
-  it("색을 고르면 바로 저장해 로그인 정보에 반영한다", async () => {
+  it("프로필 띠에 직책·부서를 보여 주고, 카메라 버튼은 이미지 고르기 창을 연다", async () => {
+    renderModal();
+    expect(await screen.findByText("선임 · 개발팀")).toBeTruthy();
+    const input = screen.getByTestId("profile-image-input") as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "프로필 이미지 바꾸기" }));
+    expect(click).toHaveBeenCalled();
+  });
+
+  it("색을 고르면 바로 저장해 로그인 정보에 반영하고, 저장했습니다 문구는 띄우지 않는다", async () => {
     api.changeProfileColor.mockResolvedValue({ profileColor: "#1971c2", profileImageUrl: null });
     const client = renderModal();
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
+    fireEvent.click(screen.getByRole("tab", { name: "프로필 모양" }));
 
     fireEvent.click(screen.getByRole("button", { name: "색 #1971c2" }));
 
     await waitFor(() => expect(client.getQueryData(["auth", "me"])).toMatchObject({ profileColor: "#1971c2" }));
     expect(api.changeProfileColor.mock.calls[0][0]).toBe("#1971c2");
-    expect(await screen.findByText("저장했습니다.")).toBeTruthy();
+    expect(screen.queryByText("저장했습니다.")).toBeNull();
   });
 
   it("자동을 누르면 지금과 다른 색 하나를 골라 바로 저장한다", async () => {
     api.changeProfileColor.mockResolvedValue({ profileColor: "#e03131", profileImageUrl: null });
     renderModal();
-    fireEvent.click(screen.getByRole("tab", { name: "내 설정" }));
+    fireEvent.click(screen.getByRole("tab", { name: "프로필 모양" }));
 
     fireEvent.click(screen.getByRole("button", { name: "자동" }));
 
@@ -148,7 +154,7 @@ describe("ProfileSettingsModal", () => {
     expect((screen.getAllByLabelText("이름")[0] as HTMLInputElement).readOnly).toBe(true);
 
     fireEvent.change(phone, { target: { value: "01099998888" } });
-    fireEvent.click(within(screen.getByRole("tabpanel", { name: "개인정보 수정" })).getByRole("button", { name: "저장" }));
+    fireEvent.click(within(screen.getByRole("tabpanel", { name: "내 정보" })).getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(members.updateMember).toHaveBeenCalledWith(3, {
       department: "개발팀", jobRank: "SENIOR", phone: "010-9999-8888", extension: "12",
