@@ -6,6 +6,7 @@ import { purgeTrashItem, restoreDocument } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { restoreForm } from "../api/forms";
 import { TrashPage } from "./TrashPage";
+import { attachPageBlock } from "./editor/pageBlockSync";
 
 vi.mock("../api/documents", () => ({
   getTrash: vi.fn(() => Promise.resolve({
@@ -39,6 +40,8 @@ vi.mock("../api/documents", () => ({
 }));
 vi.mock("../api/spaces", () => ({ restoreSpace: vi.fn(() => Promise.resolve()) }));
 vi.mock("../api/forms", () => ({ FORMS_KEY: ["forms"], restoreForm: vi.fn(() => Promise.resolve()) }));
+// 복원한 페이지의 블록을 상위 본문에 다시 붙이는 처리 (협업 서버 접속은 따로 시험)
+vi.mock("./editor/pageBlockSync", () => ({ attachPageBlock: vi.fn(() => Promise.resolve()) }));
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -75,6 +78,7 @@ describe("TrashPage", () => {
   beforeEach(() => {
     vi.mocked(purgeTrashItem).mockClear();
     vi.mocked(restoreDocument).mockClear();
+    vi.mocked(attachPageBlock).mockClear();
     vi.mocked(restoreSpace).mockClear();
     vi.mocked(restoreForm).mockClear();
   });
@@ -224,7 +228,22 @@ describe("TrashPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "선택 복원" }));
     await waitFor(() => expect(restoreDocument).toHaveBeenCalledTimes(2));
     expect(vi.mocked(restoreDocument).mock.calls).toEqual([[40], [1]]);
+    // 복원한 페이지마다 상위 본문에 페이지 블록을 다시 붙임 (상위부터)
+    await waitFor(() => expect(vi.mocked(attachPageBlock).mock.calls).toEqual([[40], [1]]));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("상위 본문에 블록을 다시 붙이지 못해도 복원은 그대로 끝난다", async () => {
+    vi.mocked(attachPageBlock).mockRejectedValueOnce(new Error("접속 실패"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderPage();
+    await screen.findByText("회의록 모음");
+    fireEvent.click(screen.getByLabelText("회의록 모음 선택"));
+    fireEvent.click(screen.getByRole("button", { name: "선택 복원" }));
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+    expect(restoreDocument).toHaveBeenCalledWith(40);
+    expect(screen.queryByText(/복원하지 못했습니다/)).toBeNull();
+    warn.mockRestore();
   });
 
   it("맨 위 체크박스는 아래 항목이 모두 체크됐을 때만 체크되고, 선택 해제는 체크박스로 한다", async () => {

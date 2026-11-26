@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { changeDocumentIcon, deleteDocument, getDocument, renameDocument } from "../api/documents";
+import { detachTrashedPage } from "./editor/pageBlockSync";
 import { listSpaces } from "../api/spaces";
 import { useCurrentUser } from "../user/currentUser";
 import { useMarkDocumentRead } from "../notifications/useMarkDocumentRead";
@@ -75,7 +76,13 @@ export function DocumentPage() {
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteDocument(documentId),
+    // 휴지통으로 보낸 뒤 상위 본문의 페이지 블록도 뺌 (노션처럼 "삭제된 페이지" 줄이 남지 않게, 다시 열 상위 본문에 반영된 뒤 이동)
+    mutationFn: async () => {
+      await deleteDocument(documentId);
+      if (doc) {
+        await detachTrashedPage(doc, () => queryClient.fetchQuery({ queryKey: ["spaces"], queryFn: listSpaces }));
+      }
+    },
     onSuccess: () => {
       const spaceId = doc?.spaceId;
       queryClient.invalidateQueries({ queryKey: ["documents"] });

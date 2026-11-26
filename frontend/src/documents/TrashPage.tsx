@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 import { ApiError } from "../api/client";
 import { getTrash, purgeTrashItem, restoreDocument } from "../api/documents";
+import { attachPageBlock } from "./editor/pageBlockSync";
 import type { TrashItemDto } from "../api/documents";
 import { restoreSpace } from "../api/spaces";
 import { FORMS_KEY, restoreForm } from "../api/forms";
@@ -54,7 +55,10 @@ function matchesQuery(item: TrashItemDto, query: string): boolean {
 function restoreItem(target: RestoreTarget): Promise<void> {
   if (target.kind === "space") return restoreSpace(target.id);
   if (target.kind === "form") return restoreForm(target.id);
-  return restoreDocument(target.id);
+  // 페이지는 복원한 뒤 상위 본문에 페이지 블록을 다시 붙임 (붙이지 못해도 복원은 성공으로 봄)
+  return restoreDocument(target.id).then(() => attachPageBlock(target.id).catch((error: unknown) => {
+    console.warn("복원한 페이지를 상위 본문에 다시 붙이지 못했습니다.", error);
+  }));
 }
 
 // 여러 항목을 하나씩 차례로 처리 (실패하면 거기서 멈추고 오류 전달)

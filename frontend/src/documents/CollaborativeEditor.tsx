@@ -433,7 +433,10 @@ function EditorView({ session, documentId, user, editable, spaceId }: EditorView
       referencedIds: () => new Set(pageIdsIn(editor.document as never)),
       // 잘라내 붙여넣기를 기다리거나 다른 페이지로 옮겨 간 페이지는 휴지통으로 보내지 않음
       isCut: (pageId) => isPageCut(pageId) || isPageMoved(pageId),
-      trashPage: (pageId) => deleteDocument(pageId).then(() => refresh(pageId)),
+      // 다른 화면에서 이미 휴지통으로 보낸 페이지(404)는 그대로 둠 (그쪽에서 이 본문의 블록을 뺀 경우)
+      trashPage: (pageId) => deleteDocument(pageId)
+        .catch((error: unknown) => { if (!(error instanceof ApiError && error.status === 404)) throw error; })
+        .then(() => refresh(pageId)),
       restorePage: (pageId) => restoreDocument(pageId).then(() => refresh(pageId)),
       onError: setScheduleError,
     });
