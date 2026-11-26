@@ -342,6 +342,59 @@ class DocumentServiceTest {
     assertThat(items.get(0).spaceKind()).isEqualTo("PROJECT");
     assertThat(items.get(1).spaceKind()).isNull();
     assertThat(items.get(0).children()).extracting(c -> c.title() + ":" + c.depth()).containsExactly("최상위:1", "하위:2");
+    assertThat(items.get(0).location()).isEqualTo("사이드바");
+    assertThat(items.get(1).trashedParent()).isNull();
+  }
+
+  // 휴지통의 원래 위치: 프로젝트 이름 뒤에 살아 있는 상위 페이지만 이어 붙이고 본문 페이지는 뺌
+  @Test
+  void findTrash_deletedPage_locationListsLiveAncestors() {
+    Space space = space(10L);
+    space.assignHomeDocument(100L);
+    Document home = child(100L, 10L, null, "개발");
+    Document top = child(1L, 10L, 100L, "기획");
+    Document removedParent = child(2L, 10L, 1L, "지난 자료");
+    removedParent.softDelete();
+    Document deleted = child(3L, 10L, 2L, "회의록");
+    deleted.softDelete();
+    when(spaceRepository.findByDeletedAtIsNotNullOrderByDeletedAtDesc()).thenReturn(List.of());
+    when(documentRepository.findTrashed()).thenReturn(List.of(deleted));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(documentRepository.findById(2L)).thenReturn(Optional.of(removedParent));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(top));
+    when(documentRepository.findById(100L)).thenReturn(Optional.of(home));
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(10L))
+      .thenReturn(List.of(home, top));
+
+    var items = service().findTrash().items();
+
+    assertThat(items.get(0).location()).isEqualTo("개발 › 기획");
+    // 원래 상위가 휴지통에 있어 원래 자리로 못 돌아감을 알림
+    assertThat(items.get(0).trashedParent()).isEqualTo("지난 자료");
+    assertThat(items.get(0).trashedParentId()).isEqualTo(2L);
+  }
+
+  // 더 위의 상위가 삭제됐으면 그 아래 살아 있는 상위도 숨겨져 있으므로, 복원 위치는 삭제된 상위 바로 위까지
+  @Test
+  void findTrash_ancestorAboveParentDeleted_locationStopsAboveIt() {
+    Space space = space(10L);
+    Document removedTop = child(1L, 10L, null, "기획");
+    removedTop.softDelete();
+    Document hiddenParent = child(2L, 10L, 1L, "회의록");
+    Document deleted = child(3L, 10L, 2L, "4주차");
+    deleted.softDelete();
+    when(spaceRepository.findByDeletedAtIsNotNullOrderByDeletedAtDesc()).thenReturn(List.of());
+    when(documentRepository.findTrashed()).thenReturn(List.of(deleted));
+    when(spaceRepository.findById(10L)).thenReturn(Optional.of(space));
+    when(documentRepository.findById(2L)).thenReturn(Optional.of(hiddenParent));
+    when(documentRepository.findById(1L)).thenReturn(Optional.of(removedTop));
+    when(documentRepository.findBySpaceIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAscIdAsc(10L))
+      .thenReturn(List.of(hiddenParent));
+
+    var item = service().findTrash().items().get(0);
+
+    assertThat(item.location()).isEqualTo("개발");
+    assertThat(item.trashedParent()).isEqualTo("기획");
   }
 
   // 같은 상위 안에서 index 위치로 끼워 넣고 형제들 순서를 0부터 다시 매김

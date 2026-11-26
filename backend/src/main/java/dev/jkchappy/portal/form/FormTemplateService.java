@@ -111,7 +111,7 @@ public class FormTemplateService {
   public List<TrashItem> findTrash() {
     return formRepository.findByDeletedAtIsNotNullOrderByDeletedAtDesc().stream()
       .map(f -> new TrashItem("form", f.getId(), f.getOriginalName(), null, null,
-        f.getDeletedAt().atOffset(ZoneOffset.UTC), List.of()))
+        "공유 보관함", null, null, f.getDeletedAt().atOffset(ZoneOffset.UTC), List.of()))
       .toList();
   }
 

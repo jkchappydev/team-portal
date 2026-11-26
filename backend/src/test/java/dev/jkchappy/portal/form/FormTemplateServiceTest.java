@@ -167,6 +167,7 @@ class FormTemplateServiceTest {
     assertThat(items.get(0).id()).isEqualTo(4L);
     assertThat(items.get(0).name()).isEqualTo("양식4.docx");
     assertThat(items.get(0).children()).isEmpty();
+    assertThat(items.get(0).location()).isEqualTo("공유 보관함");
   }
 
   // 영구 삭제는 휴지통에 있는 파일만, 행과 파일 본체를 지움

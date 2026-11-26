@@ -206,10 +206,10 @@ class DocumentControllerTest {
   @Test
   void trash_mergesFormsByDeletedAt() throws Exception {
     when(documentService.findTrash()).thenReturn(new dev.jkchappy.portal.document.dto.TrashResponse(List.of(
-      new dev.jkchappy.portal.document.dto.TrashItem("document", 3L, "회의록", null, null,
+      new dev.jkchappy.portal.document.dto.TrashItem("document", 3L, "회의록", null, null, "운영", null, null,
         java.time.OffsetDateTime.parse("2026-11-18T00:00:00Z"), List.of()))));
     when(formService.findTrash()).thenReturn(List.of(
-      new dev.jkchappy.portal.document.dto.TrashItem("form", 7L, "품의서.xlsx", null, null,
+      new dev.jkchappy.portal.document.dto.TrashItem("form", 7L, "품의서.xlsx", null, null, "공유 보관함", null, null,
         java.time.OffsetDateTime.parse("2026-11-19T00:00:00Z"), List.of())));
 
     mockMvc.perform(get("/api/trash").with(loginAs(1L)))

@@ -2211,3 +2211,9 @@ body.bn-column-resizing {
   .server-table-value, .server-table-disk { text-align: left; }
   .server-table-disks { padding: 0; gap: 6px; }
 }
+
+/* 휴지통 표 머리글은 얇게, 삭제 버튼은 빨간 글자 (올리면 옅은 회색 바탕) */
+.trash-table thead th { font-size: var(--mantine-font-size-xs); font-weight: 400; color: var(--mantine-color-dimmed); letter-spacing: 0.02em; }
+.trash-table .mantine-Checkbox-input { cursor: pointer; }
+/* Mantine이 --button-color를 인라인으로 넣어 변수 대신 글자색을 직접 지정 */
+button.trash-danger:not(:disabled) { color: var(--mantine-color-red-filled); }

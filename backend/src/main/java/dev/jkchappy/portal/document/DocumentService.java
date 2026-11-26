@@ -55,6 +55,9 @@ public class DocumentService {
   // 상위 페이지가 없는(프로젝트 최상위) 페이지를 묶는 키
   private static final Long ROOT_KEY = 0L;
 
+  // 삭제된 프로젝트·최상위 페이지의 원래 위치
+  private static final String SIDEBAR_LOCATION = "사이드바";
+
   // 페이지 자신이나 상위 페이지, 소속 프로젝트가 삭제됐으면 없는 페이지로 취급
   @Transactional(readOnly = true)
   public Document getLiveDocument(Long id) {
@@ -492,16 +495,54 @@ public class DocumentService {
       // 프로젝트 본문 페이지는 프로젝트 자신이므로 하위 목록에서 제외
       collectChildren(childrenOf.apply(space.getId()), ROOT_KEY, homeId, 1, children);
       items.add(new TrashItem("space", space.getId(), space.getName(), icon, space.getKind().name(),
-        space.getDeletedAt().atOffset(ZoneOffset.UTC), children));
+        SIDEBAR_LOCATION, null, null, space.getDeletedAt().atOffset(ZoneOffset.UTC), children));
     }
     for (Document doc : documentRepository.findTrashed().stream().filter(d -> !d.isWbs()).toList()) {
       List<TrashChild> children = new ArrayList<>();
       collectChildren(childrenOf.apply(doc.getSpaceId()), doc.getId(), null, 1, children);
+      TrashPlace place = trashPlace(doc);
       items.add(new TrashItem("document", doc.getId(), doc.getTitle(), doc.getIcon(), null,
-        doc.getDeletedAt().atOffset(ZoneOffset.UTC), children));
+        place.location(), place.trashedParentId(), place.trashedParent(), doc.getDeletedAt().atOffset(ZoneOffset.UTC), children));
     }
     items.sort(Comparator.comparing(TrashItem::deletedAt).reversed());
     return new TrashResponse(items);
+  }
+
+  // 휴지통 페이지가 복원될 자리와, 그 자리가 원래와 달라지게 만든 휴지통 속 상위 페이지 이름 (없으면 null)
+  private record TrashPlace(String location, Long trashedParentId, String trashedParent) {
+  }
+
+  // 복원 위치 계산은 relocateUnderLiveAncestor와 같은 규칙: 위에서부터 내려오다 처음 만난 삭제된 상위 바로 위까지
+  // (본문 페이지는 프로젝트 이름과 같아 경로에서 제외, 상위를 찾을 수 없으면 프로젝트 최상위)
+  private TrashPlace trashPlace(Document doc) {
+    Space space = spaceRepository.findById(doc.getSpaceId()).orElse(null);
+    List<Document> chain = new ArrayList<>();
+    Long parentId = doc.getParentId();
+    while (parentId != null && chain.size() < MAX_DEPTH) {
+      Document parent = documentRepository.findById(parentId).orElse(null);
+      if (parent == null) {
+        chain.clear();
+        break;
+      }
+      chain.add(parent);
+      parentId = parent.getParentId();
+    }
+    List<String> path = new ArrayList<>();
+    if (space != null) {
+      path.add(space.getName());
+    }
+    Document trashedParent = null;
+    for (Document ancestor : chain.reversed()) {
+      if (ancestor.isDeleted()) {
+        trashedParent = ancestor;
+        break;
+      }
+      if (space == null || !space.isHomeDocument(ancestor.getId())) {
+        path.add(ancestor.getTitle());
+      }
+    }
+    return new TrashPlace(String.join(" › ", path),
+      trashedParent == null ? null : trashedParent.getId(), trashedParent == null ? null : trashedParent.getTitle());
   }
 
   // 상위 페이지 아래를 깊이 우선으로 펼침 (순환 데이터 방어로 최대 깊이 제한)

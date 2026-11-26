@@ -62,6 +62,11 @@ export interface TrashItemDto {
   icon: string | null;
   // space일 때 PROJECT 또는 PAGE (그 밖은 null)
   spaceKind: "PROJECT" | "PAGE" | null;
+  // 복원하면 들어갈 위치 (예: 프로젝트 이름 › 상위 페이지)
+  location: string;
+  // 원래 상위 페이지가 휴지통에 있어 원래 자리로 못 돌아갈 때 그 상위 페이지 ID와 이름
+  trashedParentId: number | null;
+  trashedParent: string | null;
   deletedAt: string;
   // 깊이 우선 순서
   children: TrashChildDto[];

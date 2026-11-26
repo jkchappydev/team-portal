@@ -76,6 +76,15 @@ export function ChevronLineIcon({ direction, ...props }: Props & { direction: "l
   );
 }
 
+export function SearchLineIcon(props: Props) {
+  return (
+    <LineIcon {...props}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </LineIcon>
+  );
+}
+
 export function ExternalLineIcon(props: Props) {
   return (
     <LineIcon {...props}>
